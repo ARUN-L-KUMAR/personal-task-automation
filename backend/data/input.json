@@ -1,0 +1,15 @@
+{
+  "meetings": [
+    {
+      "title": "Project Review",
+      "time": "10:00 AM",
+      "location": "College"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Finish Assignment",
+      "deadline": "11:00 AM"
+    }
+  ]
+}
