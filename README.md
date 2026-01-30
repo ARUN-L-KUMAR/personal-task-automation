@@ -74,6 +74,43 @@ Each agent performs a specific responsibility and passes results to the next sta
 
 ---
 
+## 📁 Project Structure
+
+```
+Personal_Task/
+├── README.md
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── __pycache__/
+│   ├── agents/
+│   │   ├── calendar_agent.py
+│   │   ├── conflict_agent.py
+│   │   ├── planning_agent.py
+│   │   ├── task_agent.py
+│   │   ├── travel_agent.py
+│   │   └── __pycache__/
+│   └── utils/
+│       ├── time_parser.py
+│       └── __pycache__/
+└── frontend/
+    ├── package.json
+    ├── public/
+    │   ├── index.html
+    │   ├── manifest.json
+    │   └── robots.txt
+    └── src/
+        ├── App.css
+        ├── App.js
+        ├── App.test.js
+        ├── index.css
+        ├── index.js
+        ├── reportWebVitals.js
+        └── setupTests.js
+```
+
+---
+
 ## ⚙️ Setup Instructions
 
 ### 1️⃣ Clone Repository
@@ -140,7 +177,7 @@ Frontend runs at:
 
 ## 📡 Current API Endpoint
 
-### **POST /analyze-schedule**
+### **POST /plan-day**
 
 Example Input:
 

@@ -1,7 +1,5 @@
-from datetime import datetime, timedelta
-
-def parse_time(time_str):
-    return datetime.strptime(time_str, "%I:%M %p")
+from datetime import timedelta
+from utils.time_parser import parse_time
 
 def travel_agent(meetings):
     """

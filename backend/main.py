@@ -26,7 +26,7 @@ class ScheduleInput(BaseModel):
 def read_root():
     return {"message": "Personal Task Automation Backend is Running 🚀"}
 
-@app.post("/analyze-schedule")
+@app.post("/plan-day")
 def analyze_schedule(data: ScheduleInput):
     meetings_list = [meeting.dict() for meeting in data.meetings]
     tasks_list = [task.dict() for task in data.tasks]

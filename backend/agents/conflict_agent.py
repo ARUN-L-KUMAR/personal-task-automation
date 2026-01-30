@@ -1,7 +1,4 @@
-from datetime import datetime
-
-def parse_time(time_str):
-    return datetime.strptime(time_str, "%I:%M %p")
+from utils.time_parser import parse_time
 
 def conflict_agent(meetings, tasks):
     """
@@ -16,9 +13,11 @@ def conflict_agent(meetings, tasks):
         for task in tasks:
             task_deadline = parse_time(task["deadline"])
 
-            # Simple rule: conflict if meeting is within 1 hour before task deadline
+            # Conflict if within 1 hour
             if abs((task_deadline - meeting_time).total_seconds()) < 3600:
-                conflicts.append(f"Conflict between '{meeting['title']}' and task '{task['title']}'")
+                conflicts.append(
+                    f"Conflict between '{meeting['title']}' and task '{task['title']}'"
+                )
 
     if conflicts:
         return conflicts
