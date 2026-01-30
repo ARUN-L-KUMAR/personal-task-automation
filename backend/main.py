@@ -1,46 +1,82 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
-from agents.calendar_agent import calendar_agent
-from agents.task_agent import task_agent
-from agents.conflict_agent import conflict_agent
-from agents.travel_agent import travel_agent
-from agents.planning_agent import planning_agent
+from dotenv import load_dotenv
+import json
 
-app = FastAPI()
+from graph.agent_graph import ScheduleAgentGraph
+
+load_dotenv()
+
+app = FastAPI(title="AI Personal Task Automation System - Multi-Agent")
+
+# Initialize the agent graph
+agent_graph = ScheduleAgentGraph()
+
 
 class Meeting(BaseModel):
     title: str
     time: str
     location: str
 
+
 class Task(BaseModel):
     title: str
     deadline: str
+
 
 class ScheduleInput(BaseModel):
     meetings: List[Meeting]
     tasks: List[Task]
 
+
 @app.get("/")
 def read_root():
-    return {"message": "Personal Task Automation Backend is Running 🚀"}
+    return {
+        "message": "Personal Task Automation Backend is Running 🚀",
+        "architecture": "LangGraph Multi-Agent System",
+        "agents": [
+            "CalendarAgent",
+            "TaskAgent",
+            "ConflictAgent",
+            "TravelAgent",
+            "PlanningAgent",
+            "CoordinatorAgent"
+        ]
+    }
+
 
 @app.post("/plan-day")
 def analyze_schedule(data: ScheduleInput):
-    meetings_list = [meeting.dict() for meeting in data.meetings]
-    tasks_list = [task.dict() for task in data.tasks]
+    """
+    Multi-agent schedule analysis using LangGraph workflow
+    
+    The system uses a graph-based multi-agent architecture where:
+    1. CalendarAgent analyzes meetings
+    2. TaskAgent analyzes tasks
+    3. ConflictAgent detects scheduling conflicts
+    4. TravelAgent plans travel logistics
+    5. PlanningAgent creates optimized schedule
+    6. CoordinatorAgent synthesizes final response
+    """
+    # Convert Pydantic → dict
+    meetings_list = [m.dict() for m in data.meetings]
+    tasks_list = [t.dict() for t in data.tasks]
 
-    calendar_result = calendar_agent(meetings_list)
-    task_result = task_agent(tasks_list)
-    conflict_result = conflict_agent(meetings_list, tasks_list)
-    travel_result = travel_agent(meetings_list)
-    planning_result = planning_agent(conflict_result)
+    # Execute the multi-agent graph workflow
+    result = agent_graph.execute(meetings_list, tasks_list)
 
     return {
-        "calendar_analysis": calendar_result,
-        "task_analysis": task_result,
-        "conflict_analysis": conflict_result,
-        "travel_reminders": travel_result,
-        "ai_suggestions": planning_result
+        "status": "success",
+        "calendar_analysis": result["calendar_analysis"],
+        "task_analysis": result["task_analysis"],
+        "conflict_analysis": result["conflicts"],
+        "travel_plan": result["travel_plan"],
+        "optimized_plan": result["optimized_plan"],
+        "final_response": result["final_response"],
+        "metadata": {
+            "architecture": "Multi-Agent Graph",
+            "agents_used": 6,
+            "workflow": "Sequential AI Pipeline"
+        }
     }
