@@ -1,51 +1,50 @@
-import os
-from dotenv import load_dotenv
 from openai import OpenAI
+import os
 
-# Load environment variables
-load_dotenv()
+from config.settings import (
+    AI_MODEL_NAME,
+    AI_TEMPERATURE,
+    AI_MAX_TOKENS,
+    OPENROUTER_BASE_URL
+)
 
 # Initialize OpenRouter client
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
+    base_url=OPENROUTER_BASE_URL
 )
 
 
 def llm_explanation_agent(conflicts):
     """
-    LLM Explanation Agent (OpenRouter + DeepSeek):
-    Converts detected conflicts into natural language explanations.
+    LLM Explanation Agent:
+    Uses configurable AI model to explain conflicts.
     """
 
-    # Safety check
     if not conflicts or "No conflicts detected." in conflicts:
         return "Your schedule looks balanced with no conflicts."
 
     prompt = f"""
     You are a personal AI scheduling assistant.
 
-    The following scheduling conflicts were detected:
+    Detected scheduling conflicts:
     {conflicts}
 
-    Explain the issue in simple language and suggest what the user should do.
-    Keep the response short and practical.
+    Explain the issue clearly and suggest what the user should do.
+    Keep it short and practical.
     """
 
     try:
         response = client.chat.completions.create(
-            model="deepseek/deepseek-r1",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.4,
-            max_tokens=150
+            model=AI_MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=AI_TEMPERATURE,
+            max_tokens=AI_MAX_TOKENS
         )
 
         return response.choices[0].message.content.strip()
 
     except Exception:
-        # Fallback to ensure system stability during review
         return (
             "A scheduling conflict was detected. "
             "Please consider rescheduling the task or adjusting the meeting time."

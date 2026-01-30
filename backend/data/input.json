@@ -1,15 +1,47 @@
 {
   "meetings": [
     {
+      "title": "Client Call",
+      "time": "9:00 am",
+      "location": "Chennai"
+    },
+    {
+      "title": "Team Standup",
+      "time": "10:30 AM",
+      "location": "Office"
+    },
+    {
       "title": "Project Review",
-      "time": "10:00 AM",
-      "location": "College"
+      "time": "12:00pm",
+      "location": "Chennai"
+    },
+    {
+      "title": "Design Discussion",
+      "time": "3:00 PM",
+      "location": "Remote"
+    },
+    {
+      "title": "Daily Wrap-up",
+      "time": "6:00",
+      "location": "Office"
     }
   ],
   "tasks": [
     {
-      "title": "Finish Assignment",
-      "deadline": "11:00 AM"
+      "title": "Check Recent Project Updates",
+      "deadline": "11:00 Pm"
+    },
+    {
+      "title": "Prepare Client Presentation",
+      "deadline": "10:15 AM"
+    },
+    {
+      "title": "Fix Critical Bugs",
+      "deadline": "2:30pm"
+    },
+    {
+      "title": "Update Documentation",
+      "deadline": "5:30 PM"
     }
   ]
 }

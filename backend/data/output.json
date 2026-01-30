@@ -1,11 +1,12 @@
 {
-  "calendar_analysis": "Meetings: Project Review at 10:00 AM in College",
-  "task_analysis": "Tasks: Finish Assignment due by 11:00 AM",
+  "calendar_analysis": "Meetings: Clieng at 12:00pm in chennai, recent update at 9:00 in chennai",
+  "task_analysis": "Tasks: Recent Project need to check due by 11:00 Pm",
   "conflict_analysis": [
     "No conflicts detected."
   ],
   "travel_reminders": [
-    "Leave for 'Project Review' by 09:30 AM"
+    "Leave for 'Clieng' by 11:30 AM",
+    "Leave for 'recent update' by 08:30 AM"
   ],
   "rule_based_plan": "Schedule looks good! You can proceed as planned.",
   "ai_explanation": "Your schedule looks balanced with no conflicts."

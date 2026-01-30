@@ -6,107 +6,113 @@
 
 ## 📌 Project Overview
 
-This project implements a **cooperative multi-agent system** designed for **autonomous personal task automation**.
+This project implements an **LLM-based cooperative multi-agent system** for **autonomous personal task automation**.
 
-Instead of relying on a single AI model, this system uses **multiple specialized agents** that collaborate to analyze schedules, detect conflicts, adjust for real-world constraints, and generate smart task recommendations.
+Instead of relying on a single monolithic AI model, the system is composed of **multiple specialized agents** that cooperate to analyze schedules, detect conflicts, apply real-world constraints, and generate intelligent recommendations.
 
-The current version includes a **working backend prototype** with multiple interacting agents. Future versions will enhance reasoning using **LLM-powered agents via LangChain and LangGraph**.
+The system combines:
+
+* **Deterministic rule-based agents** for correctness and reliability
+* **LLM-powered agents** for human-like explanations and reasoning transparency
+
+It supports **both REST API and CLI interfaces** and uses a **JSON-based data layer** that acts as a lightweight database.
 
 ---
 
 ## 🎯 Objective
 
-To design and implement a system where **multiple AI agents cooperate** to:
+To design and implement a system where **multiple agents collaborate** to:
 
 * Understand user schedules
 * Analyze meetings and task deadlines
 * Detect time conflicts
-* Add contextual adjustments (e.g., travel time)
+* Apply contextual constraints (e.g., travel buffer)
 * Generate intelligent daily planning suggestions
+* Provide **AI-generated natural language explanations**
 
 ---
 
 ## 🏗 System Architecture
 
-The system follows a **cooperative agent workflow**:
+The system follows a **cooperative multi-agent workflow**:
 
 ```
-User Input → Coordinator (API Layer)
-       ↓
-  ┌──────────────┬──────────────┐
-Calendar Agent   Task Agent
-       ↓              ↓
-      Conflict Agent
-       ↓
-     Travel Agent
-       ↓
-    Planning Agent
-       ↓
-  Final AI Response
+User (API / CLI)
+        ↓
+ Coordinator (FastAPI / CLI Layer)
+        ↓
+ ┌──────────────┬──────────────┐
+ Calendar Agent   Task Agent
+        ↓              ↓
+       Conflict Agent
+              ↓
+          Travel Agent
+              ↓
+         Planning Agent
+              ↓
+     LLM Explanation Agent
+              ↓
+        Final Response
 ```
 
-Each agent performs a specific responsibility and passes results to the next stage, forming an **autonomous decision pipeline**.
+Each agent performs a focused responsibility, forming an **autonomous decision pipeline**.
 
 ---
 
 ## 🤖 Agents Implemented (Current Version)
 
-| Agent              | Role                                              |
-| ------------------ | ------------------------------------------------- |
-| **Calendar Agent** | Reads and formats meeting schedule                |
-| **Task Agent**     | Reads task deadlines                              |
-| **Conflict Agent** | Detects time conflicts between meetings and tasks |
-| **Travel Agent**   | Adds travel time buffer before meetings           |
-| **Planning Agent** | Generates smart scheduling suggestions            |
+| Agent                     | Role                                                                      |
+| ------------------------- | ------------------------------------------------------------------------- |
+| **Calendar Agent**        | Reads and formats meeting schedules                                       |
+| **Task Agent**            | Reads task deadlines                                                      |
+| **Conflict Agent**        | Detects time conflicts between meetings and tasks                         |
+| **Travel Agent**          | Adds travel buffer before meetings                                        |
+| **Planning Agent**        | Generates rule-based scheduling suggestions                               |
+| **LLM Explanation Agent** | Uses an AI model to explain conflicts and suggestions in natural language |
 
 ---
 
 ## 🧰 Tech Stack
 
-| Layer                    | Technology                                 |
-| ------------------------ | ------------------------------------------ |
-| Backend                  | FastAPI (Python)                           |
-| Frontend                 | React.js (In Progress)                     |
-| AI Agents                | Python-based modular agent architecture    |
-| LLM (Planned)            | OpenAI API via LangChain                   |
-| Agent Workflow (Planned) | LangGraph                                  |
-| Data                     | JSON / API Input (Simulated schedule data) |
+| Layer         | Technology                                 |
+| ------------- | ------------------------------------------ |
+| Backend       | FastAPI (Python)                           |
+| CLI           | Python (Interactive CLI)                   |
+| AI Agents     | Modular Python agent architecture          |
+| LLM Provider  | OpenRouter                                 |
+| LLM Model     | DeepSeek-R1 (configurable)                 |
+| Data Layer    | JSON-based file storage (acts as database) |
+| Frontend      | React.js (In Progress)                     |
+| Configuration | `.env` + `config/settings.py`              |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-Personal_Task/
+personal-task-automation/
 ├── README.md
 ├── backend/
-│   ├── main.py
+│   ├── main.py                 # FastAPI backend
+│   ├── cli.py                  # CLI interface
 │   ├── requirements.txt
-│   ├── __pycache__/
 │   ├── agents/
 │   │   ├── calendar_agent.py
-│   │   ├── conflict_agent.py
-│   │   ├── planning_agent.py
 │   │   ├── task_agent.py
+│   │   ├── conflict_agent.py
 │   │   ├── travel_agent.py
-│   │   └── __pycache__/
-│   └── utils/
-│       ├── time_parser.py
-│       └── __pycache__/
+│   │   ├── planning_agent.py
+│   │   └── llm_explanation_agent.py
+│   ├── utils/
+│   │   ├── time_parser.py      # Robust time normalization
+│   │   └── file_handler.py     # JSON persistence
+│   ├── config/
+│   │   └── settings.py         # AI model configuration
+│   └── data/
+│       ├── input.json          # Stored meetings & tasks
+│       └── output.json         # Stored analysis result
 └── frontend/
-    ├── package.json
-    ├── public/
-    │   ├── index.html
-    │   ├── manifest.json
-    │   └── robots.txt
-    └── src/
-        ├── App.css
-        ├── App.js
-        ├── App.test.js
-        ├── index.css
-        ├── index.js
-        ├── reportWebVitals.js
-        └── setupTests.js
+    └── (React UI – under development)
 ```
 
 ---
@@ -131,10 +137,14 @@ venv\Scripts\activate   # Windows
 pip install -r requirements.txt
 ```
 
-Create a `.env` file inside the backend folder:
+Create a `.env` file inside `backend/`:
 
-```
-OPENAI_API_KEY=your_openai_api_key_here
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+AI_PROVIDER=openrouter
+AI_MODEL_NAME=deepseek/deepseek-r1
+AI_TEMPERATURE=0.4
+AI_MAX_TOKENS=150
 ```
 
 Run backend server:
@@ -143,100 +153,96 @@ Run backend server:
 uvicorn main:app --reload
 ```
 
-Backend runs at:
-👉 [http://127.0.0.1:8000](http://127.0.0.1:8000)
-API Docs:
-👉 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+Backend:
+
+* [http://127.0.0.1:8000](http://127.0.0.1:8000)
+* Swagger Docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
 
-### 3️⃣ Frontend Setup (UI Under Development)
+### 3️⃣ CLI Usage
 
 ```bash
-cd frontend
-npm install
-npm start
+cd backend
+python cli.py
 ```
 
-Frontend runs at:
-👉 [http://localhost:3000](http://localhost:3000)
+CLI supports:
+
+1. Entering **new meeting & task data**
+2. Running analysis using **stored database data (`data/input.json`)**
 
 ---
 
 ## 🧪 How the System Works
 
-1. User provides meeting and task details
-2. **Calendar Agent** processes meeting data
-3. **Task Agent** processes task deadlines
-4. **Conflict Agent** detects overlapping schedules
-5. **Travel Agent** adds travel buffer reminders
-6. **Planning Agent** generates smart schedule suggestions
-7. System returns structured recommendations
+### Execution Flow
+
+1. Input is provided via **API or CLI**
+2. Input is saved to `data/input.json`
+3. Agents execute sequentially:
+
+   * Calendar → Task → Conflict → Travel → Planning
+4. **LLM Explanation Agent** generates human-readable insights
+5. Output is saved to `data/output.json`
+6. Response is returned to API / CLI
+
+The same pipeline supports **replay-based execution** from stored data.
 
 ---
 
-## 📡 Current API Endpoint
+## 📡 API Endpoints
 
 ### **POST /plan-day**
 
-Example Input:
+Runs analysis using request payload.
 
-```json
-{
-  "meetings": [
-    { "title": "Project Review", "time": "10:00 AM", "location": "College" }
-  ],
-  "tasks": [
-    { "title": "Finish Assignment", "deadline": "10:30 AM" }
-  ]
-}
-```
+### **POST /plan-day-from-db**
 
-Example Output:
+Runs analysis using data stored in `data/input.json`.
 
-```json
-{
-  "calendar_analysis": "...",
-  "task_analysis": "...",
-  "conflict_analysis": ["..."],
-  "travel_reminders": ["..."],
-  "ai_suggestions": ["..."]
-}
-```
+### **GET /last-input**
+
+Fetch last stored input.
+
+### **GET /last-output**
+
+Fetch last computed result.
 
 ---
 
 ## 🚀 Future Enhancements
 
-* Integration with **LangChain-powered reasoning agents**
-* Multi-agent orchestration using **LangGraph**
-* Google Calendar API integration
-* Gmail-based task detection
-* Notification system
-* Persistent memory for user preferences
+* LangGraph-based multi-agent orchestration
 * Advanced LLM reasoning loops
+* Google Calendar integration
+* Gmail-based task extraction
+* Notification & reminder system
+* User preference memory
+* Blockchain-based audit logging (optional)
 
 ---
 
 ## 👥 Team Members
 
-| Name         | Role                           |
-| ------------ | ------------------------------ |
-| Arunkumar L  | Backend & AI Agent Development |
-| Aishwariya D | Frontend Development           |
-| Suganya U    | Testing & Validation           |
-| Mukilan S    | Documentation & Research       |
+| Name             | Role                                        |
+| ---------------- | ------------------------------------------- |
+| **Arunkumar L**  | Backend, Multi-Agent System, AI Integration |
+| **Aishwariya D** | Frontend Development                        |
+| **Suganya U**    | Testing & Validation                        |
+| **Mukilan S**    | Documentation & Research                    |
 
 ---
 
 ## 📜 License
 
-This project is developed for academic purposes as part of a final year project.
+Developed for academic purposes as part of a **Final Year Project**.
 
 ---
 
 ## 🙏 Acknowledgement
 
-Guided by faculty and inspired by advancements in **LLM-based cooperative multi-agent systems for autonomous task automation**.
+Guided by faculty and inspired by recent research in
+**LLM-based cooperative multi-agent systems for autonomous task automation**.
 
 ---
