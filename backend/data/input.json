@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-02-01T19:36:39.529224",
+  "meetings": [
+    {
+      "title": "Team meeting",
+      "time": "9:00 AM",
+      "location": null,
+      "duration": null
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Finish report",
+      "deadline": "10:00 AM",
+      "priority": null
+    }
+  ]
+}
