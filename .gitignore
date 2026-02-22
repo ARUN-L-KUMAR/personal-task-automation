@@ -3,3 +3,7 @@ __pycache__/
 .env
 node_modules/
 build/
+
+# Google OAuth secrets (never push these)
+credentials.json
+token.json
