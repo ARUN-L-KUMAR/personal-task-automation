@@ -7,9 +7,14 @@ Handles OAuth2 flow for all Google services:
 
 import os
 import json
+import traceback
 from pathlib import Path
+
+# Fix: Google sometimes returns different scope strings than requested.
+# This env var tells oauthlib to accept the token despite scope differences.
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 
 # All scopes needed for the 7 Google services
@@ -26,6 +31,7 @@ SCOPES = [
 BASE_DIR = Path(__file__).parent.parent
 CREDENTIALS_FILE = BASE_DIR / "credentials.json"
 TOKEN_FILE = BASE_DIR / "token.json"
+REDIRECT_URI = "http://localhost:8000/api/auth/google/callback"
 
 
 def get_credentials() -> Credentials | None:
@@ -59,10 +65,10 @@ def get_auth_url() -> str | None:
     if not CREDENTIALS_FILE.exists():
         return None
 
-    flow = InstalledAppFlow.from_client_secrets_file(
+    flow = Flow.from_client_secrets_file(
         str(CREDENTIALS_FILE),
-        SCOPES,
-        redirect_uri="http://localhost:8000/api/auth/google/callback"
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI
     )
 
     auth_url, _ = flow.authorization_url(
@@ -83,10 +89,10 @@ def handle_auth_callback(code: str) -> bool:
         return False
 
     try:
-        flow = InstalledAppFlow.from_client_secrets_file(
+        flow = Flow.from_client_secrets_file(
             str(CREDENTIALS_FILE),
-            SCOPES,
-            redirect_uri="http://localhost:8000/api/auth/google/callback"
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI
         )
 
         flow.fetch_token(code=code)
@@ -95,6 +101,7 @@ def handle_auth_callback(code: str) -> bool:
         return True
     except Exception as e:
         print(f"Auth callback error: {e}")
+        traceback.print_exc()
         return False
 
 

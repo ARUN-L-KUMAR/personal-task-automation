@@ -1,15 +1,20 @@
 """
 CLI Interface for Personal Task Automation Multi-Agent System
 
-This script provides a command-line interface to test the multi-agent
-schedule analysis system powered by LangChain and LangGraph.
+Supports:
+- Manual input mode (user provides meetings + tasks)
+- Sample scenario mode (pre-built test data)
+- Google Live mode (auto-fetches from connected Google services)
+- Google Connect/Disconnect
 """
 
 import json
 import sys
+import webbrowser
 from dotenv import load_dotenv
 from graph.agent_graph import ScheduleAgentGraph
 from data.data_loader import DataLoader, list_all_scenarios
+from utils.google_auth import is_authenticated, get_auth_url, logout
 
 # Load environment variables
 load_dotenv()
@@ -75,11 +80,11 @@ def get_tasks():
     return tasks
 
 
-def display_results(result):
+def display_results(result, mode="manual"):
     """Display the analysis results in a formatted way"""
     print("\n")
     print_separator("=")
-    print("  📊 SCHEDULE ANALYSIS RESULTS")
+    print(f"  📊 SCHEDULE ANALYSIS RESULTS ({mode.upper()} MODE)")
     print_separator("=")
     
     # Calendar Analysis
@@ -87,11 +92,14 @@ def display_results(result):
     print_separator("-")
     cal_analysis = result.get('calendar_analysis', {})
     print(f"Summary: {cal_analysis.get('summary', 'N/A')}")
-    print(f"Total Meetings: {cal_analysis.get('total_meetings', 0)}")
+    total = cal_analysis.get('total_events', cal_analysis.get('total_meetings', 0))
+    print(f"Total Events: {total}")
     if cal_analysis.get('busy_periods'):
-        print(f"Busy Periods: {', '.join(cal_analysis['busy_periods'])}")
+        print(f"Busy Periods: {', '.join(str(b) for b in cal_analysis['busy_periods'])}")
+    if cal_analysis.get('free_slots'):
+        print(f"Free Slots: {', '.join(str(s) for s in cal_analysis['free_slots'])}")
     if cal_analysis.get('locations'):
-        print(f"Locations: {', '.join(cal_analysis['locations'])}")
+        print(f"Locations: {', '.join(str(l) for l in cal_analysis['locations'])}")
     
     # Task Analysis
     print("\n📝 TASK ANALYSIS:")
@@ -99,9 +107,30 @@ def display_results(result):
     task_analysis = result.get('task_analysis', {})
     print(f"Summary: {task_analysis.get('summary', 'N/A')}")
     print(f"Total Tasks: {task_analysis.get('total_tasks', 0)}")
-    print(f"Workload: {task_analysis.get('workload_assessment', 'N/A').upper()}")
+    workload = task_analysis.get('workload_assessment', 'N/A')
+    print(f"Workload: {workload.upper() if isinstance(workload, str) else workload}")
     if task_analysis.get('urgent_tasks'):
-        print(f"Urgent Tasks: {', '.join(task_analysis['urgent_tasks'])}")
+        print(f"Urgent Tasks: {', '.join(str(t) for t in task_analysis['urgent_tasks'])}")
+    
+    # Google Emails (Live mode only)
+    if mode == "live":
+        emails = result.get('google_emails', {})
+        if emails and emails.get('total_emails', 0) > 0:
+            print("\n📧 EMAIL ANALYSIS:")
+            print_separator("-")
+            print(f"Summary: {emails.get('summary', 'N/A')}")
+            print(f"Total: {emails.get('total_emails', 0)}, Unread: {emails.get('unread_count', 0)}")
+            if emails.get('action_items'):
+                print("Action Items:")
+                for item in emails['action_items'][:5]:
+                    print(f"  • {item}")
+        
+        # Google Contacts
+        contacts = result.get('google_contacts', {})
+        if contacts and contacts.get('meeting_contacts'):
+            print("\n👥 CONTACTS MATCHED:")
+            print_separator("-")
+            print(f"Summary: {contacts.get('summary', 'N/A')}")
     
     # Conflicts
     print("\n⚠️  CONFLICT DETECTION:")
@@ -128,10 +157,23 @@ def display_results(result):
     print("\n📋 OPTIMIZED SCHEDULE:")
     print_separator("-")
     opt_plan = result.get('optimized_plan', {})
+    if opt_plan.get('optimized_schedule'):
+        for item in opt_plan['optimized_schedule']:
+            emoji = {"meeting": "📅", "task": "📝", "break": "☕", "travel": "🚗"}.get(item.get('type', ''), "📌")
+            print(f"  {emoji} {item.get('time_block', '')} — {item.get('activity', '')}")
     if opt_plan.get('focus_areas'):
-        print("Focus Areas:")
+        print("\nFocus Areas:")
         for area in opt_plan['focus_areas']:
             print(f"  • {area}")
+    
+    # Google Notes (Live mode only)
+    if mode == "live":
+        notes = result.get('google_notes', {})
+        if notes and notes.get('key_notes'):
+            print("\n🗒️  SMART NOTES:")
+            print_separator("-")
+            for note in notes['key_notes'][:5]:
+                print(f"  • {note}")
     
     # Final Response
     print("\n💡 AI ASSISTANT SUMMARY:")
@@ -171,39 +213,119 @@ def use_sample_scenario():
     return None, None
 
 
+def google_connect():
+    """Connect or check Google account status"""
+    if is_authenticated():
+        print("\n✅ Google account is already connected!")
+        print("   All Google services are active.")
+        disc = input("\n   Disconnect? (y/n): ").strip().lower()
+        if disc == 'y':
+            logout()
+            print("   ✅ Disconnected from Google.")
+    else:
+        print("\n🔗 Google account is NOT connected.")
+        print("   To connect, the backend server must be running on port 8000.")
+        connect = input("\n   Open Google login in browser? (y/n): ").strip().lower()
+        if connect == 'y':
+            auth_url = get_auth_url()
+            if auth_url:
+                print(f"\n   Opening browser...")
+                webbrowser.open(auth_url)
+                print("   After signing in, come back here and press Enter.")
+                input("\n   Press Enter after completing Google login... ")
+                if is_authenticated():
+                    print("   ✅ Google connected successfully!")
+                else:
+                    print("   ❌ Connection not detected. Make sure you completed the login.")
+            else:
+                print("   ❌ credentials.json not found! Place it in the backend folder.")
+
+
+def run_live_mode():
+    """Run analysis using real Google data"""
+    if not is_authenticated():
+        print("\n❌ Google account not connected!")
+        print("   Use option 4 to connect first.")
+        return
+    
+    print("\n🌐 Fetching REAL data from Google services...")
+    print("   Calendar, Tasks, Gmail, Contacts, Maps, Sheets, Notes")
+    print("   This may take a moment...\n")
+    
+    try:
+        agent_graph = ScheduleAgentGraph()
+        print("🔄 Running 10-agent live pipeline...")
+        result = agent_graph.execute_live()
+        display_results(result, mode="live")
+        
+        save_choice = input("\n💾 Save results to file? (y/n): ").strip().lower()
+        if save_choice == 'y':
+            filename = "live_analysis_result.json"
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=2, ensure_ascii=False, default=str)
+            print(f"✅ Results saved to: {filename}")
+        
+        print("\n✨ Live analysis complete!")
+        
+    except Exception as e:
+        print(f"\n❌ Error during live analysis: {str(e)}")
+
+
 def main():
     """Main CLI application"""
     print_header("🤖 AI Personal Task Automation (Multi-Agent CLI)")
     
-    print("\n🎯 This system uses 6 AI agents to analyze your schedule:")
-    print("   1. CalendarAgent - Meeting analysis")
-    print("   2. TaskAgent - Task prioritization")
-    print("   3. ConflictAgent - Conflict detection")
-    print("   4. TravelAgent - Travel planning")
-    print("   5. PlanningAgent - Schedule optimization")
-    print("   6. CoordinatorAgent - Final recommendations")
+    # Show Google status
+    google_status = "✅ Connected" if is_authenticated() else "❌ Not Connected"
     
-    print("\n📋 Choose input method:")
-    print("   1. Enter schedule manually")
-    print("   2. Use sample scenario")
-    print("   3. Exit")
+    print(f"\n🎯 This system uses 10 AI agents to analyze your schedule:")
+    print(f"   ┌─ Data Agents (dual-mode: manual + Google) ───────┐")
+    print(f"   │  1. CalendarAgent  — Meeting analysis             │")
+    print(f"   │  2. TaskAgent      — Task prioritization          │")
+    print(f"   │  3. TravelAgent    — Travel planning (Maps)       │")
+    print(f"   │  4. EmailAgent     — Email analysis (Gmail)       │")
+    print(f"   │  5. ContactsAgent  — Contact matching             │")
+    print(f"   │  6. SheetsAgent    — Spreadsheet analysis         │")
+    print(f"   │  7. NotesAgent     — Smart note generation        │")
+    print(f"   ├─ Analysis Agents ────────────────────────────────┤")
+    print(f"   │  8. ConflictAgent  — Conflict detection           │")
+    print(f"   │  9. PlanningAgent  — Schedule optimization        │")
+    print(f"   │ 10. CoordinatorAgent — Final recommendations      │")
+    print(f"   └──────────────────────────────────────────────────┘")
+    print(f"\n   Google Services: {google_status}")
     
-    choice = input("\nYour choice (1-3): ").strip()
+    print(f"\n📋 Choose input method:")
+    print(f"   1. Enter schedule manually")
+    print(f"   2. Use sample scenario")
+    print(f"   3. 🌐 Plan day LIVE (Google auto-fetch)")
+    print(f"   4. 🔗 Connect / Disconnect Google")
+    print(f"   5. Exit")
     
-    if choice == "3":
+    choice = input("\nYour choice (1-5): ").strip()
+    
+    if choice == "5":
         print("\n👋 Goodbye!")
         sys.exit(0)
     
-    # Get schedule data
+    if choice == "4":
+        google_connect()
+        print("\n" + "="*60)
+        input("Press Enter to return to menu...")
+        main()  # Return to menu
+        return
+    
+    if choice == "3":
+        run_live_mode()
+        return
+    
+    # Manual / Sample modes
     meetings = []
     tasks = []
     
     if choice == "1":
-        # Manual input
         meetings = get_meetings()
         tasks = get_tasks()
     elif choice == "2":
-        # Sample scenario
         meetings, tasks = use_sample_scenario()
         if meetings is None:
             print("\n❌ No scenario loaded. Exiting.")
@@ -219,25 +341,21 @@ def main():
     
     print(f"\n✅ Schedule loaded: {len(meetings)} meeting(s), {len(tasks)} task(s)")
     
-    # Initialize and run the multi-agent system
+    # Initialize and run
     print("\n🤖 Initializing AI Multi-Agent System...")
     print("   This may take a moment as agents analyze your schedule...\n")
     
     try:
         agent_graph = ScheduleAgentGraph()
-        
-        print("🔄 Running agent workflow...")
+        print("🔄 Running 6-agent manual pipeline...")
         result = agent_graph.execute(meetings, tasks)
+        display_results(result, mode="manual")
         
-        # Display results
-        display_results(result)
-        
-        # Option to save results
         save_choice = input("\n💾 Save results to file? (y/n): ").strip().lower()
         if save_choice == 'y':
             filename = f"schedule_analysis_{len(meetings)}m_{len(tasks)}t.json"
             with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(result, f, indent=2, ensure_ascii=False)
+                json.dump(result, f, indent=2, ensure_ascii=False, default=str)
             print(f"✅ Results saved to: {filename}")
         
         print("\n✨ Analysis complete!")

@@ -17,18 +17,18 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.get("/google")
 def google_auth():
-    """Start Google OAuth2 flow — returns the authorization URL."""
+    """Start Google OAuth2 flow — redirects to Google login."""
     url = get_auth_url()
     if not url:
         raise HTTPException(
             status_code=500,
             detail="credentials.json not found. Please set up Google Cloud OAuth2 credentials."
         )
-    return {"auth_url": url}
+    return RedirectResponse(url=url)
 
 
 @router.get("/google/callback")
-def google_callback(code: str = None, error: str = None):
+def google_callback(code: str = None, error: str = None, scope: str = None):
     """Handle Google OAuth2 callback."""
     if error:
         return {"status": "error", "detail": f"Google auth error: {error}"}
@@ -41,7 +41,7 @@ def google_callback(code: str = None, error: str = None):
         # Redirect to frontend after successful auth
         return RedirectResponse(url="http://localhost:3000/settings?auth=success")
     else:
-        raise HTTPException(status_code=500, detail="Failed to complete authentication")
+        raise HTTPException(status_code=500, detail="Failed to complete authentication. Check backend terminal for details.")
 
 
 @router.get("/status")
