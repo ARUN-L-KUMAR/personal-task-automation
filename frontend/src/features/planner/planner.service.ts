@@ -3,7 +3,7 @@ import { PlannerInput, PlannerResult } from '../../types/planner.types';
 
 export const plannerService = {
     planDay: async (input: PlannerInput): Promise<PlannerResult> => {
-        const response = await api.post('/plan-day', input);
+        const response = await api.post('/api/plan-day', input);
         return response.data;
     },
 

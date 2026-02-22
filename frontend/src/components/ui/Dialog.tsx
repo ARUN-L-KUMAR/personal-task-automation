@@ -1,12 +1,12 @@
-import { Fragment } from 'react';
 import { Dialog as HeadlessDialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 interface DialogProps {
     isOpen: boolean;
     onClose: () => void;
-    title?: string;
+    title: string;
     children: React.ReactNode;
     className?: string;
 }
@@ -14,7 +14,7 @@ interface DialogProps {
 export function Dialog({ isOpen, onClose, title, children, className }: DialogProps) {
     return (
         <Transition show={isOpen} as={Fragment}>
-            <HeadlessDialog as="div" className="relative z-50" onClose={onClose}>
+            <HeadlessDialog onClose={onClose} className="relative z-50">
                 <Transition.Child
                     as={Fragment}
                     enter="ease-out duration-300"
@@ -28,7 +28,7 @@ export function Dialog({ isOpen, onClose, title, children, className }: DialogPr
                 </Transition.Child>
 
                 <div className="fixed inset-0 overflow-y-auto">
-                    <div className="flex min-h-full items-center justify-center p-4 text-center">
+                    <div className="flex min-h-full items-center justify-center p-4">
                         <Transition.Child
                             as={Fragment}
                             enter="ease-out duration-300"
@@ -38,26 +38,22 @@ export function Dialog({ isOpen, onClose, title, children, className }: DialogPr
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
-                            <HeadlessDialog.Panel
-                                className={cn(
-                                    'w-full max-w-md transform overflow-hidden rounded-xl bg-white p-6 text-left align-middle shadow-xl transition-all',
-                                    className
-                                )}
-                            >
+                            <HeadlessDialog.Panel className={cn(
+                                "w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-slate-900 p-6 text-left align-middle shadow-xl transition-all border border-slate-200 dark:border-slate-800",
+                                className
+                            )}>
                                 <div className="flex items-center justify-between mb-4">
-                                    {title && (
-                                        <HeadlessDialog.Title as="h3" className="text-lg font-semibold text-slate-900">
-                                            {title}
-                                        </HeadlessDialog.Title>
-                                    )}
+                                    <HeadlessDialog.Title as="h3" className="text-lg font-bold text-slate-900 dark:text-white leading-6">
+                                        {title}
+                                    </HeadlessDialog.Title>
                                     <button
                                         onClick={onClose}
-                                        className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-500 focus:outline-none"
+                                        className="text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                     >
                                         <X className="h-5 w-5" />
                                     </button>
                                 </div>
-                                {children}
+                                <div>{children}</div>
                             </HeadlessDialog.Panel>
                         </Transition.Child>
                     </div>

@@ -3,35 +3,60 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply text-slate-900 bg-slate-50 antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  }
+    :root {
+        --background: #f8fafc;
+        --foreground: #020617;
+        --card: #ffffff;
+        --card-foreground: #020617;
+        --border: #e2e8f0;
+        --brand: #3b51ef;
+        --muted: #64748b;
+    }
+
+    .dark {
+        --background: #020617;
+        --foreground: #f8fafc;
+        --card: #0f172a;
+        --card-foreground: #f8fafc;
+        --border: #1e293b;
+        --brand: #7089f7;
+        --muted: #94a3b8;
+    }
+
+    body {
+        @apply text-foreground bg-background antialiased;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
 }
 
 @layer components {
+    .btn-primary {
+        @apply bg-brand-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-700 transition-colors active:scale-95;
+    }
 
-  /* Prose override for AI results */
-  .prose-sm {
-    @apply text-sm leading-relaxed;
-  }
+    .card-premium {
+        @apply bg-card border border-border rounded-xl shadow-soft;
+    }
 }
 
-/* Custom Scrollbar for modern look */
+:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+    @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
 }
 
-/* Remove default focus rings in favor of tailwind class */
-:focus {
-  outline: none;
+.dark ::-webkit-scrollbar-thumb {
+    @apply bg-slate-800 hover:bg-slate-700;
 }

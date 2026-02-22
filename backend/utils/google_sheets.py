@@ -8,6 +8,7 @@ Functions:
 """
 
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from utils.google_auth import get_credentials
 
 
@@ -29,10 +30,13 @@ def read_sheet(spreadsheet_id: str, range_name: str = "Sheet1"):
     """
     service = _get_service()
     
-    result = service.spreadsheets().values().get(
-        spreadsheetId=spreadsheet_id,
-        range=range_name
-    ).execute()
+    try:
+        result = service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range=range_name
+        ).execute()
+    except HttpError as e:
+        return {"error": f"Google Sheets error: {e.resp.status}", "detail": str(e)}
     
     values = result.get("values", [])
     
@@ -65,18 +69,21 @@ def write_sheet(spreadsheet_id: str, range_name: str, values: list):
     
     body = {"values": values}
     
-    result = service.spreadsheets().values().update(
-        spreadsheetId=spreadsheet_id,
-        range=range_name,
-        valueInputOption="USER_ENTERED",
-        body=body
-    ).execute()
-    
-    return {
-        "updated_cells": result.get("updatedCells", 0),
-        "updated_range": result.get("updatedRange", ""),
-        "status": "success"
-    }
+    try:
+        result = service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption="USER_ENTERED",
+            body=body
+        ).execute()
+        
+        return {
+            "updated_cells": result.get("updatedCells", 0),
+            "updated_range": result.get("updatedRange", ""),
+            "status": "success"
+        }
+    except HttpError as e:
+        return {"error": f"Google Sheets error: {e.resp.status}", "detail": str(e)}
 
 
 def append_sheet(spreadsheet_id: str, range_name: str, values: list):
@@ -92,15 +99,18 @@ def append_sheet(spreadsheet_id: str, range_name: str, values: list):
     
     body = {"values": values}
     
-    result = service.spreadsheets().values().append(
-        spreadsheetId=spreadsheet_id,
-        range=range_name,
-        valueInputOption="USER_ENTERED",
-        body=body
-    ).execute()
-    
-    return {
-        "updated_cells": result.get("updates", {}).get("updatedCells", 0),
-        "updated_range": result.get("updates", {}).get("updatedRange", ""),
-        "status": "appended"
-    }
+    try:
+        result = service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption="USER_ENTERED",
+            body=body
+        ).execute()
+        
+        return {
+            "updated_cells": result.get("updates", {}).get("updatedCells", 0),
+            "updated_range": result.get("updates", {}).get("updatedRange", ""),
+            "status": "appended"
+        }
+    except HttpError as e:
+        return {"error": f"Google Sheets error: {e.resp.status}", "detail": str(e)}

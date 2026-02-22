@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2, Calendar, Clock, Tag } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clock, Tag, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { calendarService } from '../../services/calendar.service';
+import { tasksService } from '../../services/tasks.service';
+import { format, startOfDay, endOfDay } from 'date-fns';
 // No unused type imports needed here if they are not used in the code
 
 const plannerSchema = z.object({
@@ -39,6 +43,57 @@ export function PlannerForm({ onSubmit, isLoading }: PlannerFormProps) {
         },
     });
 
+    const [isAutoFilling, setIsAutoFilling] = useState(false);
+
+    const handleAutoFill = async () => {
+        setIsAutoFilling(true);
+        try {
+            const date = control._getWatch('date');
+            const targetDate = date ? new Date(date) : new Date();
+
+            const timeMin = startOfDay(targetDate).toISOString();
+            const timeMax = endOfDay(targetDate).toISOString();
+
+            const [eventsRes, tasksRes] = await Promise.all([
+                calendarService.getEventsRange(timeMin, timeMax),
+                tasksService.getTasks()
+            ]);
+
+            const events = eventsRes.data.events || [];
+            const tasksList = tasksRes.data.tasks || [];
+
+            // Clear existing and append new
+            meetingFields.forEach((_, i) => removeMeeting(i));
+            taskFields.forEach((_, i) => removeTask(i));
+
+            events.forEach((event: any) => {
+                const start = event.start?.dateTime || event.start?.date;
+                const end = event.end?.dateTime || event.end?.date;
+                if (start && end) {
+                    appendMeeting({
+                        title: event.summary,
+                        startTime: format(new Date(start), 'HH:mm'),
+                        endTime: format(new Date(end), 'HH:mm'),
+                        priority: 'medium'
+                    });
+                }
+            });
+
+            tasksList.filter((t: any) => t.status !== 'completed').forEach((task: any) => {
+                appendTask({
+                    title: task.title,
+                    duration: 30, // Default duration
+                    priority: 'medium'
+                });
+            });
+
+        } catch (error) {
+            console.error('Auto-fill failed:', error);
+        } finally {
+            setIsAutoFilling(false);
+        }
+    };
+
     const { fields: meetingFields, append: appendMeeting, remove: removeMeeting } = useFieldArray({
         control,
         name: 'meetings',
@@ -58,13 +113,25 @@ export function PlannerForm({ onSubmit, isLoading }: PlannerFormProps) {
                         Basic Info
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <Input
-                        type="date"
-                        label="Plan Date"
-                        {...register('date')}
-                        error={errors.date?.message}
-                    />
+                <CardContent className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="flex-1">
+                        <Input
+                            type="date"
+                            label="Plan Date"
+                            {...register('date')}
+                            error={errors.date?.message}
+                        />
+                    </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAutoFill}
+                        isLoading={isAutoFilling}
+                        className="h-[42px] border-brand-200 text-brand-700 hover:bg-brand-50"
+                    >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isAutoFilling ? 'animate-spin' : ''}`} />
+                        Auto-fill from Google
+                    </Button>
                 </CardContent>
             </Card>
 

@@ -1,6 +1,5 @@
 import { Dialog } from './Dialog';
 import { Button } from './Button';
-import { AlertCircle } from 'lucide-react';
 
 interface ConfirmationDialogProps {
     isOpen: boolean;
@@ -10,8 +9,8 @@ interface ConfirmationDialogProps {
     description: string;
     confirmText?: string;
     cancelText?: string;
-    variant?: 'danger' | 'primary';
     isLoading?: boolean;
+    variant?: 'primary' | 'danger';
 }
 
 export function ConfirmationDialog({
@@ -22,26 +21,34 @@ export function ConfirmationDialog({
     description,
     confirmText = 'Confirm',
     cancelText = 'Cancel',
-    variant = 'primary',
     isLoading = false,
+    variant = 'primary'
 }: ConfirmationDialogProps) {
     return (
         <Dialog isOpen={isOpen} onClose={onClose} title={title}>
-            <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                        <AlertCircle className={`h-6 w-6 ${variant === 'danger' ? 'text-red-500' : 'text-blue-500'}`} />
-                    </div>
-                    <p className="text-sm text-slate-500 leading-relaxed">{description}</p>
-                </div>
-                <div className="flex justify-end space-x-3 mt-6">
-                    <Button variant="ghost" onClick={onClose} disabled={isLoading}>
-                        {cancelText}
-                    </Button>
-                    <Button variant={variant === 'danger' ? 'danger' : 'primary'} onClick={onConfirm} isLoading={isLoading}>
-                        {confirmText}
-                    </Button>
-                </div>
+            <div className="mt-2">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {description}
+                </p>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+                <Button
+                    variant="ghost"
+                    onClick={onClose}
+                    disabled={isLoading}
+                    className="dark:text-slate-400"
+                >
+                    {cancelText}
+                </Button>
+                <Button
+                    variant={variant === 'danger' ? 'danger' : 'primary'}
+                    onClick={onConfirm}
+                    isLoading={isLoading}
+                    className={variant === 'primary' ? 'bg-brand-600 hover:bg-brand-700 text-white' : ''}
+                >
+                    {confirmText}
+                </Button>
             </div>
         </Dialog>
     );

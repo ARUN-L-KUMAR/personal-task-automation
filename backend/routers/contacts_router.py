@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from utils.google_auth import is_authenticated
 from utils.google_contacts import get_contacts, search_contacts
 
-router = APIRouter(prefix="/api/contacts", tags=["Contacts"])
+router = APIRouter(prefix="/contacts", tags=["Contacts"])
 
 
 def _check_auth():

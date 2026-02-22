@@ -26,6 +26,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/contacts.readonly",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/drive.readonly",  # For listing Sheets files
 ]
 
 BASE_DIR = Path(__file__).parent.parent

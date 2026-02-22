@@ -13,7 +13,7 @@ from typing import Optional
 from utils.google_auth import is_authenticated
 from utils.google_gmail import get_inbox, get_message, send_email
 
-router = APIRouter(prefix="/api/emails", tags=["Emails"])
+router = APIRouter(prefix="/email", tags=["Email"])
 
 
 def _check_auth():
@@ -35,6 +35,7 @@ def fetch_inbox(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/message/{message_id}")
 @router.get("/{message_id}")
 def fetch_email_detail(message_id: str):
     """Get full email details."""
@@ -53,11 +54,15 @@ class SendEmailRequest(BaseModel):
 
 
 @router.post("/send")
-def send_new_email(email: SendEmailRequest):
+def send_new_email(
+    to: str = Query(..., description="Recipient"),
+    subject: str = Query(..., description="Subject"),
+    body: str = Query(..., description="Body")
+):
     """Send an email."""
     _check_auth()
     try:
-        result = send_email(to=email.to, subject=email.subject, body=email.body)
+        result = send_email(to=to, subject=subject, body=body)
         return {"status": "success", "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

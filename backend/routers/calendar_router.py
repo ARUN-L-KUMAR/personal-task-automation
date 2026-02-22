@@ -13,7 +13,7 @@ from typing import Optional
 from utils.google_auth import is_authenticated
 from utils.google_calendar import get_today_events, get_events, create_event
 
-router = APIRouter(prefix="/api/calendar", tags=["Calendar"])
+router = APIRouter(prefix="/calendar", tags=["Calendar"])
 
 
 def _check_auth():

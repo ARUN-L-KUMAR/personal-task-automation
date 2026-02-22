@@ -3,14 +3,14 @@ import { PlanHistoryItem } from '../../types/planner.types';
 
 export const historyService = {
     getLastOutput: async (): Promise<PlanHistoryItem> => {
-        const response = await api.get('/last-output');
+        const response = await api.get('/api/last-output');
         return response.data;
     },
 
     // Future: fetch all history
     getHistory: async (): Promise<PlanHistoryItem[]> => {
         // This endpoint might not exist yet, placeholder
-        const response = await api.get('/last-output'); // reusing for now
+        const response = await api.get('/api/last-output'); // reusing for now
         return [response.data];
     }
 };

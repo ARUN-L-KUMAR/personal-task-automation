@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
 from utils.google_auth import get_auth_url, handle_auth_callback, is_authenticated, logout
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.get("/google")

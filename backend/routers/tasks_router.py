@@ -13,9 +13,9 @@ from pydantic import BaseModel
 from typing import Optional
 from utils.google_auth import is_authenticated
 from utils.google_tasks import get_task_lists, get_tasks, create_task, complete_task
-from utils.google_notes import get_notes, create_note
+from utils.google_notes import get_notes, create_note, delete_note
 
-router = APIRouter(prefix="/api", tags=["Tasks & Notes"])
+router = APIRouter(prefix="/tasks", tags=["Tasks & Notes"])
 
 
 def _check_auth():
@@ -25,7 +25,7 @@ def _check_auth():
 
 # ---- Tasks ----
 
-@router.get("/tasks")
+@router.get("/list")
 def fetch_tasks(list_id: str = Query("@default", description="Task list ID")):
     """Fetch Google Tasks."""
     _check_auth()
@@ -36,7 +36,7 @@ def fetch_tasks(list_id: str = Query("@default", description="Task list ID")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/tasks/lists")
+@router.get("/lists")
 def fetch_task_lists():
     """Fetch all task lists."""
     _check_auth()
@@ -54,29 +54,51 @@ class CreateTaskRequest(BaseModel):
     list_id: str = "@default"
 
 
-@router.post("/tasks")
-def create_new_task(task: CreateTaskRequest):
+@router.post("/create")
+@router.post("")
+def create_new_task(
+    title: str = Query(..., description="Task title"),
+    notes: str = Query("", description="Task notes"),
+    due: str = Query("", description="Task due date"),
+    list_id: str = Query("@default", description="Task list ID")
+):
     """Create a new task."""
     _check_auth()
     try:
         result = create_task(
-            title=task.title,
-            notes=task.notes,
-            due=task.due,
-            list_id=task.list_id
+            title=title,
+            notes=notes,
+            due=due,
+            list_id=list_id
         )
         return {"status": "success", "task": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/tasks/{task_id}/complete")
+@router.put("/complete/{task_id}")
+@router.post("/{task_id}/complete")
 def mark_task_complete(task_id: str, list_id: str = Query("@default")):
     """Mark a task as completed."""
     _check_auth()
     try:
         result = complete_task(task_id=task_id, list_id=list_id)
         return {"status": "success", "task": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{task_id}")
+def delete_task_item(task_id: str, list_id: str = Query("@default")):
+    """Delete a task."""
+    _check_auth()
+    try:
+        service = get_tasks.__globals__.get('_get_service', None)
+        # Use the tasks API directly
+        from utils.google_tasks import _get_service as _ts
+        svc = _ts()
+        svc.tasks().delete(tasklist=list_id, task=task_id).execute()
+        return {"status": "deleted", "id": task_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -106,5 +128,16 @@ def create_new_note(note: CreateNoteRequest):
     try:
         result = create_note(title=note.title, content=note.content)
         return {"status": "success", "note": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/notes/{note_id}")
+def delete_note_item(note_id: str):
+    """Delete a note."""
+    _check_auth()
+    try:
+        result = delete_note(note_id)
+        return {"status": "success", "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
