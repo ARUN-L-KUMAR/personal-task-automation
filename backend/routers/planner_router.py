@@ -110,10 +110,19 @@ def plan_day_manual(data: PlannerRequest):
 def get_last_output():
     """Get the most recently generated plan."""
     return {
+        "id": "last-session",
+        "input": {
+            "date": "2024-03-24",
+            "meetings": [],
+            "tasks": []
+        },
+        "output": {
+            "generated_at": "2024-03-24T12:00:00Z",
+            "conflict_analysis": "No conflicts detected.",
+            "travel_reminders": "No travel needed.",
+            "ai_explanation": "Optimization complete.",
+            "rule_based_plan": "No plan generated yet."
+        },
         "status": "success",
-        "generated_at": "2024-03-24T12:00:00Z",
-        "conflict_analysis": "No conflicts detected.",
-        "travel_reminders": "No travel needed.",
-        "ai_explanation": "Optimization complete.",
-        "rule_based_plan": "No plan generated yet."
+        "timestamp": "2024-03-24T12:00:00Z"
     }
