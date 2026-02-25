@@ -553,61 +553,96 @@ export function ChatbotPage() {
                             </div>
                         </div>
 
-                        {/* Session Info — compact */}
+                        {/* Session Info — redesigned */}
                         <Card className="border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                            <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                            <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
                                 <h3 className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                                     <Activity className="h-2.5 w-2.5" /> Session
                                 </h3>
+                                <span className="flex items-center gap-1 text-[9px] font-semibold text-emerald-600">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+                                </span>
                             </div>
-                            <div className="px-3 py-2 space-y-1">
-                                <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                                    <div className="flex justify-between text-[10px]">
-                                        <span className="text-slate-400">Msgs</span>
-                                        <span className="font-bold text-slate-900 dark:text-white">{messages.filter(m => m.id !== 'welcome').length}</span>
+
+                            {/* Model highlight */}
+                            <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-indigo-50/50 to-violet-50/50 dark:from-indigo-950/20 dark:to-violet-950/20">
+                                <div className="flex items-center gap-2">
+                                    <div className={cn(
+                                        'h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 text-[9px] font-bold',
+                                        selectedModel === 'gemini' || (selectedModel === 'auto' && currentModel.toLowerCase().includes('gemini'))
+                                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
+                                            : selectedModel === 'openrouter'
+                                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
+                                            : 'bg-orange-100 dark:bg-orange-900/40 text-orange-600'
+                                    )}>
+                                        {(() => {
+                                            const isGemini = selectedModel === 'gemini' || (selectedModel === 'auto' && currentModel.toLowerCase().includes('gemini'));
+                                            return isGemini ? 'G' : 'L';
+                                        })()}
                                     </div>
-                                    <div className="flex justify-between text-[10px]">
-                                        <span className="text-slate-400">Context</span>
-                                        <span className="font-bold text-emerald-600 flex items-center gap-0.5">
-                                            <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" /> Live
-                                        </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight truncate">
+                                            {(() => {
+                                                if (selectedModel === 'auto') return currentModel;
+                                                const sel = availableModels.find(m => m.key === selectedModel);
+                                                return sel ? sel.label : currentModel;
+                                            })()}
+                                        </p>
+                                        <p className="text-[9px] text-slate-500 leading-tight">
+                                            via{' '}
+                                            <span className={cn(
+                                                'font-semibold',
+                                                selectedModel === 'auto' ? 'text-violet-500' : 'text-indigo-500'
+                                            )}>
+                                                {selectedModel === 'auto' ? (currentModelSource || 'Auto') : (() => {
+                                                    const sel = availableModels.find(m => m.key === selectedModel);
+                                                    return sel?.provider || selectedModel.charAt(0).toUpperCase() + selectedModel.slice(1);
+                                                })()}
+                                            </span>
+                                            {selectedModel === 'auto' && (
+                                                <span className="ml-1 text-[8px] text-violet-400 bg-violet-100 dark:bg-violet-900/30 px-1 py-px rounded">Auto</span>
+                                            )}
+                                        </p>
                                     </div>
-                                    <div className="flex justify-between text-[10px]">
-                                        <span className="text-slate-400">Model</span>
-                                        <span className="font-bold text-slate-900 dark:text-white">{currentModel}</span>
-                                    </div>
-                                    <div className="flex justify-between text-[10px]">
-                                        <span className="text-slate-400">Mode</span>
-                                        <span className={cn('font-bold', selectedModel === 'auto' ? 'text-violet-600 dark:text-violet-400' : 'text-indigo-600 dark:text-indigo-400')}>
-                                            {selectedModel === 'auto' ? 'Auto' : selectedModel.charAt(0).toUpperCase() + selectedModel.slice(1)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between text-[10px]">
-                                        <span className="text-slate-400">Memory</span>
-                                        <span className="text-slate-600 dark:text-slate-400">{Math.min(messages.filter(m => m.id !== 'welcome').length, 10)} msgs</span>
-                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Stats row */}
+                            <div className="px-3 py-2 flex items-center gap-3">
+                                <div className="flex-1 text-center">
+                                    <p className="text-[14px] font-bold text-slate-900 dark:text-white leading-none">{messages.filter(m => m.id !== 'welcome').length}</p>
+                                    <p className="text-[8px] text-slate-400 mt-0.5">Msgs</p>
+                                </div>
+                                <div className="w-px h-6 bg-slate-100 dark:bg-slate-800" />
+                                <div className="flex-1 text-center">
+                                    <p className="text-[14px] font-bold text-slate-900 dark:text-white leading-none">{Math.min(messages.filter(m => m.id !== 'welcome').length, 10)}</p>
+                                    <p className="text-[8px] text-slate-400 mt-0.5">Memory</p>
+                                </div>
+                                <div className="w-px h-6 bg-slate-100 dark:bg-slate-800" />
+                                <div className="flex-1 text-center">
                                     {(() => {
                                         const lastBot = messages.filter(m => m.role === 'assistant' && m.meta?.latency).pop();
-                                        if (!lastBot?.meta?.latency) return null;
                                         return (
-                                            <div className="flex justify-between text-[10px]">
-                                                <span className="text-slate-400">Latency</span>
-                                                <span className="font-bold text-slate-900 dark:text-white">{lastBot.meta.latency}s</span>
-                                            </div>
+                                            <>
+                                                <p className="text-[14px] font-bold text-slate-900 dark:text-white leading-none">{lastBot?.meta?.latency ? `${lastBot.meta.latency}s` : '—'}</p>
+                                                <p className="text-[8px] text-slate-400 mt-0.5">Latency</p>
+                                            </>
                                         );
                                     })()}
                                 </div>
-                                {(() => {
-                                    const lastBot = messages.filter(m => m.role === 'assistant' && m.meta?.contextSources?.length).pop();
-                                    if (!lastBot?.meta?.contextSources?.length) return null;
-                                    return (
-                                        <div className="flex items-center gap-1 pt-0.5 border-t border-slate-50 dark:border-slate-800">
-                                            <Database className="h-2.5 w-2.5 text-slate-400 flex-shrink-0" />
-                                            <span className="text-[9px] text-slate-500">{lastBot.meta.contextSources.join(' + ')}</span>
-                                        </div>
-                                    );
-                                })()}
                             </div>
+
+                            {/* Context sources footer */}
+                            {(() => {
+                                const lastBot = messages.filter(m => m.role === 'assistant' && m.meta?.contextSources?.length).pop();
+                                if (!lastBot?.meta?.contextSources?.length) return null;
+                                return (
+                                    <div className="px-3 py-1.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 flex items-center gap-1">
+                                        <Database className="h-2.5 w-2.5 text-slate-400 flex-shrink-0" />
+                                        <span className="text-[9px] text-slate-500 truncate">{lastBot.meta.contextSources.join(' + ')}</span>
+                                    </div>
+                                );
+                            })()}
                         </Card>
                     </div>
 
