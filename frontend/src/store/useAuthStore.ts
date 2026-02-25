@@ -1,40 +1,79 @@
 import { create } from 'zustand';
-import api from '../services/api';
+import {
+    loginUser,
+    registerUser,
+    logoutUser,
+    getMe,
+    getToken,
+    LoginPayload,
+    RegisterPayload,
+    UserProfile,
+} from '../services/auth.service';
 
 interface AuthState {
+    user: UserProfile | null;
     isAuthenticated: boolean;
     isLoading: boolean;
     error: string | null;
+
+    login: (payload: LoginPayload) => Promise<void>;
+    register: (payload: RegisterPayload) => Promise<void>;
+    logout: () => void;
     checkAuth: () => Promise<void>;
-    logout: () => Promise<void>;
+    clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-    isAuthenticated: false,
+    user: null,
+    isAuthenticated: !!getToken(),
     isLoading: false,
     error: null,
 
-    checkAuth: async () => {
+    login: async (payload) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.get('/api/auth/status');
-            set({ isAuthenticated: response.data.authenticated, isLoading: false });
-        } catch (error: any) {
-            set({
-                isAuthenticated: false,
-                isLoading: false,
-                error: error.message || 'Failed to check auth status'
-            });
+            const data = await loginUser(payload);
+            set({ user: data.user, isAuthenticated: true, isLoading: false });
+        } catch (err: any) {
+            set({ isLoading: false, error: err.message || 'Login failed' });
+            throw err;
         }
     },
 
-    logout: async () => {
-        set({ isLoading: true });
+    register: async (payload) => {
+        set({ isLoading: true, error: null });
         try {
-            await api.post('/api/auth/logout');
-            set({ isAuthenticated: false, isLoading: false });
-        } catch (error: any) {
-            set({ isLoading: false, error: error.message || 'Failed to logout' });
+            const data = await registerUser(payload);
+            set({ user: data.user, isAuthenticated: true, isLoading: false });
+        } catch (err: any) {
+            set({ isLoading: false, error: err.message || 'Registration failed' });
+            throw err;
         }
-    }
+    },
+
+    logout: () => {
+        logoutUser();
+        set({ user: null, isAuthenticated: false, error: null });
+    },
+
+    checkAuth: async () => {
+        const token = getToken();
+        if (!token) {
+            set({ isAuthenticated: false, user: null, isLoading: false });
+            return;
+        }
+        // Only show loading spinner on first check — prevents unmount/remount loop
+        const { user: existingUser } = useAuthStore.getState();
+        if (!existingUser) {
+            set({ isLoading: true });
+        }
+        try {
+            const user = await getMe();
+            set({ user, isAuthenticated: true, isLoading: false });
+        } catch {
+            set({ user: null, isAuthenticated: false, isLoading: false });
+        }
+    },
+
+    clearError: () => set({ error: null }),
 }));
