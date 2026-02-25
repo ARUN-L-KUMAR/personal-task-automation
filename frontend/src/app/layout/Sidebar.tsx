@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Calendar, History, Settings, Bot,
     Mail, CheckSquare, Users, Map, FileSpreadsheet,
     MessageSquare, Mic, ChevronLeft, ChevronRight, X,
-    Wifi, WifiOff
+    Wifi, WifiOff, Sparkles, Zap, StickyNote, BarChart3,
+    Link2, LogOut
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -17,170 +19,201 @@ interface SidebarProps {
 
 const navSections = [
     {
-        title: 'Main',
+        title: 'Core',
         items: [
             { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-            { name: 'AI Planner', href: '/planner', icon: Calendar },
+            { name: 'Plan Day', href: '/planner', icon: Zap },
+            { name: 'Chatbot', href: '/chatbot', icon: MessageSquare },
+        ]
+    },
+    {
+        title: 'Intelligence',
+        items: [
+            { name: 'Productivity Insights', href: '/insights', icon: BarChart3 },
             { name: 'History', href: '/history', icon: History },
+            { name: 'Voice Assistant', href: '/voice-assistant', icon: Mic },
         ]
     },
     {
         title: 'Google Services',
         items: [
             { name: 'Calendar', href: '/calendar', icon: Calendar },
-            { name: 'Email', href: '/email', icon: Mail },
             { name: 'Tasks', href: '/tasks', icon: CheckSquare },
+            { name: 'Email', href: '/email', icon: Mail },
             { name: 'Contacts', href: '/contacts', icon: Users },
             { name: 'Maps', href: '/maps', icon: Map },
             { name: 'Sheets', href: '/sheets', icon: FileSpreadsheet },
-        ]
-    },
-    {
-        title: 'AI Assistant',
-        items: [
-            { name: 'AI Chatbot', href: '/chatbot', icon: MessageSquare },
-            { name: 'Voice Chat', href: '/voice-assistant', icon: Mic },
+            { name: 'Notes', href: '/notes', icon: StickyNote },
         ]
     },
     {
         title: 'System',
         items: [
             { name: 'Settings', href: '/settings', icon: Settings },
+            { name: 'Google Connect', href: '/google-connect', icon: Link2 },
         ]
     }
 ];
 
 export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: SidebarProps) {
-    const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+    const { user, isAuthenticated, isLoading, logout } = useAuthStore();
+    const navigate = useNavigate();
 
-    // ── Check auth status once on mount so the indicator is accurate ──
-    useEffect(() => {
-        checkAuth();
-    }, []);
+    // Build initials from user name
+    const initials = user?.name
+        ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+        : 'U';
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     return (
         <div className={cn(
-            "h-screen flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300",
-            isCollapsed ? "w-20" : "w-64"
+            "h-screen flex flex-col bg-[#F1F5F9] dark:bg-slate-900 border-r border-slate-200/50 dark:border-slate-800/60 transition-all duration-500 ease-in-out relative z-50",
+            isCollapsed ? "w-20" : "w-60"
         )}>
-            {/* Header */}
-            <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800">
-                {!isCollapsed && (
-                    <div className="flex items-center space-x-2 animate-in fade-in duration-300">
-                        <div className="bg-brand-600 p-1.5 rounded-lg shadow-sm">
-                            <Bot className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Agentic AI</span>
+            {/* Logo Section */}
+            <div className="h-20 flex items-center px-6 mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 flex-shrink-0 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30">
+                        <Bot className="h-6 w-6 text-white" />
                     </div>
-                )}
-                {isCollapsed && (
-                    <Bot className="h-6 w-6 text-brand-600 mx-auto" />
-                )}
+                    {!isCollapsed && (
+                        <motion.span
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-xl font-black text-slate-900 dark:text-white tracking-tighter"
+                        >
+                            G-ONE
+                        </motion.span>
+                    )}
+                </div>
 
                 <button
                     onClick={onCloseMobile}
-                    className="md:hidden p-1 text-slate-500 hover:bg-slate-100 rounded"
+                    className="md:hidden ml-auto p-2 text-slate-500 hover:bg-slate-100 rounded-xl"
                 >
-                    <X className="h-5 w-5" />
+                    <X className="h-6 w-6" />
                 </button>
             </div>
 
-            {/* Navigation */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar py-6">
-                <nav className="px-3 space-y-8">
-                    {navSections.map((section) => (
-                        <div key={section.title} className="space-y-1">
+            {/* Navigation Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-10">
+                <nav className="space-y-6">
+                    {navSections.map((section, sectionIdx) => (
+                        <div key={section.title} className={sectionIdx > 0 ? 'pt-2' : ''}>
                             {!isCollapsed && (
-                                <h3 className="px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                                <h3 className="px-4 text-[8.5px] font-medium text-slate-400/60 dark:text-slate-500/50 uppercase tracking-[0.3em] mb-3">
                                     {section.title}
                                 </h3>
                             )}
-                            {section.items.map((item) => (
-                                <NavLink
-                                    key={item.name}
-                                    to={item.href}
-                                    end={item.href === '/'}
-                                    className={({ isActive }) => cn(
-                                        "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200",
-                                        isActive
-                                            ? "bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400"
-                                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
-                                    )}
-                                    title={isCollapsed ? item.name : ''}
-                                >
-                                    <item.icon className={cn(
-                                        "flex-shrink-0 h-5 w-5 transition-colors",
-                                        isCollapsed ? "mx-auto" : "mr-3"
-                                    )} />
-                                    {!isCollapsed && <span>{item.name}</span>}
-                                </NavLink>
-                            ))}
+                            {isCollapsed && sectionIdx > 0 && (
+                                <div className="mx-3 mb-3 border-t border-slate-200/60 dark:border-slate-700/40" />
+                            )}
+                            <div className="space-y-0.5">
+                                {section.items.map((item) => (
+                                    <NavLink
+                                        key={item.name}
+                                        to={item.href}
+                                        end={item.href === '/'}
+                                        className={({ isActive }) => cn(
+                                            "group flex items-center py-2.5 text-[13px] font-medium rounded-xl transition-all duration-150 relative overflow-hidden",
+                                            isCollapsed ? "px-0 justify-center" : "px-4",
+                                            isActive
+                                                ? "bg-[#EEF2FF] dark:bg-brand-500/10 text-blue-700 dark:text-brand-400 border-l-[3px] border-blue-600 dark:border-brand-400 [&_.nav-icon]:text-blue-600 dark:[&_.nav-icon]:text-brand-400"
+                                                : "text-slate-600 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white border-l-[3px] border-transparent [&_.nav-icon]:text-slate-400 dark:[&_.nav-icon]:text-slate-500"
+                                        )}
+                                        title={isCollapsed ? item.name : ''}
+                                    >
+                                        <item.icon className={cn(
+                                            "nav-icon flex-shrink-0 h-[18px] w-[18px] transition-all duration-150 group-hover:scale-105 group-hover:text-blue-600 dark:group-hover:text-brand-400",
+                                            isCollapsed ? "mx-auto" : "mr-3"
+                                        )} />
+                                        {!isCollapsed && (
+                                            <span className="truncate">{item.name}</span>
+                                        )}
+                                    </NavLink>
+                                ))}
+                            </div>
                         </div>
                     ))}
                 </nav>
             </div>
 
-            {/* Footer / Google Status */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+            {/* Status Footer */}
+            <div className={cn("transition-all duration-300", isCollapsed ? "px-2 pb-3 pt-2" : "p-4")}>
                 <div className={cn(
-                    "rounded-xl transition-all duration-300 overflow-hidden",
+                    "transition-all duration-500 relative overflow-hidden group/card shadow-sm",
+                    isCollapsed ? "rounded-xl" : "rounded-2xl",
                     isAuthenticated
-                        ? "bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30"
-                        : "bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50",
-                    isCollapsed ? "p-2" : "p-3"
+                        ? "bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20"
+                        : "bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50",
+                    isCollapsed ? "p-2" : "p-4"
                 )}>
-                    <div className="flex items-center gap-3">
-                        {/* Avatar + status dot */}
+                    <div className={cn("flex items-center relative z-10", isCollapsed ? "justify-center" : "gap-4")}>
                         <div className="relative flex-shrink-0">
                             <div className={cn(
-                                "h-8 w-8 rounded-full flex items-center justify-center border text-xs font-bold",
+                                "rounded-xl flex items-center justify-center font-black",
+                                isCollapsed ? "h-8 w-8 text-[10px]" : "h-10 w-10 text-xs",
                                 isAuthenticated
-                                    ? "bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-                                    : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"
+                                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/40"
+                                    : "bg-slate-200 dark:bg-slate-700 text-slate-500"
                             )}>
-                                AK
+                                {initials}
                             </div>
-                            {/* Live status dot */}
                             <div className={cn(
-                                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2",
-                                "border-white dark:border-slate-900",
-                                isLoading
-                                    ? "bg-amber-400 animate-pulse"
-                                    : isAuthenticated
-                                        ? "bg-emerald-500"
-                                        : "bg-red-500"
+                                "absolute rounded-full border-[2px]",
+                                isCollapsed
+                                    ? "-bottom-0.5 -right-0.5 h-2.5 w-2.5 border-white dark:border-slate-900"
+                                    : "-bottom-1 -right-1 h-3.5 w-3.5 border-white dark:border-slate-900",
+                                isLoading ? "bg-amber-400 animate-pulse" : isAuthenticated ? "bg-emerald-400" : "bg-rose-500"
                             )} />
                         </div>
 
                         {!isCollapsed && (
-                            <div className="min-w-0 flex-1 animate-in slide-in-from-left-2 duration-300">
-                                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">Arun Kumar</p>
-                                <p className={cn(
-                                    "text-xs truncate flex items-center gap-1 font-medium",
-                                    isLoading
-                                        ? "text-amber-500"
-                                        : isAuthenticated
-                                            ? "text-emerald-500"
-                                            : "text-red-500"
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                    {user?.name || 'User'}
+                                </p>
+                                <div className={cn(
+                                    "text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5",
+                                    isAuthenticated ? "text-emerald-600" : "text-rose-400"
                                 )}>
                                     {isLoading ? (
-                                        <><span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Checking…</>
+                                        <><Wifi className="h-3 w-3 animate-pulse" /> Syncing…</>
                                     ) : isAuthenticated ? (
-                                        <><Wifi className="h-3 w-3" /> Google Connected</>
+                                        <><Wifi className="h-3 w-3" /> Google Synced</>
                                     ) : (
-                                        <><WifiOff className="h-3 w-3" /> Not Connected</>
+                                        <><WifiOff className="h-3 w-3" /> Google Disconnected</>
                                     )}
-                                </p>
+                                </div>
                             </div>
+                        )}
+
+                        {/* Logout button */}
+                        {!isCollapsed && isAuthenticated && (
+                            <button
+                                onClick={handleLogout}
+                                title="Sign out"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                            >
+                                <LogOut className="h-4 w-4" />
+                            </button>
                         )}
                     </div>
                 </div>
 
                 <button
                     onClick={onToggleCollapse}
-                    className="hidden md:flex mt-3 w-full items-center justify-center p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                    title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    className={cn(
+                        "mt-2 w-full flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-brand-400 transition-all duration-150 hover:bg-blue-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow",
+                        isCollapsed ? "h-8" : "h-9 mt-3"
+                    )}
                 >
-                    {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+                    {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 </button>
             </div>
         </div>

@@ -26,7 +26,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className={cn(
                 "fixed inset-y-0 left-0 z-50 transition-all duration-300 transform md:relative md:translate-x-0",
                 isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
-                isSidebarCollapsed ? "md:w-20" : "md:w-64"
+                isSidebarCollapsed ? "md:w-20" : "md:w-60"
             )}>
                 <Sidebar
                     isCollapsed={isSidebarCollapsed}
