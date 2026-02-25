@@ -67,7 +67,7 @@ export function FloatingChatWidget() {
                             <Bot className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold leading-none">Antigravity AI</p>
+                            <p className="text-sm font-bold leading-none">G-One AI</p>
                             <p className="text-[10px] text-indigo-200 mt-0.5 flex items-center gap-1">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />
                                 Online · Google-connected
@@ -144,7 +144,7 @@ export function FloatingChatWidget() {
                             </button>
                         </div>
                         <p className="text-[9px] text-slate-400 text-center mt-1.5">
-                            Powered by Llama 3.3 · Antigravity AI
+                            Powered by Llama 3.3 · G-One AI
                         </p>
                     </div>
                 </div>

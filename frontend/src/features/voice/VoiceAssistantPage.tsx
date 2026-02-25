@@ -6,6 +6,7 @@ import { cn } from '../../utils/cn';
 
 export function VoiceAssistantPage() {
     const [isListening, setIsListening] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [aiResponse, setAiResponse] = useState('');
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -13,7 +14,7 @@ export function VoiceAssistantPage() {
 
     // Initialize Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+    const recognition = React.useMemo(() => SpeechRecognition ? new SpeechRecognition() : null, []);
 
     if (recognition) {
         recognition.continuous = false;
@@ -26,6 +27,7 @@ export function VoiceAssistantPage() {
 
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.05; // Slightly faster for natural feel
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = () => setIsSpeaking(false);
@@ -33,6 +35,8 @@ export function VoiceAssistantPage() {
     }, []);
 
     const processCommand = async (command: string) => {
+        setIsProcessing(true);
+        setError(null);
         try {
             const response = await fetch('http://localhost:8000/api/chatbot/ask', {
                 method: 'POST',
@@ -40,11 +44,17 @@ export function VoiceAssistantPage() {
                 body: JSON.stringify({ message: command })
             });
             const data = await response.json();
-            setAiResponse(data.reply);
-            speak(data.reply);
-        } catch (err) {
+            if (data.reply) {
+                setAiResponse(data.reply);
+                speak(data.reply);
+            } else {
+                throw new Error(data.detail || 'Empty response from AI');
+            }
+        } catch (err: any) {
             console.error('Voice process error:', err);
-            setError('Failed to reach AI engine.');
+            setError(err.message || 'Failed to reach AI engine.');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -132,16 +142,31 @@ export function VoiceAssistantPage() {
                         <Card className="p-8 border-slate-200 dark:border-slate-800 shadow-soft bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">
                             <div className="flex items-start gap-4">
                                 <MessageSquare className="h-5 w-5 text-slate-400 shrink-0 mt-1" />
-                                <div>
+                                <div className="flex-1">
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">You said</h3>
                                     <p className="text-xl font-medium text-slate-800 dark:text-slate-200 italic">"{transcript}"</p>
                                 </div>
+                                {isProcessing && (
+                                    <div className="h-8 w-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin shrink-0" />
+                                )}
                             </div>
                         </Card>
                     )}
 
+                    {isProcessing && !aiResponse && (
+                        <div className="flex justify-center py-4">
+                            <div className="flex items-center gap-3 px-6 py-3 bg-brand-50 dark:bg-brand-900/20 rounded-full border border-brand-100 dark:border-brand-800 animate-pulse">
+                                <Sparkles className="h-5 w-5 text-brand-600" />
+                                <span className="text-sm font-bold text-brand-600 uppercase tracking-widest">Thinking...</span>
+                            </div>
+                        </div>
+                    )}
+
                     {aiResponse && (
-                        <Card className="p-8 border-brand-100 dark:border-brand-900/30 shadow-xl shadow-brand-500/5 bg-white dark:bg-slate-900 relative overflow-hidden">
+                        <Card className={cn(
+                            "p-8 border-brand-100 dark:border-brand-900/30 shadow-xl shadow-brand-500/5 bg-white dark:bg-slate-900 relative overflow-hidden transition-opacity duration-300",
+                            isProcessing ? "opacity-50" : "opacity-100"
+                        )}>
                             <div className="relative z-10 flex items-start gap-4">
                                 <div className={cn(
                                     "h-10 w-10 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 flex items-center justify-center shrink-0",
@@ -151,7 +176,7 @@ export function VoiceAssistantPage() {
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xs font-bold text-brand-500 uppercase tracking-widest">Antigravity</h3>
+                                        <h3 className="text-xs font-bold text-brand-500 uppercase tracking-widest">G-One</h3>
                                         {isSpeaking && <div className="flex gap-0.5 h-3 items-end">
                                             <div className="w-0.5 bg-brand-500 animate-[h-3_0.5s_infinite]" />
                                             <div className="w-0.5 bg-brand-500 animate-[h-2_0.7s_infinite]" />
@@ -164,6 +189,7 @@ export function VoiceAssistantPage() {
                             <div className="absolute right-[-20px] top-[-20px] h-32 w-32 bg-brand-50 dark:bg-brand-900/10 rounded-full blur-3xl opacity-50" />
                         </Card>
                     )}
+
                 </div>
 
                 {!isListening && !transcript && (

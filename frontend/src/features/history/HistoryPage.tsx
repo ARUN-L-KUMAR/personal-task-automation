@@ -78,25 +78,27 @@ export function HistoryPage() {
                                 ))
                             ) : history.length > 0 ? (
                                 history.map((item) => (
-                                    <TableRow key={item.id}>
+                                    <TableRow key={item.id || Math.random()}>
                                         <TableCell className="font-medium text-slate-900">
                                             <div className="flex items-center">
                                                 <Calendar className="h-4 w-4 mr-2 text-slate-400" />
-                                                {item.input.date}
+                                                {item.input?.settings?.date || 'N/A'}
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="secondary">{item.input.meetings.length} Meetings</Badge>
+                                            <Badge variant="secondary">{(item.input?.meetings?.length || 0)} Meetings</Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="secondary">{item.input.tasks.length} Tasks</Badge>
+                                            <Badge variant="secondary">{(item.input?.tasks?.length || 0)} Tasks</Badge>
                                         </TableCell>
                                         <TableCell className="text-slate-500 text-sm">
-                                            {new Date(item.timestamp || item.output.generated_at).toLocaleString()}
+                                            {item.timestamp || item.output?.generated_at
+                                                ? new Date(item.timestamp || item.output?.generated_at).toLocaleString()
+                                                : 'N/A'}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end space-x-1">
-                                                <Button variant="ghost" size="sm" onClick={() => setSelectedPlan(item)}>
+                                                <Button variant="ghost" size="sm" onClick={() => setSelectedPlan(item)} disabled={!item.input}>
                                                     <Eye className="h-4 w-4 mr-1" /> View
                                                 </Button>
                                                 <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="text-red-500 hover:bg-red-50 hover:text-red-600">
@@ -133,11 +135,11 @@ export function HistoryPage() {
                                     <Clock className="h-4 w-4 mr-2" /> Meetings
                                 </h4>
                                 <ul className="space-y-2">
-                                    {selectedPlan.input.meetings.map((m, i) => (
+                                    {selectedPlan.input?.meetings?.map((m, i) => (
                                         <li key={i} className="text-xs text-slate-600 bg-white p-2 rounded shadow-sm border border-slate-200">
                                             <span className="font-bold">{m.startTime}-{m.endTime}:</span> {m.title}
                                         </li>
-                                    ))}
+                                    )) || <li className="text-xs text-slate-400">No meetings data</li>}
                                 </ul>
                             </div>
                             <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
@@ -145,11 +147,11 @@ export function HistoryPage() {
                                     <ListChecks className="h-4 w-4 mr-2" /> Tasks
                                 </h4>
                                 <ul className="space-y-2">
-                                    {selectedPlan.input.tasks.map((t, i) => (
+                                    {selectedPlan.input?.tasks?.map((t, i) => (
                                         <li key={i} className="text-xs text-slate-600 bg-white p-2 rounded shadow-sm border border-slate-200">
-                                            <span className="font-bold">{t.duration}m:</span> {t.title}
+                                            <span className="font-bold">{t.estimatedDuration}m:</span> {t.title}
                                         </li>
-                                    ))}
+                                    )) || <li className="text-xs text-slate-400">No tasks data</li>}
                                 </ul>
                             </div>
                         </div>

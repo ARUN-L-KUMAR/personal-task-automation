@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Plus, Trash2, Calendar, Clock, Tag, RefreshCw, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Calendar, Clock, Tag, RefreshCw } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { calendarService } from '../../services/calendar.service';
 import { tasksService } from '../../services/tasks.service';
 import { format, startOfDay, endOfDay } from 'date-fns';
-// No unused type imports needed here if they are not used in the code
 
 const plannerSchema = z.object({
     date: z.string().min(1, 'Date is required'),
