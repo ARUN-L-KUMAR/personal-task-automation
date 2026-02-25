@@ -4,6 +4,12 @@
 import { useState, useRef, useCallback } from 'react';
 import api from '../services/api';
 
+export interface FallbackNotice {
+    preferred_model: string;
+    actual_model: string;
+    reason: 'rate_limit' | 'unavailable';
+}
+
 export interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
@@ -19,6 +25,7 @@ export interface ChatMessage {
         contextSources?: string[];
         agentsUsed?: string[];
         memoryMessages?: number;
+        fallbackNotice?: FallbackNotice;
     };
 }
 
@@ -89,7 +96,8 @@ export function useChat() {
             setAvailableModels([
                 { key: 'auto', label: 'Auto (Smart Fallback)', description: 'Automatically picks the best available model', available: true },
                 { key: 'groq', label: 'Llama 3.3 70B', provider: 'Groq', description: 'Fast & free', available: true },
-                { key: 'gemini', label: 'Gemini 2.0 Flash', provider: 'Google', description: 'Google multimodal', available: true },
+                { key: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'Google', description: 'Best quality · 5 RPM / 20 RPD', available: true },
+                { key: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', provider: 'Google', description: 'Fastest · 30 RPM / 1500 RPD', available: true },
                 { key: 'openrouter', label: 'Llama 3.3 70B', provider: 'OpenRouter', description: 'Free via OpenRouter', available: true },
             ]);
         }
@@ -129,7 +137,8 @@ export function useChat() {
                 const rawModel = res.data.model.toLowerCase();
                 if (rawModel.includes('llama-3.3') && rawModel.includes('versatile')) displayModel = 'Llama 3.3';
                 else if (rawModel.includes('llama-3.3')) displayModel = 'Llama 3.3';
-                else if (rawModel.includes('gemini-2.0-flash')) displayModel = 'Gemini 2.0 Flash';
+                else if (rawModel.includes('gemini-2.5-flash-lite')) displayModel = 'Gemini 2.5 Flash Lite';
+                else if (rawModel.includes('gemini-2.5-flash')) displayModel = 'Gemini 2.5 Flash';
                 else if (rawModel.includes('gemini')) displayModel = 'Gemini';
                 else if (rawModel.includes('llama')) displayModel = 'Llama';
                 else if (rawModel.includes('mixtral')) displayModel = 'Mixtral';
@@ -138,6 +147,14 @@ export function useChat() {
             if (res.data.model_source) {
                 displaySource = res.data.model_source;
                 setCurrentModelSource(displaySource);
+            }
+
+            // If fallback happened on a user-selected model, auto-switch to the working model
+            if (res.data.fallback_notice) {
+                const actualKey = res.data.fallback_notice.actual_model_key || res.data.fallback_notice.actual_model?.toLowerCase();
+                if (actualKey && actualKey !== 'unknown') {
+                    setSelectedModel(actualKey);
+                }
             }
 
             const botMsg: ChatMessage = {
@@ -153,6 +170,7 @@ export function useChat() {
                     contextSources: res.data.context_sources || [],
                     agentsUsed: res.data.agents_used || [],
                     memoryMessages: res.data.memory_messages || 0,
+                    fallbackNotice: res.data.fallback_notice || undefined,
                 },
             };
             setMessages(prev => [...prev, botMsg]);

@@ -4,7 +4,7 @@ import {
     Calendar, Mail, CheckSquare, Map, Zap, Command,
     Eye, EyeOff, Clock, AlertTriangle, Terminal,
     Wifi, WifiOff, Brain, Activity, Database,
-    MessageSquare, RefreshCw, ChevronRight, ChevronDown,
+    MessageSquare, RefreshCw, ChevronRight, ChevronDown, X,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -81,6 +81,7 @@ export function ChatbotPage() {
     const [inputScope, setInputScope] = useState('all');
     const [showSlashMenu, setShowSlashMenu] = useState(false);
     const [showModelMenu, setShowModelMenu] = useState(false);
+    const [dismissedFallback, setDismissedFallback] = useState<string | null>(null);
     const modelMenuRef = useRef<HTMLDivElement>(null);
 
     // Fetch context snapshot on mount and every 60s
@@ -272,6 +273,29 @@ export function ChatbotPage() {
 
                 {/* ── Chat Area ── */}
                 <Card className="flex-1 flex flex-col overflow-hidden border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 min-h-0">
+                    {/* Fallback notice banner */}
+                    {(() => {
+                        const lastFallback = [...messages].reverse().find(m => m.meta?.fallbackNotice);
+                        if (!lastFallback?.meta?.fallbackNotice) return null;
+                        if (dismissedFallback === lastFallback.id) return null;
+                        const notice = lastFallback.meta.fallbackNotice;
+                        return (
+                            <div className="flex-shrink-0 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                                <p className="text-[11px] text-amber-800 dark:text-amber-300 flex-1">
+                                    <span className="font-semibold">{notice.preferred_model}</span>
+                                    {notice.reason === 'rate_limit' ? ' has no credits / rate limited' : ' is unavailable'}.
+                                    Switched to <span className="font-semibold">{notice.actual_model}</span>.
+                                </p>
+                                <button
+                                    onClick={() => setDismissedFallback(lastFallback.id)}
+                                    className="text-amber-400 hover:text-amber-600 transition-colors flex-shrink-0"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        );
+                    })()}
                     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 custom-scrollbar">
                         {/* ── Enhanced empty state ── */}
                         {!hasRealMessages && messages.length === 1 && (
@@ -467,7 +491,7 @@ export function ChatbotPage() {
                                                     'h-5 w-5 rounded-md flex items-center justify-center flex-shrink-0 text-[8px] font-bold',
                                                     m.key === 'auto' ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white' :
                                                     m.key === 'groq' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600' :
-                                                    m.key === 'gemini' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600' :
+                                                    m.key.startsWith('gemini') ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600' :
                                                     'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
                                                 )}>
                                                     {m.key === 'auto' ? <Zap className="h-2.5 w-2.5" /> : m.key[0].toUpperCase()}
@@ -569,14 +593,14 @@ export function ChatbotPage() {
                                 <div className="flex items-center gap-2">
                                     <div className={cn(
                                         'h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 text-[9px] font-bold',
-                                        selectedModel === 'gemini' || (selectedModel === 'auto' && currentModel.toLowerCase().includes('gemini'))
+                                        selectedModel.startsWith('gemini') || (selectedModel === 'auto' && currentModel.toLowerCase().includes('gemini'))
                                             ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
                                             : selectedModel === 'openrouter'
                                             ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
                                             : 'bg-orange-100 dark:bg-orange-900/40 text-orange-600'
                                     )}>
                                         {(() => {
-                                            const isGemini = selectedModel === 'gemini' || (selectedModel === 'auto' && currentModel.toLowerCase().includes('gemini'));
+                                            const isGemini = selectedModel.startsWith('gemini') || (selectedModel === 'auto' && currentModel.toLowerCase().includes('gemini'));
                                             return isGemini ? 'G' : 'L';
                                         })()}
                                     </div>

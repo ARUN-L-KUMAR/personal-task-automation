@@ -257,15 +257,32 @@ async def get_available_models():
         {"key": "auto", "label": "Auto (Smart Fallback)", "description": "Automatically picks the best available model", "available": True},
         {"key": "groq", "label": "Llama 3.3 70B", "provider": "Groq", "description": "Fast & free, primary model", "available": True},
     ]
+    has_google = bool(os.getenv("GOOGLE_API_KEY"))
     models.append({
-        "key": "gemini", "label": "Gemini 2.0 Flash", "provider": "Google",
-        "description": "Google's fast multimodal model",
-        "available": bool(os.getenv("GOOGLE_API_KEY")),
+        "key": "gemini-2.5-flash", "label": "Gemini 2.5 Flash", "provider": "Google",
+        "description": "Best quality · 5 RPM / 20 RPD",
+        "available": has_google,
     })
     models.append({
-        "key": "openrouter", "label": "Llama 3.3 70B", "provider": "OpenRouter",
-        "description": "Free via OpenRouter",
-        "available": bool(os.getenv("OPENROUTER_API_KEY")),
+        "key": "gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash Lite", "provider": "Google",
+        "description": "Fastest · 30 RPM / 1500 RPD",
+        "available": has_google,
+    })
+    has_or = bool(os.getenv("OPENROUTER_API_KEY"))
+    models.append({
+        "key": "openrouter", "label": "Nemotron 30B", "provider": "OpenRouter",
+        "description": "Free · 256K context · Best fallback",
+        "available": has_or,
+    })
+    models.append({
+        "key": "openrouter-alt", "label": "Trinity Large", "provider": "OpenRouter",
+        "description": "Free · 131K context · Fast",
+        "available": has_or,
+    })
+    models.append({
+        "key": "openrouter-alt2", "label": "Solar Pro 3", "provider": "OpenRouter",
+        "description": "Free · 128K context · Reliable",
+        "available": has_or,
     })
     return {"models": models}
 
@@ -334,14 +351,20 @@ Current date/time: {current_time} IST"""
     messages.append(("human", request.message))
 
     # Build ordered list of fallback LLMs based on user preference
-    from config.settings import llm, llm_fast, llm_openrouter
+    from config.settings import llm, llm_gemini_25_flash, llm_gemini_25_lite, llm_openrouter, llm_openrouter_alt, llm_openrouter_alt2
     import os
+
+    has_google = bool(os.getenv("GOOGLE_API_KEY"))
+    has_or = bool(os.getenv("OPENROUTER_API_KEY"))
 
     # All available models
     all_models = {
         "groq": ("groq-primary", llm),
-        "gemini": ("gemini-fallback", llm_fast) if os.getenv("GOOGLE_API_KEY") else None,
-        "openrouter": ("openrouter-fallback", llm_openrouter) if os.getenv("OPENROUTER_API_KEY") else None,
+        "gemini-2.5-flash": ("gemini-2.5-flash", llm_gemini_25_flash) if has_google else None,
+        "gemini-2.5-flash-lite": ("gemini-2.5-flash-lite", llm_gemini_25_lite) if has_google else None,
+        "openrouter": ("openrouter-nemotron-30b", llm_openrouter) if has_or else None,
+        "openrouter-alt": ("openrouter-trinity-large", llm_openrouter_alt) if has_or else None,
+        "openrouter-alt2": ("openrouter-solar-pro", llm_openrouter_alt2) if has_or else None,
     }
 
     preferred = (request.preferred_model or "auto").lower()
@@ -349,21 +372,27 @@ Current date/time: {current_time} IST"""
     if preferred != "auto" and preferred in all_models and all_models[preferred]:
         # User selected a specific model — use it first, then fallback to others
         fallback_models = [all_models[preferred]]
+        # If user selected openrouter, add all alt models right after
+        if preferred == "openrouter":
+            for alt_key in ["openrouter-alt", "openrouter-alt2"]:
+                if all_models.get(alt_key):
+                    fallback_models.append(all_models[alt_key])
         for key, val in all_models.items():
-            if key != preferred and val:
+            if key != preferred and not key.startswith("openrouter-alt") and val:
                 fallback_models.append(val)
     else:
-        # Auto mode: Groq → Gemini → OpenRouter
-        fallback_models = [all_models["groq"]]
-        if all_models["gemini"]:
-            fallback_models.append(all_models["gemini"])
-        if all_models["openrouter"]:
-            fallback_models.append(all_models["openrouter"])
+        # Auto order (benchmarked): Groq → Gemini Lite → Nemotron 30B → Gemini Flash → Trinity Large → Solar Pro
+        fallback_order = ["groq", "gemini-2.5-flash-lite", "openrouter", "gemini-2.5-flash", "openrouter-alt", "openrouter-alt2"]
+        fallback_models = []
+        for fkey in fallback_order:
+            if all_models.get(fkey):
+                fallback_models.append(all_models[fkey])
     
     # Filter out None entries
     fallback_models = [m for m in fallback_models if m is not None]
 
     last_error = None
+    failed_models = []  # Track which models failed (for fallback notice)
     for idx, (label, active_llm) in enumerate(fallback_models):
         try:
             # Extract model name correctly for different classes
@@ -384,14 +413,45 @@ Current date/time: {current_time} IST"""
             response = response_msg.content
             total_latency = round(time.time() - start_time, 2)
 
-            # Determine model source
+            # Determine model source and friendly model key
             model_source = "Unknown"
+            actual_model_key = label  # e.g. "gemini-2.5-flash", "groq-primary"
             if "groq" in label.lower():
                 model_source = "Groq"
-            elif "gemini" in label.lower():
-                model_source = "Gemini"
+                actual_model_key = "groq"
+            elif "gemini-2.5-flash-lite" in label.lower():
+                model_source = "Gemini 2.5 Flash Lite"
+                actual_model_key = "gemini-2.5-flash-lite"
+            elif "gemini-2.5-flash" in label.lower():
+                model_source = "Gemini 2.5 Flash"
+                actual_model_key = "gemini-2.5-flash"
+            elif "openrouter-solar" in label.lower():
+                model_source = "OpenRouter (Solar Pro 3)"
+                actual_model_key = "openrouter-alt2"
+            elif "openrouter-trinity" in label.lower():
+                model_source = "OpenRouter (Trinity Large)"
+                actual_model_key = "openrouter-alt"
             elif "openrouter" in label.lower():
-                model_source = "OpenRouter"
+                model_source = "OpenRouter (Nemotron 30B)"
+                actual_model_key = "openrouter"
+
+            # Build fallback notice if user explicitly selected a model that failed
+            fallback_notice = None
+            if preferred != "auto" and failed_models:
+                model_labels = {
+                    "groq": "Groq (Llama 3.3)",
+                    "gemini-2.5-flash": "Gemini 2.5 Flash",
+                    "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite",
+                    "openrouter": "OpenRouter (Nemotron 30B)",
+                    "openrouter-alt": "OpenRouter (Trinity Large)",
+                    "openrouter-alt2": "OpenRouter (Solar Pro 3)",
+                }
+                fallback_notice = {
+                    "preferred_model": model_labels.get(preferred, preferred),
+                    "actual_model": model_source,
+                    "actual_model_key": actual_model_key,
+                    "reason": "rate_limit" if any("429" in e or "rate" in e.lower() for e in failed_models) else "unavailable",
+                }
 
             return {
                 "status": "success",
@@ -403,6 +463,7 @@ Current date/time: {current_time} IST"""
                 "context_sources": context_sources,
                 "agents_used": agents_used,
                 "memory_messages": len(request.history or []),
+                "fallback_notice": fallback_notice,
             }
 
         except Exception as e:
@@ -417,6 +478,7 @@ Current date/time: {current_time} IST"""
             print(f"DEBUG: Model {label} failed ({err_str[:80]}), {'trying next fallback...' if is_retryable and idx < len(fallback_models)-1 else 'no more fallbacks'}")
 
             if is_retryable and idx < len(fallback_models) - 1:
+                failed_models.append(err_str[:200])
                 await asyncio.sleep(0.5)
                 continue
 
