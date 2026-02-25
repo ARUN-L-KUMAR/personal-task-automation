@@ -1,6 +1,9 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Bot } from 'lucide-react';
 import { AppLayout } from './layout/AppLayout';
+import { AuthGuard } from './layout/AuthGuard';
+import { LoginPage } from '../features/auth/LoginPage';
+import { RegisterPage } from '../features/auth/RegisterPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { PlannerPage } from '../features/planner/PlannerPage';
 import { HistoryPage } from '../features/history/HistoryPage';
@@ -14,7 +17,7 @@ import { MapsPage } from '../features/maps/MapsPage';
 import { SheetsPage } from '../features/sheets/SheetsPage';
 import { ContactsPage } from '../features/contacts/ContactsPage';
 
-// Placeholder components for other pages (to be built in Sprints 2 & 3)
+// Placeholder components for pages not yet implemented
 const ComingSoon = ({ title }: { title: string }) => (
     <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-4">
         <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400">
@@ -27,112 +30,47 @@ const ComingSoon = ({ title }: { title: string }) => (
     </div>
 );
 
+const NotesPage = () => <ComingSoon title="Notes" />;
+const InsightsPage = () => <ComingSoon title="Productivity Insights" />;
+const GoogleConnectPage = () => <ComingSoon title="Google Connect" />;
+
+// Helper — wrap protected pages inside AuthGuard + AppLayout
+const Protected = ({ children }: { children: React.ReactNode }) => (
+    <AuthGuard>
+        <AppLayout>{children}</AppLayout>
+    </AuthGuard>
+);
+
 const router = createBrowserRouter([
-    {
-        path: '/',
-        element: (
-            <AppLayout>
-                <DashboardPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/planner',
-        element: (
-            <AppLayout>
-                <PlannerPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/history',
-        element: (
-            <AppLayout>
-                <HistoryPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/calendar',
-        element: (
-            <AppLayout>
-                <CalendarPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/email',
-        element: (
-            <AppLayout>
-                <SmartInboxPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/tasks',
-        element: (
-            <AppLayout>
-                <TasksPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/contacts',
-        element: (
-            <AppLayout>
-                <ContactsPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/maps',
-        element: (
-            <AppLayout>
-                <MapsPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/sheets',
-        element: (
-            <AppLayout>
-                <SheetsPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/chatbot',
-        element: (
-            <AppLayout>
-                <ChatbotPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/voice-assistant',
-        element: (
-            <AppLayout>
-                <VoiceAssistantPage />
-            </AppLayout>
-        ),
-    },
-    {
-        path: '/settings',
-        element: (
-            <AppLayout>
-                <SettingsPage />
-            </AppLayout>
-        ),
-    },
+    // ── Public routes ──
+    { path: '/login', element: <LoginPage /> },
+    { path: '/register', element: <RegisterPage /> },
+
+    // ── Protected routes ──
+    { path: '/', element: <Protected><DashboardPage /></Protected> },
+    { path: '/planner', element: <Protected><PlannerPage /></Protected> },
+    { path: '/history', element: <Protected><HistoryPage /></Protected> },
+    { path: '/calendar', element: <Protected><CalendarPage /></Protected> },
+    { path: '/email', element: <Protected><SmartInboxPage /></Protected> },
+    { path: '/tasks', element: <Protected><TasksPage /></Protected> },
+    { path: '/contacts', element: <Protected><ContactsPage /></Protected> },
+    { path: '/maps', element: <Protected><MapsPage /></Protected> },
+    { path: '/sheets', element: <Protected><SheetsPage /></Protected> },
+    { path: '/chatbot', element: <Protected><ChatbotPage /></Protected> },
+    { path: '/voice-assistant', element: <Protected><VoiceAssistantPage /></Protected> },
+    { path: '/settings', element: <Protected><SettingsPage /></Protected> },
+    { path: '/notes', element: <Protected><NotesPage /></Protected> },
+    { path: '/insights', element: <Protected><InsightsPage /></Protected> },
+    { path: '/google-connect', element: <Protected><GoogleConnectPage /></Protected> },
     {
         path: '*',
         element: (
-            <AppLayout>
+            <Protected>
                 <div className="h-[60vh] flex flex-col items-center justify-center">
                     <h1 className="text-6xl font-black text-slate-200 dark:text-slate-800">404</h1>
                     <p className="text-xl text-slate-500 mt-4">Page not found</p>
                 </div>
-            </AppLayout>
+            </Protected>
         ),
     },
 ]);
