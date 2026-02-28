@@ -41,6 +41,10 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=6, max_length=128)
 
 
+class GoogleLoginRequest(BaseModel):
+    token: str  # Google OAuth access_token
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

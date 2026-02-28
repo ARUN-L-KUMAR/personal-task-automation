@@ -60,3 +60,10 @@ export const getMe = async (): Promise<UserProfile> => {
 export const logoutUser = () => {
     removeToken();
 };
+
+export const googleLoginUser = async (accessToken: string): Promise<AuthResponse> => {
+    const response = await api.post('/api/db-auth/google-login', { token: accessToken });
+    const data: AuthResponse = response.data;
+    setToken(data.access_token);
+    return data;
+};

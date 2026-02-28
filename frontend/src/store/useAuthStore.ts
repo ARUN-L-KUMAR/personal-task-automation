@@ -5,6 +5,7 @@ import {
     logoutUser,
     getMe,
     getToken,
+    googleLoginUser,
     LoginPayload,
     RegisterPayload,
     UserProfile,
@@ -18,6 +19,7 @@ interface AuthState {
 
     login: (payload: LoginPayload) => Promise<void>;
     register: (payload: RegisterPayload) => Promise<void>;
+    googleLogin: (accessToken: string) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
     clearError: () => void;
@@ -47,6 +49,17 @@ export const useAuthStore = create<AuthState>((set) => ({
             set({ user: data.user, isAuthenticated: true, isLoading: false });
         } catch (err: any) {
             set({ isLoading: false, error: err.message || 'Registration failed' });
+            throw err;
+        }
+    },
+
+    googleLogin: async (accessToken) => {
+        set({ isLoading: true, error: null });
+        try {
+            const data = await googleLoginUser(accessToken);
+            set({ user: data.user, isAuthenticated: true, isLoading: false });
+        } catch (err: any) {
+            set({ isLoading: false, error: err.message || 'Google sign-in failed' });
             throw err;
         }
     },

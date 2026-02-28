@@ -6,7 +6,7 @@ All tables mapped to Neon PostgreSQL.
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Text, DateTime, Date, Enum, ForeignKey, Index
+    Column, String, Text, DateTime, Date, Enum, ForeignKey, Index, Boolean
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -54,6 +54,7 @@ class User(Base):
         default=UserRole.USER,
         nullable=False,
     )
+    is_google_user = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False

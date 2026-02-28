@@ -4,6 +4,7 @@ import { Bot, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/useAuthStore';
 import { cn } from '../../utils/cn';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 
 export function LoginPage() {
     const { login, isLoading, error, clearError } = useAuthStore();
@@ -113,6 +114,16 @@ export function LoginPage() {
                                 Create one
                             </Link>
                         </p>
+                    </div>
+
+                    {/* ── Google Sign-In ── */}
+                    <div className="mt-4">
+                        <div className="relative flex items-center gap-3 my-4">
+                            <div className="flex-1 h-px bg-slate-200" />
+                            <span className="text-xs text-slate-400 font-medium">or</span>
+                            <div className="flex-1 h-px bg-slate-200" />
+                        </div>
+                        <GoogleSignInButton />
                     </div>
                 </div>
 
