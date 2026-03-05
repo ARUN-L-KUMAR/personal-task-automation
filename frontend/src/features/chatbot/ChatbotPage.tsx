@@ -7,6 +7,7 @@ import {
     RefreshCw, ChevronDown, ChevronRight, X,
     Layers, Radio, ArrowUpRight,
     BarChart3, Cpu, Settings, Power, Plus, Minus,
+    PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useChat } from '../../hooks/useChat';
@@ -48,7 +49,6 @@ const GOOGLE_SERVICES = [
     { key: 'Gmail', label: 'Gmail', icon: <Mail className="h-3.5 w-3.5" />, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/30' },
     { key: 'Tasks', label: 'Google Tasks', icon: <CheckSquare className="h-3.5 w-3.5" />, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
     { key: 'Contacts', label: 'Google Contacts', icon: <Cpu className="h-3.5 w-3.5" />, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/30' },
-    { key: 'Keep', label: 'Google Keep', icon: <Activity className="h-3.5 w-3.5" />, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30' },
     { key: 'Sheets', label: 'Google Sheets', icon: <BarChart3 className="h-3.5 w-3.5" />, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950/30' },
     { key: 'Maps', label: 'Google Maps', icon: <Map className="h-3.5 w-3.5" />, color: 'text-sky-500', bg: 'bg-sky-50 dark:bg-sky-950/30' },
 ];
@@ -102,7 +102,9 @@ export function ChatbotPage() {
     const [showSessionModelMenu, setShowSessionModelMenu] = useState(false);
     const [dismissedFallback, setDismissedFallback] = useState<string | null>(null);
     const [sidebarTab, setSidebarTab] = useState<'actions' | 'session'>('actions');
+    const [sidebarMinimized, setSidebarMinimized] = useState(false);
     // Collapsible state for sidebar sections
+    const [contextOpen, setContextOpen] = useState(true);
     const [actionsOpen, setActionsOpen] = useState(true);
     const [toolsOpen, setToolsOpen] = useState(true);
     const [sourcesOpen, setSourcesOpen] = useState(true);
@@ -229,52 +231,11 @@ export function ChatbotPage() {
                 </div>
             </div>
 
-            {/* ═══ Context Snapshot Cards ═══ */}
-            <div className="flex-shrink-0 grid grid-cols-4 gap-2">
-                {[
-                    {
-                        icon: <Calendar className="h-4 w-4 text-blue-500" />,
-                        label: 'NEXT MEETING',
-                        value: cs?.next_meeting ? `${fmtTime(cs.next_meeting.start)} · ${cs.next_meeting.title}` : 'No upcoming',
-                        bg: 'bg-blue-50 dark:bg-blue-950/30',
-                    },
-                    {
-                        icon: <Mail className="h-4 w-4 text-rose-500" />,
-                        label: 'EMAILS',
-                        value: emailValue,
-                        bg: 'bg-rose-50 dark:bg-rose-950/30',
-                    },
-                    {
-                        icon: <CheckSquare className="h-4 w-4 text-emerald-500" />,
-                        label: 'PENDING TASKS',
-                        value: cs?.pending_tasks != null ? `${cs.pending_tasks} tasks` : '—',
-                        bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-                    },
-                    {
-                        icon: <AlertTriangle className={cn('h-4 w-4', (cs?.conflicts_today ?? 0) > 0 ? 'text-amber-500' : 'text-slate-400')} />,
-                        label: 'CONFLICTS',
-                        value: (cs?.conflicts_today ?? 0) > 0 ? `${cs!.conflicts_today} today` : 'None',
-                        bg: (cs?.conflicts_today ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-slate-50 dark:bg-slate-800',
-                    },
-                ].map(card => (
-                    <div key={card.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 flex items-center gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                        <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0', card.bg)}>{card.icon}</div>
-                        <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider leading-none">{card.label}</p>
-                            {contextLoading
-                                ? <div className="h-3.5 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mt-1" />
-                                : <p className="text-xs font-semibold text-slate-800 dark:text-white leading-tight mt-0.5 truncate">{card.value}</p>
-                            }
-                        </div>
-                    </div>
-                ))}
-            </div>
-
             {/* ═══ Main Content ═══ */}
             <div className="flex-1 flex gap-3 min-h-0">
 
                 {/* ── Chat Panel ── */}
-                <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm relative">
 
                     {/* Fallback notice */}
                     {(() => {
@@ -317,24 +278,6 @@ export function ChatbotPage() {
                                 <p className="text-xs text-slate-500 max-w-sm mb-5">
                                     Real-time access to your Google data to help manage your day.
                                 </p>
-
-                                {/* Connected services */}
-                                <div className="flex items-center gap-2 mb-5">
-                                    {GOOGLE_SERVICES.map(svc => {
-                                        const connected = cs?.connected_services?.includes(svc.key);
-                                        return (
-                                            <div key={svc.key} className={cn(
-                                                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-medium',
-                                                connected
-                                                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-600'
-                                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
-                                            )}>
-                                                {svc.icon} {svc.label.replace('Google ', '')}
-                                                {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
 
                                 {/* Starter prompts — 2x2 compact */}
                                 <div className="grid grid-cols-2 gap-1.5 max-w-sm w-full">
@@ -493,9 +436,14 @@ export function ChatbotPage() {
                 {/* ══════════════════════════════════════════════ */}
                 {/* ── RIGHT SIDEBAR                           ── */}
                 {/* ══════════════════════════════════════════════ */}
-                <aside className="w-[280px] flex flex-col flex-shrink-0 min-h-0 gap-2">
-                    {/* Tab switcher */}
-                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5">
+                <aside className={cn(
+                    "flex flex-col flex-shrink-0 min-h-0 gap-2 transition-all duration-300",
+                    sidebarMinimized ? "w-[48px]" : "w-[280px]"
+                )}>
+                    {!sidebarMinimized ? (
+                        <>
+                    {/* Tab switcher with minimize button */}
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5">
                         <button onClick={() => setSidebarTab('actions')}
                             className={cn('flex-1 text-[11px] font-semibold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1',
                                 sidebarTab === 'actions' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}>
@@ -506,12 +454,77 @@ export function ChatbotPage() {
                                 sidebarTab === 'session' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700')}>
                             <Settings className="h-3 w-3" /> Session
                         </button>
+                        <button
+                            onClick={() => setSidebarMinimized(true)}
+                            className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                            title="Minimize sidebar"
+                        >
+                            <PanelRightClose className="h-4 w-4 text-slate-500" />
+                        </button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
 
                         {/* ───────────── ACTIONS TAB ───────────── */}
                         {sidebarTab === 'actions' && (<>
+                            {/* Live Context — collapsible */}
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                                <button onClick={() => setContextOpen(!contextOpen)}
+                                    className="w-full px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Activity className="h-3 w-3" /> Live Context
+                                    </h3>
+                                    <ChevronRight className={cn('h-3.5 w-3.5 text-slate-400 transition-transform', contextOpen && 'rotate-90')} />
+                                </button>
+                                {contextOpen && (
+                                    <div className="p-2 space-y-1">
+                                        {[
+                                            {
+                                                icon: <Calendar className="h-3.5 w-3.5" />,
+                                                label: 'Next Meeting',
+                                                value: cs?.next_meeting ? `${fmtTime(cs.next_meeting.start)} · ${cs.next_meeting.title}` : 'No upcoming',
+                                                color: 'text-blue-500',
+                                                bg: 'bg-blue-50 dark:bg-blue-950/30',
+                                            },
+                                            {
+                                                icon: <Mail className="h-3.5 w-3.5" />,
+                                                label: 'Emails',
+                                                value: emailValue,
+                                                color: 'text-rose-500',
+                                                bg: 'bg-rose-50 dark:bg-rose-950/30',
+                                            },
+                                            {
+                                                icon: <CheckSquare className="h-3.5 w-3.5" />,
+                                                label: 'Pending Tasks',
+                                                value: cs?.pending_tasks != null ? `${cs.pending_tasks} tasks` : '—',
+                                                color: 'text-emerald-500',
+                                                bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+                                            },
+                                            {
+                                                icon: <AlertTriangle className="h-3.5 w-3.5" />,
+                                                label: 'Conflicts',
+                                                value: (cs?.conflicts_today ?? 0) > 0 ? `${cs!.conflicts_today} today` : 'None',
+                                                color: (cs?.conflicts_today ?? 0) > 0 ? 'text-amber-500' : 'text-slate-400',
+                                                bg: (cs?.conflicts_today ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-slate-50 dark:bg-slate-800',
+                                            },
+                                        ].map(item => (
+                                            <div key={item.label} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                                <div className={cn('h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0', item.bg)}>
+                                                    <span className={item.color}>{item.icon}</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[11px] font-medium text-slate-700 dark:text-slate-300 leading-tight">{item.label}</p>
+                                                    {contextLoading
+                                                        ? <div className="h-3 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mt-0.5" />
+                                                        : <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">{item.value}</p>
+                                                    }
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Quick Actions — collapsible */}
                             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                                 <button onClick={() => setActionsOpen(!actionsOpen)}
@@ -775,6 +788,16 @@ export function ChatbotPage() {
                             })()}
                         </>)}
                     </div>
+                        </>
+                    ) : (
+                        <button
+                            onClick={() => setSidebarMinimized(false)}
+                            className="flex-shrink-0 h-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                            title="Expand sidebar"
+                        >
+                            <PanelRightOpen className="h-4 w-4 text-slate-500" />
+                        </button>
+                    )}
                 </aside>
             </div>
         </div>

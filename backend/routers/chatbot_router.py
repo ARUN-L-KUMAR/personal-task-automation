@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import asyncio
 import time
+import os
 from datetime import datetime, timezone
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -228,12 +229,19 @@ def _fetch_context_snapshot(user: User, db: Session) -> dict:
         return result
 
     def fetch_tasks():
-        result = {"connected": False, "pending": 0}
+        result = {"connected": False, "pending": 0, "has_notes_list": False}
         try:
             tasks_svc = build("tasks", "v1", credentials=creds)
-            task_lists = tasks_svc.tasklists().list(maxResults=1).execute()
+            task_lists = tasks_svc.tasklists().list(maxResults=20).execute()
             tl_items = task_lists.get("items", [])
             result["connected"] = True
+            
+            # Check if "AI Agent Notes" list exists (Keep workaround)
+            for tl in tl_items:
+                if tl.get("title") == "AI Agent Notes":
+                    result["has_notes_list"] = True
+                    break
+            
             if tl_items:
                 tl_id = tl_items[0]["id"]
                 tasks_result = tasks_svc.tasks().list(
@@ -262,18 +270,47 @@ def _fetch_context_snapshot(user: User, db: Session) -> dict:
             print(f"DEBUG snapshot gmail error: {e}")
         return result
 
-    # ── Run all three in parallel ──
+    def fetch_contacts():
+        result = {"connected": False}
+        try:
+            people = build("people", "v1", credentials=creds)
+            people.people().connections().list(
+                resourceName="people/me", pageSize=1, personFields="names"
+            ).execute()
+            result["connected"] = True
+        except Exception as e:
+            print(f"DEBUG snapshot contacts error: {e}")
+        return result
+
+    def fetch_sheets():
+        result = {"connected": False}
+        try:
+            drive = build("drive", "v3", credentials=creds)
+            drive.files().list(
+                q="mimeType='application/vnd.google-apps.spreadsheet'",
+                pageSize=1, fields="files(id, name)"
+            ).execute()
+            result["connected"] = True
+        except Exception as e:
+            print(f"DEBUG snapshot sheets error: {e}")
+        return result
+
+    # ── Run all services in parallel ──
     cal_result = {"connected": False, "next_meeting": None, "conflicts": 0}
     tasks_result = {"connected": False, "pending": 0}
     gmail_result = {"connected": False, "unread": 0, "urgent": 0}
+    contacts_result = {"connected": False}
+    sheets_result = {"connected": False}
 
     try:
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             future_cal = executor.submit(fetch_calendar)
             future_tasks = executor.submit(fetch_tasks)
             future_gmail = executor.submit(fetch_gmail)
+            future_contacts = executor.submit(fetch_contacts)
+            future_sheets = executor.submit(fetch_sheets)
 
-            for future in as_completed([future_cal, future_tasks, future_gmail], timeout=15):
+            for future in as_completed([future_cal, future_tasks, future_gmail, future_contacts, future_sheets], timeout=15):
                 try:
                     future.result()
                 except Exception:
@@ -289,6 +326,14 @@ def _fetch_context_snapshot(user: User, db: Session) -> dict:
                 pass
             try:
                 gmail_result = future_gmail.result(timeout=0)
+            except Exception:
+                pass
+            try:
+                contacts_result = future_contacts.result(timeout=0)
+            except Exception:
+                pass
+            try:
+                sheets_result = future_sheets.result(timeout=0)
             except Exception:
                 pass
     except Exception as e:
@@ -308,6 +353,17 @@ def _fetch_context_snapshot(user: User, db: Session) -> dict:
         snapshot["connected_services"].append("Gmail")
         snapshot["unread_emails"] = gmail_result["unread"]
         snapshot["urgent_emails"] = gmail_result["urgent"]
+
+    if contacts_result["connected"]:
+        snapshot["connected_services"].append("Contacts")
+
+    if sheets_result["connected"]:
+        snapshot["connected_services"].append("Sheets")
+
+    # Check Maps API key (doesn't use OAuth)
+    maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY", "")
+    if maps_api_key and maps_api_key.strip():
+        snapshot["connected_services"].append("Maps")
 
     print(f"DEBUG snapshot: Parallel fetch completed in {_time.time()-t0:.1f}s — services: {snapshot['connected_services']}")
     return snapshot
