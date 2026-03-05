@@ -61,8 +61,8 @@ export const logoutUser = () => {
     removeToken();
 };
 
-export const googleLoginUser = async (accessToken: string): Promise<AuthResponse> => {
-    const response = await api.post('/api/db-auth/google-login', { token: accessToken });
+export const googleLoginUser = async (code: string): Promise<AuthResponse> => {
+    const response = await api.post('/api/db-auth/google-login', { code });
     const data: AuthResponse = response.data;
     setToken(data.access_token);
     return data;

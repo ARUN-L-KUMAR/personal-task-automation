@@ -12,12 +12,26 @@ export function GoogleSignInButton() {
     const [error, setError] = useState('');
 
     const login = useGoogleLogin({
-        flow: 'implicit',  // opens a popup, NOT a redirect
-        onSuccess: async (tokenResponse) => {
+        flow: 'auth-code',  // Gets authorization code → backend exchanges for access+refresh tokens
+        scope: [
+            'openid',
+            'email',
+            'profile',
+            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/gmail.readonly',
+            'https://www.googleapis.com/auth/gmail.send',
+            'https://www.googleapis.com/auth/contacts.readonly',
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/tasks',
+            'https://www.googleapis.com/auth/drive.readonly',
+        ].join(' '),
+        // Note: offline access + refresh_token is handled by backend via credentials.json flow
+        onSuccess: async (codeResponse) => {
             setLoading(true);
             setError('');
             try {
-                await googleLogin(tokenResponse.access_token);
+                await googleLogin(codeResponse.code);
                 navigate('/');
             } catch {
                 setError('Google sign-in failed. Please try again.');

@@ -42,7 +42,7 @@ class RegisterRequest(BaseModel):
 
 
 class GoogleLoginRequest(BaseModel):
-    token: str  # Google OAuth access_token
+    code: str  # Google OAuth authorization code (auth-code flow)
 
 
 class LoginRequest(BaseModel):

@@ -2,6 +2,7 @@ import React from 'react';
 import { Bell, Search, Menu, Moon, Sun, Command as CommandIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useThemeStore } from '../../store/useThemeStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { motion } from 'framer-motion';
 
 interface HeaderProps {
@@ -11,6 +12,11 @@ interface HeaderProps {
 
 export function Header({ onOpenMobileMenu }: HeaderProps) {
     const { theme, toggleTheme } = useThemeStore();
+    const { user } = useAuthStore();
+    const displayName = user?.name || 'User';
+    const initials = user?.name
+        ? user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+        : 'U';
 
     return (
         <header className="h-20 flex items-center justify-between px-6 md:px-10 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60 sticky top-0 z-30 transition-all duration-300">
@@ -67,12 +73,12 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
 
                 <div className="flex items-center space-x-4 pl-2 group cursor-pointer">
                     <div className="hidden lg:block text-right">
-                        <p className="text-sm font-black text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-brand-600">Arun Kumar</p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-brand-600">{displayName}</p>
                         <p className="text-[10px] font-black uppercase tracking-tighter text-slate-400">Strategic Planner</p>
                     </div>
                     <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 p-0.5 shadow-lg shadow-brand-500/20 group-hover:rotate-3 transition-transform">
                         <div className="h-full w-full rounded-[0.9rem] bg-white dark:bg-slate-900 flex items-center justify-center">
-                            <span className="text-xs font-black text-slate-900 dark:text-white uppercase">AK</span>
+                            <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{initials}</span>
                         </div>
                     </div>
                 </div>

@@ -3,15 +3,19 @@ Database Auth Router — JWT-based Register & Login
 (Separate from the existing Google OAuth router)
 
 Endpoints:
-  POST /api/db-auth/register  → Create a new user
-  POST /api/db-auth/login     → Login and receive JWT
-  GET  /api/db-auth/me        → Get current user profile
+  POST /api/db-auth/register      → Create a new user
+  POST /api/db-auth/login         → Login and receive JWT
+  GET  /api/db-auth/me            → Get current user profile
+  POST /api/db-auth/google-login  → Sign in with Google (stores OAuth tokens)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import httpx
 import os
+import json
+from pathlib import Path
+from google_auth_oauthlib.flow import Flow
 
 from database.connection import get_db
 from database.models import User
@@ -83,18 +87,60 @@ def get_me(current_user: User = Depends(get_current_user)):
 
 @router.post("/google-login", response_model=AuthResponse)
 async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
-    """Sign in (or register) with Google. Verifies Google access_token, returns JWT."""
-    # Verify the access_token with Google's userinfo endpoint
+    """Sign in (or register) with Google. Exchanges auth code for tokens, stores them per-user."""
+    credentials_file = Path(__file__).parent.parent / "credentials.json"
+
+    if not credentials_file.exists():
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth not configured on server (missing credentials.json)",
+        )
+
+    # Exchange the authorization code for access_token + refresh_token
+    try:
+        os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+        flow = Flow.from_client_secrets_file(
+            str(credentials_file),
+            scopes=[
+                "openid",
+                "https://www.googleapis.com/auth/userinfo.email",
+                "https://www.googleapis.com/auth/userinfo.profile",
+                "https://www.googleapis.com/auth/calendar.readonly",
+                "https://www.googleapis.com/auth/calendar.events",
+                "https://www.googleapis.com/auth/gmail.readonly",
+                "https://www.googleapis.com/auth/gmail.send",
+                "https://www.googleapis.com/auth/contacts.readonly",
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/tasks",
+                "https://www.googleapis.com/auth/drive.readonly",
+            ],
+            redirect_uri="postmessage",  # Used by @react-oauth/google auth-code flow
+        )
+        flow.fetch_token(code=payload.code)
+        creds = flow.credentials
+
+        # Save to token.json so all existing Google API services (email, calendar, etc.) work
+        token_file = credentials_file.parent / "token.json"
+        with open(token_file, "w") as f:
+            f.write(creds.to_json())
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Failed to exchange Google auth code: {str(e)}",
+        )
+
+    # Fetch user info using the access token
     async with httpx.AsyncClient() as client:
         response = await client.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
-            headers={"Authorization": f"Bearer {payload.token}"},
+            headers={"Authorization": f"Bearer {creds.token}"},
         )
 
     if response.status_code != 200:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired Google token",
+            detail="Failed to fetch user info from Google",
         )
 
     userinfo = response.json()
@@ -112,21 +158,31 @@ async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
-        # Derive unique username from name, fallback to email prefix
         base_name = name.strip() if name.strip() else email.split("@")[0]
         user = User(
             name=base_name,
             email=email,
             password="GOOGLE_OAUTH_" + google_id,  # placeholder, never used for login
             is_google_user=True,
+            google_access_token=creds.token,
+            google_refresh_token=creds.refresh_token,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
+    else:
+        # Update name and tokens on every login
+        user.name = name.strip() if name.strip() else user.name
+        user.is_google_user = True
+        user.google_access_token = creds.token
+        if creds.refresh_token:  # Only update if a new refresh token was issued
+            user.google_refresh_token = creds.refresh_token
+        db.commit()
+        db.refresh(user)
 
-    token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+    jwt_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
 
     return AuthResponse(
         user=UserResponse.model_validate(user),
-        access_token=token,
+        access_token=jwt_token,
     )

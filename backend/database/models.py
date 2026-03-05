@@ -55,6 +55,8 @@ class User(Base):
         nullable=False,
     )
     is_google_user = Column(Boolean, default=False, nullable=True)
+    google_access_token = Column(Text, nullable=True)
+    google_refresh_token = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False

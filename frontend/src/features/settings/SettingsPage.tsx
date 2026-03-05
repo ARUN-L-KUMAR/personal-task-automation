@@ -67,7 +67,11 @@ function SectionHeader({ title, desc }: { title: string; desc?: string }) {
 // TAB: Account
 // ════════════════════════════════════════════════════════════════════════════
 function AccountTab() {
-    const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+    const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
+    const displayName = user?.name || 'User';
+    const initials = user?.name
+        ? user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+        : 'U';
     const connectGoogle = () => { window.location.href = 'http://localhost:8000/api/auth/google'; };
 
     return (
@@ -78,10 +82,10 @@ function AccountTab() {
                 <Card className="p-6 border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-5">
                         <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-brand-500/20 flex-shrink-0">
-                            AK
+                            {initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h4 className="text-lg font-bold text-slate-900 dark:text-white">Arun Kumar</h4>
+                            <h4 className="text-lg font-bold text-slate-900 dark:text-white">{displayName}</h4>
                             <p className="text-sm text-slate-500 dark:text-slate-400">Pro Plan · Final Year Project</p>
                             <div className="flex items-center gap-2 mt-2">
                                 <span className={cn(
