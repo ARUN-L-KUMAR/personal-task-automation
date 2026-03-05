@@ -67,3 +67,8 @@ export const googleLoginUser = async (code: string): Promise<AuthResponse> => {
     setToken(data.access_token);
     return data;
 };
+
+export const checkGoogleServicesStatus = async (): Promise<{ authenticated: boolean; message: string }> => {
+    const response = await api.get('/api/auth/status');
+    return response.data;
+};

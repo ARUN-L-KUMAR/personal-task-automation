@@ -9,26 +9,31 @@ Functions:
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from sqlalchemy.orm import Session
+
 from utils.google_auth import get_credentials
+from database.models import User
 
 
-def _get_service():
-    """Build Google Sheets service."""
-    creds = get_credentials()
+def _get_service(user: User, db: Session):
+    """Build Google Sheets service for a specific user."""
+    creds = get_credentials(user, db)
     if not creds:
         raise Exception("Google not authenticated. Please connect Google account first.")
     return build("sheets", "v4", credentials=creds)
 
 
-def read_sheet(spreadsheet_id: str, range_name: str = "Sheet1"):
+def read_sheet(user: User, db: Session, spreadsheet_id: str, range_name: str = "Sheet1"):
     """
-    Read data from a Google Sheet.
+    Read data from a Google Sheet for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         spreadsheet_id: The spreadsheet ID from the URL
         range_name: Sheet range (e.g., "Sheet1!A1:D10")
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     try:
         result = service.spreadsheets().values().get(
@@ -56,16 +61,18 @@ def read_sheet(spreadsheet_id: str, range_name: str = "Sheet1"):
     }
 
 
-def write_sheet(spreadsheet_id: str, range_name: str, values: list):
+def write_sheet(user: User, db: Session, spreadsheet_id: str, range_name: str, values: list):
     """
-    Write data to a Google Sheet (overwrites existing data in range).
+    Write data to a Google Sheet (overwrites existing data in range) for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         spreadsheet_id: The spreadsheet ID
         range_name: Sheet range to write to
         values: 2D list of values [[row1], [row2], ...]
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     body = {"values": values}
     
@@ -86,16 +93,18 @@ def write_sheet(spreadsheet_id: str, range_name: str, values: list):
         return {"error": f"Google Sheets error: {e.resp.status}", "detail": str(e)}
 
 
-def append_sheet(spreadsheet_id: str, range_name: str, values: list):
+def append_sheet(user: User, db: Session, spreadsheet_id: str, range_name: str, values: list):
     """
-    Append rows to a Google Sheet.
+    Append rows to a Google Sheet for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         spreadsheet_id: The spreadsheet ID
         range_name: Sheet range to append to
         values: 2D list of values [[row1], [row2], ...]
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     body = {"values": values}
     

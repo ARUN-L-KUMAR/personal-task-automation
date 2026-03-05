@@ -239,7 +239,7 @@ async def get_dashboard_summary(
         "planning": "grey",
     }
 
-    if not is_authenticated():
+    if not is_authenticated(current_user):
         return {
             "authenticated": False,
             "agent_status": agent_status,
@@ -269,9 +269,9 @@ async def get_dashboard_summary(
 
     try:
         loop = asyncio.get_event_loop()
-        calendar_task = loop.run_in_executor(None, get_today_events)
-        tasks_task = loop.run_in_executor(None, lambda: get_tasks(list_id="@default"))
-        emails_task = loop.run_in_executor(None, lambda: get_inbox(max_results=10))
+        calendar_task = loop.run_in_executor(None, lambda: get_today_events(current_user, db))
+        tasks_task = loop.run_in_executor(None, lambda: get_tasks(current_user, db, list_id="@default"))
+        emails_task = loop.run_in_executor(None, lambda: get_inbox(current_user, db, max_results=10))
 
         events, tasks, emails = await asyncio.gather(calendar_task, tasks_task, emails_task)
         agent_status["calendar"] = "success"

@@ -9,20 +9,23 @@ Functions:
 
 from datetime import datetime, timedelta
 from googleapiclient.discovery import build
+from sqlalchemy.orm import Session
+
 from utils.google_auth import get_credentials
+from database.models import User
 
 
-def _get_service():
-    """Build Google Calendar service."""
-    creds = get_credentials()
+def _get_service(user: User, db: Session):
+    """Build Google Calendar service for a specific user."""
+    creds = get_credentials(user, db)
     if not creds:
         raise Exception("Google not authenticated. Please connect Google account first.")
     return build("calendar", "v3", credentials=creds)
 
 
-def get_today_events():
-    """Fetch today's events from primary calendar."""
-    service = _get_service()
+def get_today_events(user: User, db: Session):
+    """Fetch today's events from primary calendar for the specified user."""
+    service = _get_service(user, db)
     
     now = datetime.utcnow()
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat() + "Z"
@@ -56,16 +59,18 @@ def get_today_events():
     ]
 
 
-def get_events(start_date: str = None, end_date: str = None, max_results: int = 20):
+def get_events(user: User, db: Session, start_date: str = None, end_date: str = None, max_results: int = 20):
     """
-    Fetch events in a date range.
+    Fetch events in a date range for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         start_date: ISO format start date (default: now)
         end_date: ISO format end date (default: 7 days from now)
         max_results: Maximum number of events to return
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     if not start_date:
         start_date = datetime.utcnow().isoformat() + "Z"
@@ -97,19 +102,21 @@ def get_events(start_date: str = None, end_date: str = None, max_results: int = 
     ]
 
 
-def create_event(summary: str, start_time: str, end_time: str, 
+def create_event(user: User, db: Session, summary: str, start_time: str, end_time: str, 
                  location: str = "", description: str = ""):
     """
-    Create a new calendar event.
+    Create a new calendar event for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         summary: Event title
         start_time: ISO format start time
         end_time: ISO format end time
         location: Event location
         description: Event description
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     event = {
         "summary": summary,

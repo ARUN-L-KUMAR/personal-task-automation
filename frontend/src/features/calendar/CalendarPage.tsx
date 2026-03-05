@@ -631,7 +631,7 @@ export function CalendarPage() {
             const res = await calendarService.getEventsRange(rangeStart.toISOString(), rangeEnd.toISOString(), 100);
             setEvents(res.data.events || []);
         } catch (err: any) {
-            setError(err?.message || 'Could not load events. Ensure Google account is connected.');
+            setError(err?.message || 'Could not load events. Ensure Google is connected.');
         } finally {
             setIsLoading(false);
         }

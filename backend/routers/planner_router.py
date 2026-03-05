@@ -1,15 +1,20 @@
 """
-Planner API Router
+Planner API Router (Multi-User Version)
 
 Endpoints:
 - POST /api/plan-day-live → Plan day using REAL Google data (auto-fetches everything)
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
+from sqlalchemy.orm import Session
+
 from utils.google_auth import is_authenticated
 from graph.agent_graph import ScheduleAgentGraph
+from database.connection import get_db
+from database.models import User
+from middleware import get_current_user
 
 router = APIRouter(tags=["Planner"])
 
@@ -34,7 +39,10 @@ class PlannerRequest(BaseModel):
 
 
 @router.post("/plan-day-live")
-def plan_day_live():
+def plan_day_live(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Plan the user's day using REAL Google data.
     
@@ -46,10 +54,10 @@ def plan_day_live():
     
     No input needed — all data is fetched from connected Google services.
     """
-    if not is_authenticated():
+    if not is_authenticated(current_user):
         raise HTTPException(
             status_code=401,
-            detail="Google not authenticated. Connect Google account at /api/auth/google"
+            detail="Google not connected. Please connect Google account in Settings."
         )
     
     try:

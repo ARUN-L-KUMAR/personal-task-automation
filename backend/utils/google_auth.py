@@ -1,14 +1,17 @@
 """
-Google OAuth2 Authentication Utility
+Google OAuth2 Authentication Utility (Multi-User Database Version)
 
 Handles OAuth2 flow for all Google services:
 - Google Calendar, Gmail, Maps, Contacts, Sheets, Tasks
+
+SCALABLE: Stores tokens per-user in database instead of single token.json file.
 """
 
 import os
-import json
 import traceback
 from pathlib import Path
+from datetime import datetime
+from sqlalchemy.orm import Session
 
 # Fix: Google sometimes returns different scope strings than requested.
 # This env var tells oauthlib to accept the token despite scope differences.
@@ -16,6 +19,8 @@ os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
+
+from database.models import User
 
 # All scopes needed for the 7 Google services
 SCOPES = [
@@ -31,36 +36,44 @@ SCOPES = [
 
 BASE_DIR = Path(__file__).parent.parent
 CREDENTIALS_FILE = BASE_DIR / "credentials.json"
-TOKEN_FILE = BASE_DIR / "token.json"
 REDIRECT_URI = "http://localhost:8000/api/auth/google/callback"
 
 
-def get_credentials() -> Credentials | None:
+def get_credentials(user: User, db: Session) -> Credentials | None:
     """
-    Get valid Google credentials.
-    Returns None if not authenticated.
+    Get valid Google credentials for a specific user from database.
+    Returns None if user hasn't connected Google.
     """
-    creds = None
+    if not user.google_access_token:
+        return None
 
-    # Load existing token
-    if TOKEN_FILE.exists():
-        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+    # Build credentials from database
+    creds = Credentials(
+        token=user.google_access_token,
+        refresh_token=user.google_refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=_get_client_id(),
+        client_secret=_get_client_secret(),
+        scopes=SCOPES
+    )
 
     # Refresh if expired
-    if creds and creds.expired and creds.refresh_token:
+    if creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
-            _save_token(creds)
-        except Exception:
+            _save_token_to_db(user, creds, db)
+        except Exception as e:
+            print(f"Token refresh failed: {e}")
             # Token refresh failed, need re-auth
-            creds = None
+            return None
 
     return creds
 
 
-def get_auth_url() -> str | None:
+def get_auth_url(user_id: str) -> str | None:
     """
     Generate Google OAuth2 authorization URL.
+    Uses state parameter to track which user is connecting.
     Returns None if credentials.json is missing.
     """
     if not CREDENTIALS_FILE.exists():
@@ -69,7 +82,8 @@ def get_auth_url() -> str | None:
     flow = Flow.from_client_secrets_file(
         str(CREDENTIALS_FILE),
         scopes=SCOPES,
-        redirect_uri=REDIRECT_URI
+        redirect_uri=REDIRECT_URI,
+        state=user_id  # Track which user is connecting
     )
 
     auth_url, _ = flow.authorization_url(
@@ -81,9 +95,10 @@ def get_auth_url() -> str | None:
     return auth_url
 
 
-def handle_auth_callback(code: str) -> bool:
+def handle_auth_callback(code: str, state: str, user: User, db: Session) -> bool:
     """
     Handle OAuth2 callback with authorization code.
+    Saves tokens to the user's database record.
     Returns True if successful.
     """
     if not CREDENTIALS_FILE.exists():
@@ -93,12 +108,13 @@ def handle_auth_callback(code: str) -> bool:
         flow = Flow.from_client_secrets_file(
             str(CREDENTIALS_FILE),
             scopes=SCOPES,
-            redirect_uri=REDIRECT_URI
+            redirect_uri=REDIRECT_URI,
+            state=state
         )
 
         flow.fetch_token(code=code)
         creds = flow.credentials
-        _save_token(creds)
+        _save_token_to_db(user, creds, db)
         return True
     except Exception as e:
         print(f"Auth callback error: {e}")
@@ -106,19 +122,38 @@ def handle_auth_callback(code: str) -> bool:
         return False
 
 
-def is_authenticated() -> bool:
-    """Check if we have valid Google credentials."""
-    creds = get_credentials()
-    return creds is not None and creds.valid
+def is_authenticated(user: User) -> bool:
+    """Check if user has connected Google services."""
+    return user.google_access_token is not None
 
 
-def logout():
-    """Remove stored token to log out."""
-    if TOKEN_FILE.exists():
-        TOKEN_FILE.unlink()
+def logout(user: User, db: Session):
+    """Disconnect Google services for this user."""
+    user.google_access_token = None
+    user.google_refresh_token = None
+    user.google_token_expiry = None
+    db.commit()
 
 
-def _save_token(creds: Credentials):
-    """Save credentials to token.json."""
-    with open(TOKEN_FILE, "w") as f:
-        f.write(creds.to_json())
+def _save_token_to_db(user: User, creds: Credentials, db: Session):
+    """Save Google credentials to user's database record."""
+    user.google_access_token = creds.token
+    user.google_refresh_token = creds.refresh_token
+    user.google_token_expiry = creds.expiry
+    db.commit()
+
+
+def _get_client_id() -> str:
+    """Read client_id from credentials.json."""
+    import json
+    with open(CREDENTIALS_FILE) as f:
+        data = json.load(f)
+        return data["web"]["client_id"]
+
+
+def _get_client_secret() -> str:
+    """Read client_secret from credentials.json."""
+    import json
+    with open(CREDENTIALS_FILE) as f:
+        data = json.load(f)
+        return data["web"]["client_secret"]

@@ -1,5 +1,5 @@
 """
-Google Sheets API Router
+Google Sheets API Router (Multi-User Version)
 
 Endpoints:
 - GET  /api/sheets/{spreadsheet_id}  → Read sheet data
@@ -7,27 +7,33 @@ Endpoints:
 - POST /api/sheets/{spreadsheet_id}/append → Append rows
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from typing import List
+from sqlalchemy.orm import Session
+
 from utils.google_auth import is_authenticated, get_credentials
 from utils.google_sheets import read_sheet, write_sheet, append_sheet
+from database.connection import get_db
+from database.models import User
+from middleware import get_current_user
 from googleapiclient.discovery import build
 
 router = APIRouter(prefix="/sheets", tags=["Sheets"])
 
 
-def _check_auth():
-    if not is_authenticated():
-        raise HTTPException(status_code=401, detail="Google not authenticated. Please connect Google account.")
-
-
 @router.get("/list")
-def list_user_sheets(query: str = Query("", description="Optional search query")):
+def list_user_sheets(
+    query: str = Query("", description="Optional search query"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """List the user's Google Sheets files from Drive."""
-    _check_auth()
+    if not is_authenticated(current_user):
+        raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
+    
     try:
-        creds = get_credentials()
+        creds = get_credentials(current_user, db)
         drive = build("drive", "v3", credentials=creds)
         q = "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false"
         if query:
@@ -56,11 +62,17 @@ def list_user_sheets(query: str = Query("", description="Optional search query")
 
 
 @router.get("/{spreadsheet_id}/tabs")
-def fetch_sheet_tabs(spreadsheet_id: str):
+def fetch_sheet_tabs(
+    spreadsheet_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Get all sheet tab names from a spreadsheet."""
-    _check_auth()
+    if not is_authenticated(current_user):
+        raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
+    
     try:
-        creds = get_credentials()
+        creds = get_credentials(current_user, db)
         svc = build("sheets", "v4", credentials=creds)
         meta = svc.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
         tabs = [s["properties"]["title"] for s in meta.get("sheets", [])]
@@ -73,12 +85,16 @@ def fetch_sheet_tabs(spreadsheet_id: str):
 @router.get("/{spreadsheet_id}")
 def fetch_sheet_data(
     spreadsheet_id: str,
-    range_name: str = Query("Sheet1", description="Sheet range (e.g., Sheet1!A1:D10)")
+    range_name: str = Query("Sheet1", description="Sheet range (e.g., Sheet1!A1:D10)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Read data from a Google Sheet."""
-    _check_auth()
+    if not is_authenticated(current_user):
+        raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
+    
     try:
-        data = read_sheet(spreadsheet_id=spreadsheet_id, range_name=range_name)
+        data = read_sheet(current_user, db, spreadsheet_id=spreadsheet_id, range_name=range_name)
         if isinstance(data, dict) and "error" in data:
             # Check for common invalid ID error
             if "404" in str(data.get("error", "")):
@@ -97,11 +113,20 @@ class WriteSheetRequest(BaseModel):
 
 
 @router.post("/{spreadsheet_id}")
-def write_sheet_data(spreadsheet_id: str, body: WriteSheetRequest):
+def write_sheet_data(
+    spreadsheet_id: str,
+    body: WriteSheetRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Write data to a Google Sheet."""
-    _check_auth()
+    if not is_authenticated(current_user):
+        raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
+    
     try:
         result = write_sheet(
+            current_user,
+            db,
             spreadsheet_id=spreadsheet_id,
             range_name=body.range_name,
             values=body.values
@@ -116,11 +141,20 @@ def write_sheet_data(spreadsheet_id: str, body: WriteSheetRequest):
 
 
 @router.post("/{spreadsheet_id}/append")
-def append_sheet_data(spreadsheet_id: str, body: WriteSheetRequest):
+def append_sheet_data(
+    spreadsheet_id: str,
+    body: WriteSheetRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Append rows to a Google Sheet."""
-    _check_auth()
+    if not is_authenticated(current_user):
+        raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
+    
     try:
         result = append_sheet(
+            current_user,
+            db,
             spreadsheet_id=spreadsheet_id,
             range_name=body.range_name,
             values=body.values

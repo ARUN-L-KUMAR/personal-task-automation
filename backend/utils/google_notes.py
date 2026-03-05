@@ -1,24 +1,26 @@
 """
-Google Notes Utility (via Google Tasks API)
+Google Notes Utility (via Google Tasks API) - Multi-User Version
 
 Since Google Keep has no official API, we use Google Tasks
 with a dedicated "Notes" task list as a notes/reminders system.
 
 Functions:
-- get_notes()           → Fetch all notes
-- create_note(title, content) → Create a note
-- get_or_create_notes_list() → Ensure "Notes" list exists
+- get_notes(user, db)           → Fetch all notes
+- create_note(user, db, title, content) → Create a note
+- get_or_create_notes_list(user, db) → Ensure "Notes" list exists
 """
 
+from database.models import User
+from sqlalchemy.orm import Session
 from utils.google_tasks import _get_service
 
 
 NOTES_LIST_TITLE = "AI Agent Notes"
 
 
-def get_or_create_notes_list():
+def get_or_create_notes_list(user: User, db: Session):
     """Get or create the dedicated Notes task list."""
-    service = _get_service()
+    service = _get_service(user, db)
     
     # Check if Notes list exists
     results = service.tasklists().list(maxResults=20).execute()
@@ -36,10 +38,10 @@ def get_or_create_notes_list():
     return new_list["id"]
 
 
-def get_notes():
+def get_notes(user: User, db: Session):
     """Fetch all notes from the Notes list."""
-    service = _get_service()
-    list_id = get_or_create_notes_list()
+    service = _get_service(user, db)
+    list_id = get_or_create_notes_list(user, db)
     
     results = service.tasks().list(
         tasklist=list_id,
@@ -61,16 +63,18 @@ def get_notes():
     ]
 
 
-def create_note(title: str, content: str = ""):
+def create_note(user: User, db: Session, title: str, content: str = ""):
     """
     Create a new note.
     
     Args:
+        user: User object
+        db: Database session
         title: Note title
         content: Note content/body
     """
-    service = _get_service()
-    list_id = get_or_create_notes_list()
+    service = _get_service(user, db)
+    list_id = get_or_create_notes_list(user, db)
     
     task_body = {
         "title": title,
@@ -90,10 +94,10 @@ def create_note(title: str, content: str = ""):
     }
 
 
-def delete_note(note_id: str):
+def delete_note(user: User, db: Session, note_id: str):
     """Delete a note."""
-    service = _get_service()
-    list_id = get_or_create_notes_list()
+    service = _get_service(user, db)
+    list_id = get_or_create_notes_list(user, db)
     
     service.tasks().delete(
         tasklist=list_id,

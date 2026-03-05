@@ -223,7 +223,7 @@ export function ContactsPage() {
             const response = await contactsService.getContacts(100);
             setContacts(response.data.contacts || []);
         } catch (err: any) {
-            setError(err?.message || 'Failed to load contacts. Make sure Google account is connected.');
+            setError(err?.message || 'Failed to load contacts. Make sure Google is connected.');
         } finally {
             setIsLoading(false);
         }

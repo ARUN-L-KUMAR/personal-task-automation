@@ -378,7 +378,7 @@ export function SheetsPage() {
             const res = await sheetsService.listSheets(q);
             setDriveSheets(res.data.sheets || []);
         } catch (e: any) {
-            setListError(e?.message || 'Could not fetch your Google Sheets. Ensure Google account is connected.');
+            setListError(e?.message || 'Could not fetch your Google Sheets. Ensure Google is connected.');
         } finally { setIsLoadingList(false); }
     }, []);
 

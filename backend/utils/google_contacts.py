@@ -7,25 +7,30 @@ Functions:
 """
 
 from googleapiclient.discovery import build
+from sqlalchemy.orm import Session
+
 from utils.google_auth import get_credentials
+from database.models import User
 
 
-def _get_service():
-    """Build Google People (Contacts) service."""
-    creds = get_credentials()
+def _get_service(user: User, db: Session):
+    """Build Google People API service for a specific user."""
+    creds = get_credentials(user, db)
     if not creds:
         raise Exception("Google not authenticated. Please connect Google account first.")
     return build("people", "v1", credentials=creds)
 
 
-def get_contacts(max_results: int = 50):
+def get_contacts(user: User, db: Session, max_results: int = 50):
     """
-    Fetch contacts with name, email, and phone.
+    Fetch contacts with name, email, and phone for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         max_results: Maximum contacts to return
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     results = service.people().connections().list(
         resourceName="people/me",
@@ -52,14 +57,16 @@ def get_contacts(max_results: int = 50):
     return contacts
 
 
-def search_contacts(query: str):
+def search_contacts(user: User, db: Session, query: str):
     """
-    Search contacts by name.
+    Search contacts by name for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         query: Name to search for
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     try:
         results = service.people().searchContacts(

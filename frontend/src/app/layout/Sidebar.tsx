@@ -5,11 +5,12 @@ import {
     Mail, CheckSquare, Users, Map, FileSpreadsheet,
     MessageSquare, Mic, ChevronLeft, ChevronRight, X,
     Wifi, WifiOff, Sparkles, Zap, StickyNote, BarChart3,
-    Link2, LogOut
+    LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../utils/cn';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useGoogleStatus } from '../../hooks/useGoogleStatus';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -50,13 +51,13 @@ const navSections = [
         title: 'System',
         items: [
             { name: 'Settings', href: '/settings', icon: Settings },
-            { name: 'Google Connect', href: '/google-connect', icon: Link2 },
         ]
     }
 ];
 
 export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: SidebarProps) {
-    const { user, isAuthenticated, isLoading, logout } = useAuthStore();
+    const { user, isAuthenticated, logout } = useAuthStore();
+    const { isGoogleConnected, isChecking } = useGoogleStatus();
     const navigate = useNavigate();
 
     // Build initials from user name
@@ -147,7 +148,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: Sideba
                 <div className={cn(
                     "transition-all duration-500 relative overflow-hidden group/card shadow-sm",
                     isCollapsed ? "rounded-xl" : "rounded-2xl",
-                    isAuthenticated
+                    isGoogleConnected
                         ? "bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20"
                         : "bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/50",
                     isCollapsed ? "p-2" : "p-4"
@@ -157,7 +158,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: Sideba
                             <div className={cn(
                                 "rounded-xl flex items-center justify-center font-black",
                                 isCollapsed ? "h-8 w-8 text-[10px]" : "h-10 w-10 text-xs",
-                                isAuthenticated
+                                isGoogleConnected
                                     ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/40"
                                     : "bg-slate-200 dark:bg-slate-700 text-slate-500"
                             )}>
@@ -168,7 +169,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: Sideba
                                 isCollapsed
                                     ? "-bottom-0.5 -right-0.5 h-2.5 w-2.5 border-white dark:border-slate-900"
                                     : "-bottom-1 -right-1 h-3.5 w-3.5 border-white dark:border-slate-900",
-                                isLoading ? "bg-amber-400 animate-pulse" : isAuthenticated ? "bg-emerald-400" : "bg-rose-500"
+                                isChecking ? "bg-amber-400 animate-pulse" : isGoogleConnected ? "bg-emerald-400" : "bg-rose-500"
                             )} />
                         </div>
 
@@ -179,12 +180,12 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: Sideba
                                 </p>
                                 <div className={cn(
                                     "text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5",
-                                    isAuthenticated ? "text-emerald-600" : "text-rose-400"
+                                    isGoogleConnected ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"
                                 )}>
-                                    {isLoading ? (
-                                        <><Wifi className="h-3 w-3 animate-pulse" /> Syncing…</>
-                                    ) : isAuthenticated ? (
-                                        <><Wifi className="h-3 w-3" /> Google Synced</>
+                                    {isChecking ? (
+                                        <><Wifi className="h-3 w-3 animate-pulse" /> Checking…</>
+                                    ) : isGoogleConnected ? (
+                                        <><Wifi className="h-3 w-3" /> Google Connected</>
                                     ) : (
                                         <><WifiOff className="h-3 w-3" /> Google Disconnected</>
                                     )}

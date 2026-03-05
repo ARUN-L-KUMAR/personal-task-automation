@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Bot, Send, X, Trash2, Sparkles, Minimize2, Maximize2, Loader2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useChat } from '../../hooks/useChat';
+import { useGoogleStatus } from '../../hooks/useGoogleStatus';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { useState } from 'react';
 
@@ -17,6 +18,7 @@ export function FloatingChatWidget() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
     const { messages, input, setInput, isLoading, sendMessage, clearChat, endRef } = useChat();
+    const { isGoogleConnected, isChecking } = useGoogleStatus();
 
     // Mark unread when bot replies and widget is closed
     useEffect(() => {
@@ -69,8 +71,22 @@ export function FloatingChatWidget() {
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold leading-none">G-One AI</p>
                             <p className="text-[10px] text-indigo-200 mt-0.5 flex items-center gap-1">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />
-                                Online · Google-connected
+                                {isChecking ? (
+                                    <>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block animate-pulse" />
+                                        Checking...
+                                    </>
+                                ) : isGoogleConnected ? (
+                                    <>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />
+                                        Google Connected
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-red-400 inline-block" />
+                                        Google Disconnected
+                                    </>
+                                )}
                             </p>
                         </div>
                         <div className="flex items-center gap-1">

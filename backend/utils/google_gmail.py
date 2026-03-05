@@ -1,35 +1,40 @@
 """
-Google Gmail API Utility
+Google Gmail API Utility (Multi-User Version)
 
 Functions:
-- get_inbox(max_results)  → Fetch recent inbox emails
-- get_message(msg_id)     → Get full message details
-- send_email(to, subject, body) → Send an email
+- get_inbox(user, db, max_results, query) → Fetch recent inbox emails for user
+- get_message(user, db, msg_id)            → Get full message details for user
+- send_email(user, db, to, subject, body)  → Send an email from user's account
 """
 
 import base64
 from email.mime.text import MIMEText
 from googleapiclient.discovery import build
+from sqlalchemy.orm import Session
+
 from utils.google_auth import get_credentials
+from database.models import User
 
 
-def _get_service():
-    """Build Gmail service."""
-    creds = get_credentials()
+def _get_service(user: User, db: Session):
+    """Build Gmail service for a specific user."""
+    creds = get_credentials(user, db)
     if not creds:
         raise Exception("Google not authenticated. Please connect Google account first.")
     return build("gmail", "v1", credentials=creds)
 
 
-def get_inbox(max_results: int = 15, query: str = ""):
+def get_inbox(user: User, db: Session, max_results: int = 15, query: str = ""):
     """
-    Fetch recent inbox emails.
+    Fetch recent inbox emails for the specified user.
     
     Args:
+        user: User object
+        db: Database session
         max_results: Number of emails to fetch
         query: Gmail search query (e.g., "is:unread", "from:boss@email.com")
     """
-    service = _get_service()
+    service = _get_service(user, db)
     
     search_query = query if query else "in:inbox"
     
@@ -65,9 +70,9 @@ def get_inbox(max_results: int = 15, query: str = ""):
     return emails
 
 
-def get_message(msg_id: str):
-    """Get full message details including body."""
-    service = _get_service()
+def get_message(user: User, db: Session, msg_id: str):
+    """Get full message details including body for the specified user."""
+    service = _get_service(user, db)
     
     msg = service.users().messages().get(
         userId="me",
@@ -104,9 +109,9 @@ def get_message(msg_id: str):
     }
 
 
-def send_email(to: str, subject: str, body: str):
-    """Send an email."""
-    service = _get_service()
+def send_email(user: User, db: Session, to: str, subject: str, body: str):
+    """Send an email from the user's Gmail account."""
+    service = _get_service(user, db)
     
     message = MIMEText(body)
     message["to"] = to
