@@ -6,10 +6,21 @@ import {
     Bike, Bus, Zap, BarChart3, ArrowRight, Route,
     Star,
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mapsService } from '../../services/maps.service';
 import { cn } from '../../utils/cn';
+
+// Fix Leaflet default icon issue with webpack
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface RouteStep {
@@ -181,7 +192,233 @@ function PlaceInput({ value, onChange, placeholder, icon, color = 'blue' }: {
     );
 }
 
-// ─── Google Maps Embed ──────────────────────────────────────────────────────────
+// ─── Decode Google polyline to lat/lng array ────────────────────────────────────
+function decodePolyline(encoded: string): [number, number][] {
+    if (!encoded) return [];
+    const poly: [number, number][] = [];
+    let index = 0, len = encoded.length;
+    let lat = 0, lng = 0;
+
+    while (index < len) {
+        let b, shift = 0, result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        poly.push([lat / 1e5, lng / 1e5]);
+    }
+    return poly;
+}
+
+// ─── Auto-fit map bounds helper ─────────────────────────────────────────────────
+function FitBounds({ bounds }: { bounds: [[number, number], [number, number]] | null }) {
+    const map = useMap();
+    useEffect(() => {
+        if (bounds) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }, [bounds, map]);
+    return null;
+}
+
+// ─── Leaflet Map with OpenStreetMap ─────────────────────────────────────────────
+function LeafletMap({ 
+    origin, 
+    destination, 
+    polyline, 
+    mode 
+}: { 
+    origin: string; 
+    destination: string; 
+    polyline?: string;
+    mode: string;
+}) {
+    const [originCoords, setOriginCoords] = useState<[number, number] | null>(null);
+    const [destCoords, setDestCoords] = useState<[number, number] | null>(null);
+    const [routePath, setRoutePath] = useState<[number, number][]>([]);
+    const [isGeocoding, setIsGeocoding] = useState(false);
+
+    // Geocode addresses to coordinates
+    useEffect(() => {
+        if (!origin || !destination) return;
+        setIsGeocoding(true);
+
+        const geocodeAddresses = async () => {
+            try {
+                // Try to use backend geocoding (Google Maps API)
+                const [originRes, destRes] = await Promise.all([
+                    mapsService.geocode(origin).catch(() => null),
+                    mapsService.geocode(destination).catch(() => null)
+                ]);
+
+                if (originRes?.data?.lat && originRes?.data?.lng) {
+                    setOriginCoords([originRes.data.lat, originRes.data.lng]);
+                }
+                if (destRes?.data?.lat && destRes?.data?.lng) {
+                    setDestCoords([destRes.data.lat, destRes.data.lng]);
+                }
+            } catch (error) {
+                console.error('Geocoding error:', error);
+            } finally {
+                setIsGeocoding(false);
+            }
+        };
+
+        geocodeAddresses();
+    }, [origin, destination]);
+
+    // Decode polyline if available
+    useEffect(() => {
+        if (polyline) {
+            const decoded = decodePolyline(polyline);
+            setRoutePath(decoded);
+            // Update origin/dest from polyline endpoints if not already set
+            if (decoded.length > 0) {
+                if (!originCoords) setOriginCoords(decoded[0]);
+                if (!destCoords) setDestCoords(decoded[decoded.length - 1]);
+            }
+        }
+    }, [polyline, originCoords, destCoords]);
+
+    // Calculate bounds
+    const bounds: [[number, number], [number, number]] | null = 
+        routePath.length > 0 
+            ? [
+                [Math.min(...routePath.map(p => p[0])), Math.min(...routePath.map(p => p[1]))],
+                [Math.max(...routePath.map(p => p[0])), Math.max(...routePath.map(p => p[1]))]
+              ]
+            : originCoords && destCoords 
+                ? [[Math.min(originCoords[0], destCoords[0]), Math.min(originCoords[1], destCoords[1])],
+                   [Math.max(originCoords[0], destCoords[0]), Math.max(originCoords[1], destCoords[1])]]
+                : null;
+
+    const center: [number, number] = 
+        originCoords || destCoords 
+            ? originCoords || destCoords! 
+            : [20.5937, 78.9629]; // Default: India center
+
+    const openInMaps = () => {
+        const url = origin && destination
+            ? `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(destination)}/?travelmode=${mode}`
+            : `https://www.google.com/maps`;
+        window.open(url, '_blank');
+    };
+
+    // Custom icons
+    const originIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const destIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    if (!origin && !destination) {
+        return (
+            <div className="relative w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center">
+                <div className="h-20 w-20 bg-white dark:bg-slate-700 rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-5">
+                    <MapIcon className="h-10 w-10 text-blue-500" />
+                </div>
+                <h4 className="text-xl font-bold text-slate-900 dark:text-white">Route Planning</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-xs text-center">
+                    Enter origin and destination to view interactive map with real-time directions.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative w-full h-full">
+            <MapContainer
+                center={center}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+                className="z-0"
+            >
+                <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                
+                {originCoords && (
+                    <Marker position={originCoords} icon={originIcon}>
+                        <Popup>
+                            <div className="text-xs">
+                                <p className="font-bold text-emerald-600">Origin</p>
+                                <p className="text-slate-700">{origin}</p>
+                            </div>
+                        </Popup>
+                    </Marker>
+                )}
+                
+                {destCoords && (
+                    <Marker position={destCoords} icon={destIcon}>
+                        <Popup>
+                            <div className="text-xs">
+                                <p className="font-bold text-red-600">Destination</p>
+                                <p className="text-slate-700">{destination}</p>
+                            </div>
+                        </Popup>
+                    </Marker>
+                )}
+
+                {routePath.length > 0 && (
+                    <Polyline 
+                        positions={routePath} 
+                        color="#3B82F6" 
+                        weight={4}
+                        opacity={0.7}
+                    />
+                )}
+
+                <FitBounds bounds={bounds} />
+            </MapContainer>
+
+            {/* Floating button to open in Google Maps */}
+            <button
+                onClick={openInMaps}
+                className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all"
+            >
+                <ExternalLink className="h-3.5 w-3.5" /> Google Maps
+            </button>
+
+            {isGeocoding && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 flex items-center justify-center z-[999]">
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading map...</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Google Maps Embed (OLD - kept as fallback) ────────────────────────────────
 function MapEmbed({ origin, destination, mode }: { origin: string; destination: string; mode: string }) {
     const apiKey = process.env.REACT_APP_MAPS_EMBED_KEY || process.env.REACT_APP_API_BASE_URL?.replace('http://localhost:8000', '') || '';
 
@@ -283,17 +520,18 @@ export function MapsPage() {
     const currentRoute = allRoutes[selectedAlt] || routeData;
 
     // ── Fetch Directions ──
-    const fetchDirections = async () => {
+    const fetchDirections = async (customMode?: TravelMode) => {
         if (!originInput.trim() || !destInput.trim()) {
             setError('Please enter both origin and destination.');
             return;
         }
+        const activeMode = customMode || mode;
         setIsLoading(true); setError(null); setRouteData(null); setSelectedAlt(0);
         try {
             const wpStr = waypoints.join('|');
-            const res = await mapsService.getDirections(originInput.trim(), destInput.trim(), mode, wpStr);
+            const res = await mapsService.getDirections(originInput.trim(), destInput.trim(), activeMode, wpStr);
             setRouteData(res.data.directions);
-            pushToast('success', `Route found: ${res.data.directions.duration}`);
+            pushToast('success', `${res.data.directions.mode} route: ${res.data.directions.duration}`);
         } catch (e: any) {
             const msg = e?.response?.data?.detail || e?.message || 'Failed to fetch directions.';
             setError(msg);
@@ -362,10 +600,10 @@ export function MapsPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
                         Maps & Travel
-                        <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">Real-time</span>
+                        <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">Free</span>
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        Real-time directions, route comparison, and travel insights powered by Google Maps.
+                        Interactive maps with OpenStreetMap + real-time directions via Google Maps API.
                     </p>
                 </div>
             </header>
@@ -375,7 +613,10 @@ export function MapsPage() {
                 {/* Mode selector */}
                 <div className="flex items-center gap-2 mb-4">
                     {MODES.map(m => (
-                        <button key={m.value} onClick={() => setMode(m.value)}
+                        <button key={m.value} onClick={() => {
+                            setMode(m.value);
+                            if (routeData) fetchDirections(m.value);
+                        }}
                             className={cn(
                                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
                                 mode === m.value
@@ -409,7 +650,7 @@ export function MapsPage() {
                         icon={<div className="h-3 w-3 rounded-full bg-blue-600 ring-2 ring-blue-600/20" />}
                     />
 
-                    <Button onClick={fetchDirections} disabled={isLoading}
+                    <Button onClick={() => fetchDirections()} disabled={isLoading}
                         className="bg-blue-600 hover:bg-blue-700 text-white h-[42px] px-5 flex-shrink-0 whitespace-nowrap">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Navigation className="h-4 w-4 mr-1.5" />}
                         {isLoading ? 'Finding…' : 'Get Directions'}
@@ -456,13 +697,86 @@ export function MapsPage() {
             </Card>
 
             {/* ── Main Grid ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
 
-                {/* ── Left Sidebar ── */}
-                <aside className="xl:col-span-2 space-y-4">
+                {/* ── Map + Distance Comparison ── */}
+                <div className="lg:col-span-3 space-y-4">
+                    {/* Map Card */}
+                    <Card className="border-slate-200 dark:border-slate-800 overflow-hidden" style={{ height: 400 }}>
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                            <div className="flex items-center gap-2.5">
+                                <MapIcon className="h-4 w-4 text-blue-500" />
+                                <span className="text-sm font-bold text-slate-800 dark:text-white">
+                                    {currentRoute ? `${currentRoute.distance} · ${currentRoute.duration}` : 'Live Route Preview'}
+                                </span>
+                            </div>
+                            <button onClick={openGoogleMaps}
+                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-600 transition-colors font-medium">
+                                <ExternalLink className="h-3.5 w-3.5" /> Open in Google Maps
+                            </button>
+                        </div>
+                        <div style={{ height: 'calc(400px - 49px)' }}>
+                            <LeafletMap
+                                origin={currentRoute?.origin || originInput}
+                                destination={currentRoute?.destination || destInput}
+                                polyline={currentRoute?.polyline}
+                                mode={mode}
+                            />
+                        </div>
+                    </Card>
+
+                    {/* Multi-mode comparison */}
+                    {originInput && destInput && !routeData && !isLoading && !error && (
+                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Zap className="h-3 w-3 text-amber-500" /> Quick Compare
+                                </h3>
+                            </div>
+                            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {MODES.map(m => (
+                                    <button key={m.value} onClick={() => { 
+                                        setMode(m.value); 
+                                        fetchDirections(m.value); 
+                                    }}
+                                        className={cn(
+                                            'flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md',
+                                            'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800/40 hover:bg-blue-50 dark:hover:bg-blue-900/10'
+                                        )}>
+                                        <div className={cn('h-8 w-8 rounded-full flex items-center justify-center text-white', m.color)}>
+                                            {m.icon}
+                                        </div>
+                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{m.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* Route loaded — quick stats */}
+                    {currentRoute && (
+                        <div className="grid grid-cols-3 gap-3">
+                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distance</p>
+                                <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{currentRoute.distance}</p>
+                            </Card>
+                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Duration</p>
+                                <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">{currentRoute.duration}</p>
+                            </Card>
+                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Steps</p>
+                                <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{currentRoute.steps.length}</p>
+                            </Card>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Right Sidebar ── */}
+                <aside className="lg:col-span-1 space-y-4">
 
                     {/* Route Summary Card */}
-                    {currentRoute ? (
+                    {currentRoute && (
                         <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
                             <div className="px-4 py-3 bg-blue-600 text-white flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -581,29 +895,6 @@ export function MapsPage() {
                                 </>
                             )}
                         </Card>
-                    ) : (
-                        <Card className="border-slate-200 dark:border-slate-800 p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <BarChart3 className="h-5 w-5 text-blue-500" />
-                                <h3 className="font-bold text-slate-800 dark:text-white text-sm">Travel Insights</h3>
-                            </div>
-                            <div className="space-y-3">
-                                {[
-                                    { label: 'Total Distance', value: '—' },
-                                    { label: 'Estimated Time', value: '—' },
-                                    { label: 'Travel Mode', value: `${modeConfig.label}` },
-                                    { label: 'Stops', value: waypoints.length > 0 ? `${waypoints.length}` : '—' },
-                                ].map(item => (
-                                    <div key={item.label} className="flex items-center justify-between text-sm">
-                                        <span className="text-slate-500 dark:text-slate-400">{item.label}</span>
-                                        <span className="font-bold text-slate-800 dark:text-slate-200">{item.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <p className="mt-4 text-xs text-slate-400 italic leading-relaxed">
-                                Enter origin and destination to see real-time route data, step-by-step directions, and alternative routes.
-                            </p>
-                        </Card>
                     )}
 
                     {/* Saved Routes */}
@@ -631,75 +922,6 @@ export function MapsPage() {
                         </Card>
                     )}
                 </aside>
-
-                {/* ── Map + Distance Comparison ── */}
-                <div className="xl:col-span-3 space-y-4">
-                    {/* Map Card */}
-                    <Card className="border-slate-200 dark:border-slate-800 overflow-hidden" style={{ height: 400 }}>
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                            <div className="flex items-center gap-2.5">
-                                <MapIcon className="h-4 w-4 text-blue-500" />
-                                <span className="text-sm font-bold text-slate-800 dark:text-white">
-                                    {currentRoute ? `${currentRoute.distance} · ${currentRoute.duration}` : 'Live Route Preview'}
-                                </span>
-                            </div>
-                            <button onClick={openGoogleMaps}
-                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-600 transition-colors font-medium">
-                                <ExternalLink className="h-3.5 w-3.5" /> Open in Google Maps
-                            </button>
-                        </div>
-                        <div style={{ height: 'calc(400px - 49px)' }}>
-                            <MapEmbed
-                                origin={currentRoute?.origin || originInput}
-                                destination={currentRoute?.destination || destInput}
-                                mode={mode}
-                            />
-                        </div>
-                    </Card>
-
-                    {/* Multi-mode comparison */}
-                    {originInput && destInput && !routeData && !isLoading && !error && (
-                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
-                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Zap className="h-3 w-3 text-amber-500" /> Quick Compare
-                                </h3>
-                            </div>
-                            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {MODES.map(m => (
-                                    <button key={m.value} onClick={() => { setMode(m.value); fetchDirections(); }}
-                                        className={cn(
-                                            'flex flex-col items-center gap-2 p-3 rounded-xl border transition-all hover:shadow-md',
-                                            'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-800/40 hover:bg-blue-50 dark:hover:bg-blue-900/10'
-                                        )}>
-                                        <div className={cn('h-8 w-8 rounded-full flex items-center justify-center text-white', m.color)}>
-                                            {m.icon}
-                                        </div>
-                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{m.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </Card>
-                    )}
-
-                    {/* Route loaded — quick stats */}
-                    {currentRoute && (
-                        <div className="grid grid-cols-3 gap-3">
-                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distance</p>
-                                <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{currentRoute.distance}</p>
-                            </Card>
-                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Duration</p>
-                                <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">{currentRoute.duration}</p>
-                            </Card>
-                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Steps</p>
-                                <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{currentRoute.steps.length}</p>
-                            </Card>
-                        </div>
-                    )}
-                </div>
             </div>
 
             <ToastContainer toasts={toasts} onDismiss={dismissToast} />

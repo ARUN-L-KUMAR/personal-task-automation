@@ -360,10 +360,8 @@ def _fetch_context_snapshot(user: User, db: Session) -> dict:
     if sheets_result["connected"]:
         snapshot["connected_services"].append("Sheets")
 
-    # Check Maps API key (doesn't use OAuth)
-    maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY", "")
-    if maps_api_key and maps_api_key.strip():
-        snapshot["connected_services"].append("Maps")
+    # Maps is always available (uses free OpenStreetMap + optional Google Maps API for geocoding)
+    snapshot["connected_services"].append("Maps")
 
     print(f"DEBUG snapshot: Parallel fetch completed in {_time.time()-t0:.1f}s — services: {snapshot['connected_services']}")
     return snapshot

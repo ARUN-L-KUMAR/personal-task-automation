@@ -8,11 +8,37 @@ import {
     Layers, Radio, ArrowUpRight,
     BarChart3, Cpu, Settings, Power, Plus, Minus,
     PanelRightClose, PanelRightOpen,
+    MessageSquare, Clock, MoreHorizontal, Pencil, Trash,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { useChat } from '../../hooks/useChat';
+import { useChat, ChatSession } from '../../hooks/useChat';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import api from '../../services/api';
+
+/* ── Group chat sessions by time period (ChatGPT-style) ── */
+function groupSessionsByTime(sessions: ChatSession[]): { label: string; sessions: ChatSession[] }[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    const prev7 = new Date(today); prev7.setDate(today.getDate() - 7);
+    const prev30 = new Date(today); prev30.setDate(today.getDate() - 30);
+
+    const groups: Record<string, ChatSession[]> = {
+        'Today': [], 'Yesterday': [], 'Previous 7 Days': [], 'Previous 30 Days': [], 'Older': [],
+    };
+    const sorted = [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+    for (const s of sorted) {
+        const d = new Date(s.updatedAt);
+        if (d >= today) groups['Today'].push(s);
+        else if (d >= yesterday) groups['Yesterday'].push(s);
+        else if (d >= prev7) groups['Previous 7 Days'].push(s);
+        else if (d >= prev30) groups['Previous 30 Days'].push(s);
+        else groups['Older'].push(s);
+    }
+
+    return Object.entries(groups).filter(([, v]) => v.length > 0).map(([label, sessions]) => ({ label, sessions }));
+}
 
 /* ── Quick Actions ── */
 const QUICK_ACTIONS = [
@@ -93,6 +119,8 @@ export function ChatbotPage() {
         availableModels, fetchAvailableModels,
         contextSnapshot, contextLoading, fetchContextSnapshot,
         sendMessage, clearChat, endRef, scrollToBottom,
+        chatSessions, activeSessionId, historyLoading,
+        loadSession, startNewChat, deleteSession, fetchChatSessions,
     } = useChat();
 
     const [showReasoning, setShowReasoning] = useState(false);
@@ -107,15 +135,17 @@ export function ChatbotPage() {
     const [contextOpen, setContextOpen] = useState(true);
     const [actionsOpen, setActionsOpen] = useState(true);
     const [toolsOpen, setToolsOpen] = useState(true);
+    const [historyOpen, setHistoryOpen] = useState(true);
+    const [hoveredSession, setHoveredSession] = useState<string | null>(null);
     const [sourcesOpen, setSourcesOpen] = useState(true);
     const modelMenuRef = useRef<HTMLDivElement>(null);
     const sessionModelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        fetchContextSnapshot(); fetchAvailableModels();
+        fetchContextSnapshot(); fetchAvailableModels(); fetchChatSessions();
         const iv = setInterval(fetchContextSnapshot, 60000);
         return () => clearInterval(iv);
-    }, [fetchContextSnapshot, fetchAvailableModels]);
+    }, [fetchContextSnapshot, fetchAvailableModels, fetchChatSessions]);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -467,7 +497,126 @@ export function ChatbotPage() {
 
                         {/* ───────────── ACTIONS TAB ───────────── */}
                         {sidebarTab === 'actions' && (<>
-                            {/* Live Context — collapsible */}
+                            {/* ── 1. History — ChatGPT-style chat list ── */}
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                                <button onClick={() => setHistoryOpen(!historyOpen)}
+                                    className="w-full px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Clock className="h-3 w-3" /> History
+                                    </h3>
+                                    <div className="flex items-center gap-1.5">
+                                        {chatSessions.length > 0 && (
+                                            <span className="text-[9px] text-slate-400 font-medium">{chatSessions.length}</span>
+                                        )}
+                                        <ChevronRight className={cn('h-3.5 w-3.5 text-slate-400 transition-transform', historyOpen && 'rotate-90')} />
+                                    </div>
+                                </button>
+                                {historyOpen && (
+                                    <div className="p-1.5">
+                                        {/* New Chat button */}
+                                        <button onClick={startNewChat}
+                                            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 transition-all text-[11px] font-medium text-slate-500 hover:text-indigo-600 mb-1.5">
+                                            <Plus className="h-3.5 w-3.5" /> New Chat
+                                        </button>
+
+                                        {chatSessions.length === 0 ? (
+                                            <div className="px-3 py-4 text-center">
+                                                {historyLoading ? (
+                                                    <>
+                                                        <Loader2 className="h-5 w-5 text-slate-300 dark:text-slate-600 mx-auto mb-1.5 animate-spin" />
+                                                        <p className="text-[11px] text-slate-400 font-medium">Loading history…</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <MessageSquare className="h-6 w-6 text-slate-300 dark:text-slate-600 mx-auto mb-1.5" />
+                                                        <p className="text-[11px] text-slate-400 font-medium">No chat history yet</p>
+                                                        <p className="text-[10px] text-slate-400/70 mt-0.5">Your conversations will appear here</p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-[280px] overflow-y-auto custom-scrollbar space-y-2">
+                                                {groupSessionsByTime(chatSessions).map(group => (
+                                                    <div key={group.label}>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-2.5 pt-1.5 pb-1">{group.label}</p>
+                                                        {group.sessions.map(session => (
+                                                            <div key={session.id}
+                                                                onMouseEnter={() => setHoveredSession(session.id)}
+                                                                onMouseLeave={() => setHoveredSession(null)}
+                                                                className={cn(
+                                                                    'group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all cursor-pointer relative',
+                                                                    activeSessionId === session.id
+                                                                        ? 'bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800'
+                                                                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent'
+                                                                )}>
+                                                                <div className={cn(
+                                                                    'h-6 w-6 rounded-lg flex items-center justify-center flex-shrink-0',
+                                                                    activeSessionId === session.id
+                                                                        ? 'bg-indigo-100 dark:bg-indigo-900/50'
+                                                                        : 'bg-slate-100 dark:bg-slate-800'
+                                                                )}>
+                                                                    <MessageSquare className={cn(
+                                                                        'h-3 w-3',
+                                                                        activeSessionId === session.id ? 'text-indigo-500' : 'text-slate-400'
+                                                                    )} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0" onClick={() => loadSession(session.id)}>
+                                                                    <p className={cn(
+                                                                        'text-[11px] font-medium leading-tight truncate',
+                                                                        activeSessionId === session.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400'
+                                                                    )}>
+                                                                        {session.title}
+                                                                    </p>
+                                                                    <p className="text-[9px] text-slate-400 leading-tight mt-0.5">
+                                                                        {(session.messageCount ?? session.messages.filter(m => m.id !== 'welcome').length)} messages
+                                                                    </p>
+                                                                </div>
+                                                                {/* Delete button on hover */}
+                                                                {hoveredSession === session.id && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                                                                        className="absolute right-2 h-5 w-5 rounded flex items-center justify-center bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-400 hover:text-red-500 transition-colors"
+                                                                        title="Delete chat"
+                                                                    >
+                                                                        <Trash className="h-2.5 w-2.5" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 2. Quick Actions — collapsible */}
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                                <button onClick={() => setActionsOpen(!actionsOpen)}
+                                    className="w-full px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Zap className="h-3 w-3" /> Quick Actions
+                                    </h3>
+                                    <ChevronRight className={cn('h-3.5 w-3.5 text-slate-400 transition-transform', actionsOpen && 'rotate-90')} />
+                                </button>
+                                {actionsOpen && (
+                                    <div className="p-1">
+                                        {QUICK_ACTIONS.map(a => (
+                                            <button key={a.label} onClick={() => handleSend(a.label)}
+                                                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left group">
+                                                <div className={cn('h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0', a.bg)}>
+                                                    <span className={a.color}>{a.icon}</span>
+                                                </div>
+                                                <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors flex-1 leading-tight">{a.label}</span>
+                                                <ArrowUpRight className="h-3 w-3 text-slate-300 group-hover:text-indigo-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 3. Live Context — collapsible */}
                             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                                 <button onClick={() => setContextOpen(!contextOpen)}
                                     className="w-full px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -525,32 +674,7 @@ export function ChatbotPage() {
                                 )}
                             </div>
 
-                            {/* Quick Actions — collapsible */}
-                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                                <button onClick={() => setActionsOpen(!actionsOpen)}
-                                    className="w-full px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                                        <Zap className="h-3 w-3" /> Quick Actions
-                                    </h3>
-                                    <ChevronRight className={cn('h-3.5 w-3.5 text-slate-400 transition-transform', actionsOpen && 'rotate-90')} />
-                                </button>
-                                {actionsOpen && (
-                                    <div className="p-1">
-                                        {QUICK_ACTIONS.map(a => (
-                                            <button key={a.label} onClick={() => handleSend(a.label)}
-                                                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left group">
-                                                <div className={cn('h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0', a.bg)}>
-                                                    <span className={a.color}>{a.icon}</span>
-                                                </div>
-                                                <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors flex-1 leading-tight">{a.label}</span>
-                                                <ArrowUpRight className="h-3 w-3 text-slate-300 group-hover:text-indigo-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100" />
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* AI Tools — collapsible */}
+                            {/* 4. AI Tools — collapsible */}
                             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                                 <button onClick={() => setToolsOpen(!toolsOpen)}
                                     className="w-full px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

@@ -6,7 +6,7 @@ All tables mapped to Neon PostgreSQL.
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Text, DateTime, Date, Enum, ForeignKey, Index, Boolean
+    Column, String, Text, DateTime, Date, Enum, ForeignKey, Index, Boolean, Integer, JSON
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -65,6 +65,7 @@ class User(Base):
     # Relationships
     projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan")
     assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assigned_to")
+    chat_sessions = relationship("ChatSession", back_populates="owner", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email}>"
@@ -137,3 +138,28 @@ class Task(Base):
 
     def __repr__(self):
         return f"<Task {self.title}>"
+
+
+# ────────── Chat Session Model (for cross-device history) ──────────
+
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(200), nullable=False, default="New Chat")
+    messages = Column(JSON, nullable=False, default=list)  # Stored as JSON array
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    owner = relationship("User", back_populates="chat_sessions")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_chat_sessions_user_id", "user_id"),
+        Index("ix_chat_sessions_updated_at", "updated_at"),
+    )
+
+    def __repr__(self):
+        return f"<ChatSession {self.title}>"

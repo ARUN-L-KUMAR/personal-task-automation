@@ -1,7 +1,7 @@
 /**
  * Shared chat logic — used by both ChatbotPage and FloatingChatWidget.
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import api from '../services/api';
 
 export interface FallbackNotice {
@@ -47,6 +47,50 @@ export interface AvailableModel {
     available: boolean;
 }
 
+/* ── Chat Session (for history) ── */
+export interface ChatSession {
+    id: string;
+    title: string;
+    messages: ChatMessage[];
+    messageCount?: number;   // Used in list view (avoids loading full messages)
+    createdAt: string;       // ISO string
+    updatedAt: string;       // ISO string
+}
+
+const HISTORY_STORAGE_KEY = 'g1_chat_history';
+const MAX_SESSIONS = 50;
+
+/** Check if user is logged in (JWT token exists) */
+function isLoggedIn(): boolean {
+    return !!localStorage.getItem('g-one_token');
+}
+
+/* ── Local storage helpers (fallback for unauthenticated users) ── */
+function loadLocalSessions(): ChatSession[] {
+    try {
+        const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw) as ChatSession[];
+        return parsed.map(s => ({
+            ...s,
+            messages: s.messages.map(m => ({ ...m, timestamp: new Date(m.timestamp) })),
+        }));
+    } catch { return []; }
+}
+
+function saveLocalSessions(sessions: ChatSession[]) {
+    try {
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(sessions.slice(0, MAX_SESSIONS)));
+    } catch { /* quota exceeded — silently ignore */ }
+}
+
+function deriveTitle(messages: ChatMessage[]): string {
+    const first = messages.find(m => m.role === 'user');
+    if (!first) return 'New Chat';
+    const text = first.content.replace(/^(regarding my \w+:\s*)/i, '').trim();
+    return text.length > 50 ? text.slice(0, 47) + '…' : text;
+}
+
 export function useChat() {
     const WELCOME: ChatMessage = {
         id: 'welcome',
@@ -66,8 +110,177 @@ export function useChat() {
     const [contextLoading, setContextLoading] = useState(false);
     const endRef = useRef<HTMLDivElement>(null);
 
+    /* ── Session / History state ── */
+    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+    const activeSessionIdRef = useRef<string | null>(null);
+    const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    // Debounce ref to avoid saving on every keystroke
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Keep ref in sync with state
+    useEffect(() => { activeSessionIdRef.current = activeSessionId; }, [activeSessionId]);
+
     const scrollToBottom = () =>
         endRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+    /* ── Fetch sessions from DB (if logged in) or localStorage ── */
+    const fetchChatSessions = useCallback(async () => {
+        if (!isLoggedIn()) {
+            setChatSessions(loadLocalSessions());
+            return;
+        }
+        setHistoryLoading(true);
+        try {
+            const res = await api.get('/api/chat-history/sessions');
+            const sessions: ChatSession[] = (res.data || []).map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                messages: [],  // List endpoint only returns count
+                messageCount: s.message_count,
+                createdAt: s.created_at,
+                updatedAt: s.updated_at,
+            }));
+            setChatSessions(sessions);
+        } catch (err) {
+            console.warn('[useChat] Failed to fetch sessions from API, falling back to localStorage', err);
+            setChatSessions(loadLocalSessions());
+        } finally {
+            setHistoryLoading(false);
+        }
+    }, []);
+
+    /* ── Save to both DB and localStorage ── */
+    const persistCurrentChat = useCallback((msgs: ChatMessage[]) => {
+        const realMsgs = msgs.filter(m => m.id !== 'welcome');
+        if (realMsgs.length === 0) return;
+
+        const sessionId = activeSessionIdRef.current;
+        const title = deriveTitle(msgs);
+        const messagesPayload = msgs.map(m => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : String(m.timestamp),
+            usedContext: m.usedContext,
+            error: m.error,
+            meta: m.meta,
+        }));
+
+        // Always save to localStorage as backup
+        const now = new Date().toISOString();
+        setChatSessions(prev => {
+            let updated: ChatSession[];
+            if (sessionId) {
+                const exists = prev.some(s => s.id === sessionId);
+                if (exists) {
+                    updated = prev.map(s => s.id === sessionId
+                        ? { ...s, title, messages: msgs, messageCount: realMsgs.length, updatedAt: now }
+                        : s
+                    );
+                } else {
+                    updated = [{ id: sessionId, title, messages: msgs, messageCount: realMsgs.length, createdAt: now, updatedAt: now }, ...prev];
+                }
+            } else {
+                updated = prev; // Will be updated once we have the DB id
+            }
+            saveLocalSessions(updated);
+            return updated;
+        });
+
+        // Debounced save to API
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(async () => {
+            if (!isLoggedIn()) return;
+            try {
+                const res = await api.post('/api/chat-history/sessions', {
+                    session_id: sessionId,
+                    title,
+                    messages: messagesPayload,
+                });
+                const dbId = res.data?.id;
+                if (dbId && dbId !== sessionId) {
+                    // New session was created — update our IDs
+                    setActiveSessionId(dbId);
+                    setChatSessions(prev => {
+                        // Remove the temp local entry and add DB one
+                        const filtered = prev.filter(s => s.id !== sessionId && s.id !== dbId);
+                        const newEntry: ChatSession = {
+                            id: dbId,
+                            title,
+                            messages: msgs,
+                            messageCount: realMsgs.length,
+                            createdAt: res.data.created_at,
+                            updatedAt: res.data.updated_at,
+                        };
+                        const updated = [newEntry, ...filtered].slice(0, MAX_SESSIONS);
+                        saveLocalSessions(updated);
+                        return updated;
+                    });
+                }
+            } catch (err) {
+                console.warn('[useChat] Failed to save session to API:', err);
+            }
+        }, 800); // 800ms debounce
+    }, []);
+
+    /* ── Load a past session (full messages from DB) ── */
+    const loadSession = useCallback(async (sessionId: string) => {
+        setActiveSessionId(sessionId);
+
+        // Try local cache first
+        const local = chatSessions.find(s => s.id === sessionId && s.messages.length > 0);
+        if (local) {
+            setMessages(local.messages.map(m => ({
+                ...m,
+                timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp),
+            })));
+            return;
+        }
+
+        // Fetch full session from API
+        if (isLoggedIn()) {
+            try {
+                const res = await api.get(`/api/chat-history/sessions/${sessionId}`);
+                const msgs: ChatMessage[] = (res.data.messages || []).map((m: any) => ({
+                    ...m,
+                    timestamp: new Date(m.timestamp),
+                }));
+                setMessages(msgs.length > 0 ? msgs : [WELCOME]);
+                // Cache locally
+                setChatSessions(prev =>
+                    prev.map(s => s.id === sessionId ? { ...s, messages: msgs } : s)
+                );
+            } catch {
+                console.warn('[useChat] Failed to load session from API');
+            }
+        }
+    }, [chatSessions]);
+
+    /* ── Start a brand new chat ── */
+    const startNewChat = useCallback(() => {
+        setActiveSessionId(null);
+        setMessages([WELCOME]);
+        setInput('');
+    }, []);
+
+    /* ── Delete a session (DB + local) ── */
+    const deleteSession = useCallback(async (sessionId: string) => {
+        setChatSessions(prev => {
+            const updated = prev.filter(s => s.id !== sessionId);
+            saveLocalSessions(updated);
+            return updated;
+        });
+        if (activeSessionId === sessionId) {
+            setActiveSessionId(null);
+            setMessages([WELCOME]);
+        }
+        // Delete from DB
+        if (isLoggedIn()) {
+            try { await api.delete(`/api/chat-history/sessions/${sessionId}`); }
+            catch { /* ignore */ }
+        }
+    }, [activeSessionId]);
 
     /** Fetch live context snapshot for the panel */
     const fetchContextSnapshot = useCallback(async () => {
@@ -177,7 +390,11 @@ export function useChat() {
                     fallbackNotice: res.data.fallback_notice || undefined,
                 },
             };
-            setMessages(prev => [...prev, botMsg]);
+            setMessages(prev => {
+                const updated = [...prev, botMsg];
+                persistCurrentChat(updated);
+                return updated;
+            });
         } catch (e: any) {
             const detail = e?.details?.detail || e?.message || 'Connection error. Check that the backend is running and OPENROUTER_API_KEY is set in .env.';
             const errMsg: ChatMessage = {
@@ -187,14 +404,21 @@ export function useChat() {
                 timestamp: new Date(),
                 error: true,
             };
-            setMessages(prev => [...prev, errMsg]);
+            setMessages(prev => {
+                const updated = [...prev, errMsg];
+                persistCurrentChat(updated);
+                return updated;
+            });
         } finally {
             setIsLoading(false);
             setTimeout(scrollToBottom, 50);
         }
-    }, [input, isLoading, messages, selectedModel]);
+    }, [input, isLoading, messages, selectedModel, persistCurrentChat]);
 
-    const clearChat = () => setMessages([WELCOME]);
+    const clearChat = () => {
+        setActiveSessionId(null);
+        setMessages([WELCOME]);
+    };
 
     return {
         messages, input, setInput, isLoading,
@@ -203,5 +427,8 @@ export function useChat() {
         availableModels, fetchAvailableModels,
         contextSnapshot, contextLoading, fetchContextSnapshot,
         sendMessage, clearChat, endRef, scrollToBottom,
+        // Session / History
+        chatSessions, activeSessionId, historyLoading,
+        loadSession, startNewChat, deleteSession, fetchChatSessions,
     };
 }

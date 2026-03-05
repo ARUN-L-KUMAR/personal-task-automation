@@ -24,6 +24,7 @@ from routers.dashboard_router import router as dashboard_router
 from routers.db_auth_router import router as db_auth_router
 from routers.projects_router import router as projects_router
 from routers.db_tasks_router import router as db_tasks_router
+from routers.chat_history_router import router as chat_history_router
 
 # ── Error handlers ──
 from middleware.error_handlers import (
@@ -70,6 +71,7 @@ app.include_router(dashboard_router, prefix="/api")
 app.include_router(db_auth_router, prefix="/api")
 app.include_router(projects_router, prefix="/api")
 app.include_router(db_tasks_router, prefix="/api")
+app.include_router(chat_history_router, prefix="/api")
 
 # Initialize the unified agent graph (supports manual + live modes)
 agent_graph = ScheduleAgentGraph()
