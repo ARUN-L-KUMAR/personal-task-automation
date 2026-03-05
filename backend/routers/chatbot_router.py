@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 import asyncio
@@ -6,6 +6,10 @@ import time
 from datetime import datetime, timezone
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from database.models import User
+from database.connection import get_db
+from sqlalchemy.orm import Session
+from middleware import get_current_user
 
 router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
@@ -26,7 +30,7 @@ class ChatRequest(BaseModel):
     preferred_model: Optional[str] = None  # "auto", "groq", "gemini", "openrouter"
 
 
-def _fetch_quick_context() -> str:
+def _fetch_quick_context(user: User, db: Session) -> str:
     """
     Fetch a minimal, fast snapshot of user's live Google data.
     Builds all service clients first, then fetches Calendar, Tasks, Gmail in PARALLEL.
@@ -37,10 +41,10 @@ def _fetch_quick_context() -> str:
     from concurrent.futures import ThreadPoolExecutor, as_completed
     import time as _time
 
-    if not is_authenticated():
+    if not is_authenticated(user):
         return "User is not connected to Google services. They can connect via Settings."
 
-    creds = get_credentials()
+    creds = get_credentials(user, db)
 
     # Build all service clients upfront (these are thread-safe for read)
     t0 = _time.time()
@@ -152,7 +156,7 @@ def _fetch_quick_context() -> str:
     return "\n\n".join(parts) if parts else "No Google data available."
 
 
-def _fetch_context_snapshot() -> dict:
+def _fetch_context_snapshot(user: User, db: Session) -> dict:
     """
     Fetch structured snapshot of user's live Google data for the context panel.
     Returns dict with next_meeting, unread_emails, pending_tasks, conflicts_today.
@@ -173,7 +177,7 @@ def _fetch_context_snapshot() -> dict:
         "authenticated": False,
     }
 
-    if not is_authenticated():
+    if not is_authenticated(user):
         print("DEBUG snapshot: Not authenticated")
         return snapshot
 
@@ -181,7 +185,7 @@ def _fetch_context_snapshot() -> dict:
     t0 = _time.time()
 
     try:
-        creds = get_credentials()
+        creds = get_credentials(user, db)
     except Exception as e:
         print(f"DEBUG snapshot: get_credentials failed: {e}")
         return snapshot
@@ -309,7 +313,7 @@ def _fetch_context_snapshot() -> dict:
     return snapshot
 
 
-async def _fetch_context_with_timeout(timeout_sec: float = 15.0) -> str:
+async def _fetch_context_with_timeout(user: User, db: Session, timeout_sec: float = 15.0) -> str:
     """Run the blocking context fetch in a thread pool with a timeout.
     Uses a 45-second cache to avoid re-fetching on consecutive chat messages."""
     import time as _time
@@ -323,7 +327,7 @@ async def _fetch_context_with_timeout(timeout_sec: float = 15.0) -> str:
     loop = asyncio.get_event_loop()
     try:
         result = await asyncio.wait_for(
-            loop.run_in_executor(None, _fetch_quick_context),
+            loop.run_in_executor(None, lambda: _fetch_quick_context(user, db)),
             timeout=timeout_sec
         )
         # Cache the result
@@ -343,7 +347,10 @@ async def _fetch_context_with_timeout(timeout_sec: float = 15.0) -> str:
 
 
 @router.get("/context-snapshot")
-async def get_context_snapshot():
+async def get_context_snapshot(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Return a structured snapshot of user's live Google data for the context panel."""
     import time as _time
 
@@ -355,7 +362,7 @@ async def get_context_snapshot():
     loop = asyncio.get_event_loop()
     try:
         snapshot = await asyncio.wait_for(
-            loop.run_in_executor(None, _fetch_context_snapshot),
+            loop.run_in_executor(None, lambda: _fetch_context_snapshot(current_user, db)),
             timeout=20.0
         )
         _snapshot_cache["data"] = snapshot
@@ -414,7 +421,11 @@ async def get_available_models():
     return {"models": models}
 
 @router.post("/ask")
-async def ask_chatbot(request: ChatRequest):
+async def ask_chatbot(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Fast AI Chatbot:
     - Fetches live Google context in parallel (max 8s timeout)
@@ -423,7 +434,7 @@ async def ask_chatbot(request: ChatRequest):
     """
     # Fetch live context (15 second cap — parallel fetch)
     start_time = time.time()
-    context = await _fetch_context_with_timeout(15.0)
+    context = await _fetch_context_with_timeout(current_user, db, 15.0)
     context_fetch_time = time.time() - start_time
 
     # Determine which context sources were used
