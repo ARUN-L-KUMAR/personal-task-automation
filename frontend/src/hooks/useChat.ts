@@ -73,12 +73,16 @@ export function useChat() {
     const fetchContextSnapshot = useCallback(async () => {
         setContextLoading(true);
         try {
-            const res = await api.get('/api/chatbot/context-snapshot');
+            console.log('[useChat] Fetching context snapshot...');
+            const res = await api.get('/api/chatbot/context-snapshot', { timeout: 25000 });
+            console.log('[useChat] Context snapshot response:', res.data?.status, res.data?.snapshot ? 'has data' : 'no data');
             if (res.data?.snapshot) {
                 setContextSnapshot(res.data.snapshot);
+            } else {
+                console.warn('[useChat] Snapshot returned null — status:', res.data?.status);
             }
-        } catch {
-            // Silently fail — panel will show placeholder
+        } catch (err: any) {
+            console.error('[useChat] Context snapshot fetch failed:', err?.message || err);
         } finally {
             setContextLoading(false);
         }

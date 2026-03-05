@@ -9,6 +9,11 @@ from langchain_core.output_parsers import StrOutputParser
 
 router = APIRouter(prefix="/chatbot", tags=["Chatbot"])
 
+# ── Context cache (avoids re-fetching Google data on every chat message) ──
+_context_cache = {"data": None, "timestamp": 0.0}
+_snapshot_cache = {"data": None, "timestamp": 0.0}
+_CONTEXT_CACHE_TTL = 45  # seconds — fresh enough, avoids repeated slow fetches
+
 
 class ChatMessage(BaseModel):
     role: str   # "user" or "assistant"
@@ -24,27 +29,30 @@ class ChatRequest(BaseModel):
 def _fetch_quick_context() -> str:
     """
     Fetch a minimal, fast snapshot of user's live Google data.
-    Does NOT run the full agent pipeline — only lightweight direct API calls.
-    Times out after 8 seconds and degrades gracefully.
+    Builds all service clients first, then fetches Calendar, Tasks, Gmail in PARALLEL.
     """
     from utils.google_auth import is_authenticated, get_credentials
     from googleapiclient.discovery import build
     from datetime import datetime, timezone
-    import traceback
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import time as _time
 
     if not is_authenticated():
         return "User is not connected to Google services. They can connect via Settings."
 
-    parts = []
+    creds = get_credentials()
 
-    try:
-        creds = get_credentials()
+    # Build all service clients upfront (these are thread-safe for read)
+    t0 = _time.time()
+    cal_svc = build("calendar", "v3", credentials=creds)
+    tasks_svc = build("tasks", "v1", credentials=creds)
+    gmail_svc = build("gmail", "v1", credentials=creds)
+    print(f"DEBUG context: Service builds took {_time.time()-t0:.1f}s")
 
-        # ── Calendar: next 5 events ──
+    def fetch_calendar():
         try:
-            cal = build("calendar", "v3", credentials=creds)
             now = datetime.now(timezone.utc).isoformat()
-            events_result = cal.events().list(
+            events_result = cal_svc.events().list(
                 calendarId="primary",
                 timeMin=now,
                 maxResults=5,
@@ -57,15 +65,13 @@ def _fetch_quick_context() -> str:
                 for e in events:
                     start = e.get("start", {}).get("dateTime", e.get("start", {}).get("date", ""))
                     event_strs.append(f"- {e.get('summary', 'Untitled')} @ {start}")
-                parts.append("UPCOMING CALENDAR EVENTS:\n" + "\n".join(event_strs))
-            else:
-                parts.append("CALENDAR: No upcoming events found.")
+                return "UPCOMING CALENDAR EVENTS:\n" + "\n".join(event_strs)
+            return "CALENDAR: No upcoming events found."
         except Exception as e:
-            parts.append(f"CALENDAR: Unavailable ({type(e).__name__})")
+            return f"CALENDAR: Unavailable ({type(e).__name__})"
 
-        # ── Tasks: first tasklist, up to 7 tasks ──
+    def fetch_tasks():
         try:
-            tasks_svc = build("tasks", "v1", credentials=creds)
             task_lists = tasks_svc.tasklists().list(maxResults=1).execute()
             tl_items = task_lists.get("items", [])
             if tl_items:
@@ -78,37 +84,71 @@ def _fetch_quick_context() -> str:
                 task_items = tasks_result.get("items", [])
                 if task_items:
                     task_strs = [f"- {t.get('title','')}" + (f" (due {t['due'][:10]})" if t.get('due') else "") for t in task_items]
-                    parts.append("PENDING TASKS:\n" + "\n".join(task_strs))
-                else:
-                    parts.append("TASKS: No pending tasks.")
+                    return "PENDING TASKS:\n" + "\n".join(task_strs)
+                return "TASKS: No pending tasks."
+            return "TASKS: No task lists found."
         except Exception as e:
-            parts.append(f"TASKS: Unavailable ({type(e).__name__})")
+            return f"TASKS: Unavailable ({type(e).__name__})"
 
-        # ── Gmail: last 5 unread subject lines ──
+    def fetch_gmail():
         try:
-            gmail = build("gmail", "v1", credentials=creds)
-            msgs = gmail.users().messages().list(
+            msgs = gmail_svc.users().messages().list(
                 userId="me", q="is:unread", maxResults=5
             ).execute()
             msg_list = msgs.get("messages", [])
-            subjects = []
-            for m in msg_list[:5]:
-                detail = gmail.users().messages().get(
-                    userId="me", id=m["id"], format="metadata",
-                    metadataHeaders=["Subject", "From"]
-                ).execute()
-                hdrs = {h["name"]: h["value"] for h in detail.get("payload", {}).get("headers", [])}
-                subjects.append(f"- {hdrs.get('Subject','(no subject)')} [from {hdrs.get('From','?')}]")
-            if subjects:
-                parts.append("RECENT UNREAD EMAILS:\n" + "\n".join(subjects))
-            else:
-                parts.append("EMAILS: No unread emails.")
-        except Exception as e:
-            parts.append(f"EMAILS: Unavailable ({type(e).__name__})")
+            if not msg_list:
+                return "EMAILS: No unread emails."
 
+            # Batch fetch — single HTTP request for all message metadata
+            subjects = []
+            batch_results = {}
+
+            def msg_callback(request_id, response, exception):
+                if exception is None:
+                    batch_results[request_id] = response
+
+            batch = gmail_svc.new_batch_http_request(callback=msg_callback)
+            for i, m in enumerate(msg_list[:5]):
+                batch.add(
+                    gmail_svc.users().messages().get(
+                        userId="me", id=m["id"], format="metadata",
+                        metadataHeaders=["Subject", "From"]
+                    ),
+                    request_id=str(i)
+                )
+            batch.execute()
+
+            for i in range(min(5, len(msg_list))):
+                detail = batch_results.get(str(i))
+                if detail:
+                    hdrs = {h["name"]: h["value"] for h in detail.get("payload", {}).get("headers", [])}
+                    subjects.append(f"- {hdrs.get('Subject','(no subject)')} [from {hdrs.get('From','?')}]")
+
+            if subjects:
+                return "RECENT UNREAD EMAILS:\n" + "\n".join(subjects)
+            return f"EMAILS: {len(msg_list)} unread emails (details unavailable)."
+        except Exception as e:
+            return f"EMAILS: Unavailable ({type(e).__name__})"
+
+    # Run all three fetches in parallel
+    parts = []
+    t1 = _time.time()
+    try:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {
+                executor.submit(fetch_calendar): "calendar",
+                executor.submit(fetch_tasks): "tasks",
+                executor.submit(fetch_gmail): "gmail",
+            }
+            for future in as_completed(futures, timeout=12):
+                try:
+                    parts.append(future.result())
+                except Exception:
+                    parts.append(f"{futures[future].upper()}: Fetch error")
     except Exception as e:
         return f"Could not fetch Google data: {str(e)}"
 
+    print(f"DEBUG context: Parallel fetches took {_time.time()-t1:.1f}s (total {_time.time()-t0:.1f}s)")
     return "\n\n".join(parts) if parts else "No Google data available."
 
 
@@ -116,10 +156,12 @@ def _fetch_context_snapshot() -> dict:
     """
     Fetch structured snapshot of user's live Google data for the context panel.
     Returns dict with next_meeting, unread_emails, pending_tasks, conflicts_today.
+    Uses parallel threads for Calendar, Tasks, Gmail to minimize latency.
     """
     from utils.google_auth import is_authenticated, get_credentials
     from googleapiclient.discovery import build
-    import traceback
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import time as _time
 
     snapshot = {
         "next_meeting": None,
@@ -132,42 +174,43 @@ def _fetch_context_snapshot() -> dict:
     }
 
     if not is_authenticated():
+        print("DEBUG snapshot: Not authenticated")
         return snapshot
 
     snapshot["authenticated"] = True
+    t0 = _time.time()
 
     try:
         creds = get_credentials()
+    except Exception as e:
+        print(f"DEBUG snapshot: get_credentials failed: {e}")
+        return snapshot
 
-        # ── Calendar: next meeting + conflicts ──
+    # ── Define per-service fetch functions ──
+
+    def fetch_calendar():
+        result = {"connected": False, "next_meeting": None, "conflicts": 0}
         try:
             cal = build("calendar", "v3", credentials=creds)
             now = datetime.now(timezone.utc)
-            now_iso = now.isoformat()
-            eod = now.replace(hour=23, minute=59, second=59).isoformat()
-
             events_result = cal.events().list(
                 calendarId="primary",
-                timeMin=now_iso,
-                timeMax=eod,
+                timeMin=now.isoformat(),
+                timeMax=now.replace(hour=23, minute=59, second=59).isoformat(),
                 singleEvents=True,
                 orderBy="startTime",
             ).execute()
             events = events_result.get("items", [])
-            snapshot["connected_services"].append("Calendar")
-
+            result["connected"] = True
             if events:
                 e = events[0]
                 start = e.get("start", {}).get("dateTime", e.get("start", {}).get("date", ""))
                 end = e.get("end", {}).get("dateTime", e.get("end", {}).get("date", ""))
-                snapshot["next_meeting"] = {
+                result["next_meeting"] = {
                     "title": e.get("summary", "Untitled"),
-                    "start": start,
-                    "end": end,
+                    "start": start, "end": end,
                     "location": e.get("location", ""),
                 }
-
-                # Simple conflict detection: overlapping events
                 conflicts = 0
                 for i in range(len(events)):
                     for j in range(i + 1, len(events)):
@@ -175,77 +218,161 @@ def _fetch_context_snapshot() -> dict:
                         start_j = events[j].get("start", {}).get("dateTime", "")
                         if end_i and start_j and end_i > start_j:
                             conflicts += 1
-                snapshot["conflicts_today"] = conflicts
-        except Exception:
-            pass
+                result["conflicts"] = conflicts
+        except Exception as e:
+            print(f"DEBUG snapshot calendar error: {e}")
+        return result
 
-        # ── Tasks ──
+    def fetch_tasks():
+        result = {"connected": False, "pending": 0}
         try:
             tasks_svc = build("tasks", "v1", credentials=creds)
             task_lists = tasks_svc.tasklists().list(maxResults=1).execute()
             tl_items = task_lists.get("items", [])
-            snapshot["connected_services"].append("Tasks")
+            result["connected"] = True
             if tl_items:
                 tl_id = tl_items[0]["id"]
                 tasks_result = tasks_svc.tasks().list(
                     tasklist=tl_id, showCompleted=False, maxResults=20
                 ).execute()
-                snapshot["pending_tasks"] = len(tasks_result.get("items", []))
-        except Exception:
-            pass
+                result["pending"] = len(tasks_result.get("items", []))
+        except Exception as e:
+            print(f"DEBUG snapshot tasks error: {e}")
+        return result
 
-        # ── Gmail ──
+    def fetch_gmail():
+        result = {"connected": False, "unread": 0, "urgent": 0}
         try:
             gmail = build("gmail", "v1", credentials=creds)
             msgs = gmail.users().messages().list(userId="me", q="is:unread", maxResults=20).execute()
-            msg_list = msgs.get("messages", [])
-            snapshot["unread_emails"] = len(msg_list)
-            snapshot["connected_services"].append("Gmail")
+            result["unread"] = len(msgs.get("messages", []))
+            result["connected"] = True
+            try:
+                urgent_msgs = gmail.users().messages().list(
+                    userId="me", q="is:unread is:important", maxResults=20
+                ).execute()
+                result["urgent"] = len(urgent_msgs.get("messages", []))
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"DEBUG snapshot gmail error: {e}")
+        return result
 
-            # Check for urgent (flagged important)
-            urgent = 0
-            for m in msg_list[:10]:
-                detail = gmail.users().messages().get(userId="me", id=m["id"], format="metadata", metadataHeaders=["Importance", "X-Priority"]).execute()
-                labels = detail.get("labelIds", [])
-                if "IMPORTANT" in labels:
-                    urgent += 1
-            snapshot["urgent_emails"] = urgent
-        except Exception:
-            pass
+    # ── Run all three in parallel ──
+    cal_result = {"connected": False, "next_meeting": None, "conflicts": 0}
+    tasks_result = {"connected": False, "pending": 0}
+    gmail_result = {"connected": False, "unread": 0, "urgent": 0}
 
-    except Exception:
-        pass
+    try:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_cal = executor.submit(fetch_calendar)
+            future_tasks = executor.submit(fetch_tasks)
+            future_gmail = executor.submit(fetch_gmail)
 
+            for future in as_completed([future_cal, future_tasks, future_gmail], timeout=15):
+                try:
+                    future.result()
+                except Exception:
+                    pass
+
+            try:
+                cal_result = future_cal.result(timeout=0)
+            except Exception:
+                pass
+            try:
+                tasks_result = future_tasks.result(timeout=0)
+            except Exception:
+                pass
+            try:
+                gmail_result = future_gmail.result(timeout=0)
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"DEBUG snapshot parallel error: {e}")
+
+    # ── Assemble snapshot ──
+    if cal_result["connected"]:
+        snapshot["connected_services"].append("Calendar")
+        snapshot["next_meeting"] = cal_result["next_meeting"]
+        snapshot["conflicts_today"] = cal_result["conflicts"]
+
+    if tasks_result["connected"]:
+        snapshot["connected_services"].append("Tasks")
+        snapshot["pending_tasks"] = tasks_result["pending"]
+
+    if gmail_result["connected"]:
+        snapshot["connected_services"].append("Gmail")
+        snapshot["unread_emails"] = gmail_result["unread"]
+        snapshot["urgent_emails"] = gmail_result["urgent"]
+
+    print(f"DEBUG snapshot: Parallel fetch completed in {_time.time()-t0:.1f}s — services: {snapshot['connected_services']}")
     return snapshot
 
 
-async def _fetch_context_with_timeout(timeout_sec: float = 8.0) -> str:
-    """Run the blocking context fetch in a thread pool with a timeout."""
+async def _fetch_context_with_timeout(timeout_sec: float = 15.0) -> str:
+    """Run the blocking context fetch in a thread pool with a timeout.
+    Uses a 45-second cache to avoid re-fetching on consecutive chat messages."""
+    import time as _time
+
+    # Return cached context if fresh
+    now = _time.time()
+    if _context_cache["data"] and (now - _context_cache["timestamp"]) < _CONTEXT_CACHE_TTL:
+        print(f"DEBUG context: Using cached data ({now - _context_cache['timestamp']:.0f}s old)")
+        return _context_cache["data"]
+
     loop = asyncio.get_event_loop()
     try:
-        return await asyncio.wait_for(
+        result = await asyncio.wait_for(
             loop.run_in_executor(None, _fetch_quick_context),
             timeout=timeout_sec
         )
+        # Cache the result
+        _context_cache["data"] = result
+        _context_cache["timestamp"] = _time.time()
+        return result
     except asyncio.TimeoutError:
+        # If we have stale cache, use it rather than returning nothing
+        if _context_cache["data"]:
+            print("DEBUG context: Timeout — using stale cache")
+            return _context_cache["data"]
         return "Context fetch timed out — answering without live data."
     except Exception as e:
+        if _context_cache["data"]:
+            return _context_cache["data"]
         return f"Context error: {str(e)}"
 
 
 @router.get("/context-snapshot")
 async def get_context_snapshot():
     """Return a structured snapshot of user's live Google data for the context panel."""
+    import time as _time
+
+    # Return cached snapshot if fresh
+    now = _time.time()
+    if _snapshot_cache["data"] and (now - _snapshot_cache["timestamp"]) < _CONTEXT_CACHE_TTL:
+        return {"status": "success", "snapshot": _snapshot_cache["data"]}
+
     loop = asyncio.get_event_loop()
     try:
         snapshot = await asyncio.wait_for(
             loop.run_in_executor(None, _fetch_context_snapshot),
-            timeout=10.0
+            timeout=20.0
         )
+        _snapshot_cache["data"] = snapshot
+        _snapshot_cache["timestamp"] = _time.time()
         return {"status": "success", "snapshot": snapshot}
     except asyncio.TimeoutError:
+        import logging
+        logging.warning("Context snapshot timed out after 20s")
+        # Return stale cache if available
+        if _snapshot_cache["data"]:
+            return {"status": "success", "snapshot": _snapshot_cache["data"]}
         return {"status": "timeout", "snapshot": None}
     except Exception as e:
+        import logging
+        logging.error(f"Context snapshot error: {e}")
+        if _snapshot_cache["data"]:
+            return {"status": "success", "snapshot": _snapshot_cache["data"]}
         return {"status": "error", "snapshot": None, "detail": str(e)}
 
 
@@ -294,9 +421,9 @@ async def ask_chatbot(request: ChatRequest):
     - Sends user message + history to LLM
     - Returns reply quickly
     """
-    # Fetch live context (8 second cap — never blocks the user longer)
+    # Fetch live context (15 second cap — parallel fetch)
     start_time = time.time()
-    context = await _fetch_context_with_timeout(8.0)
+    context = await _fetch_context_with_timeout(15.0)
     context_fetch_time = time.time() - start_time
 
     # Determine which context sources were used
