@@ -27,7 +27,7 @@ def fetch_today_events(
     db: Session = Depends(get_db)
 ):
     """Fetch today's calendar events for the current user."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -46,7 +46,7 @@ def fetch_events_range(
     db: Session = Depends(get_db)
 ):
     """Fetch events in a date range for the current user."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -71,7 +71,7 @@ def create_calendar_event(
     db: Session = Depends(get_db)
 ):
     """Create a new calendar event for the current user."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:

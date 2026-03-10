@@ -1,14 +1,22 @@
 """
 SQLAlchemy ORM Models
 All tables mapped to Neon PostgreSQL.
+
+10 Tables:
+  Core:        users, projects, tasks, chat_sessions
+  Integration: google_tokens, meetings
+  AI:          ai_plans, agent_logs
+  Personal:    user_settings
+  Analytics:   productivity_metrics
 """
 
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Text, DateTime, Date, Enum, ForeignKey, Index, Boolean, Integer, JSON
+    Column, String, Text, DateTime, Date, Time, Enum,
+    ForeignKey, Index, Boolean, Integer, JSON,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from database.connection import Base
@@ -55,17 +63,31 @@ class User(Base):
         nullable=False,
     )
     is_google_user = Column(Boolean, default=False, nullable=True)
-    google_access_token = Column(Text, nullable=True)
-    google_refresh_token = Column(Text, nullable=True)
+    google_access_token = Column(Text, nullable=True)   # kept temporarily
+    google_refresh_token = Column(Text, nullable=True)   # kept temporarily
+
+    # ── New identity columns ──
+    google_id = Column(String(255), nullable=True)       # Google account id
+    avatar_url = Column(Text, nullable=True)             # profile image
+    last_login = Column(DateTime, nullable=True)         # last login time
+    is_active = Column(Boolean, default=True, nullable=False)  # account active
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
-    # Relationships
+    # Relationships — existing
     projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan")
     assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assigned_to")
     chat_sessions = relationship("ChatSession", back_populates="owner", cascade="all, delete-orphan")
+
+    # Relationships — new tables
+    google_tokens = relationship("GoogleToken", back_populates="user", cascade="all, delete-orphan")
+    settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    ai_plans = relationship("AIPlan", back_populates="user", cascade="all, delete-orphan")
+    meetings = relationship("Meeting", back_populates="user", cascade="all, delete-orphan")
+    productivity_metrics = relationship("ProductivityMetric", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email}>"
@@ -124,6 +146,14 @@ class Task(Base):
     due_date = Column(Date, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
+    # ── New planner-metadata columns ──
+    estimated_duration = Column(Integer, nullable=True)   # minutes
+    category = Column(String(100), nullable=True)         # e.g. work, personal
+    source = Column(String(50), nullable=True)            # manual | google_tasks | email
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True
+    )
+
     # Relationships
     project = relationship("Project", back_populates="tasks")
     assignee = relationship("User", back_populates="assigned_tasks", foreign_keys=[assigned_to])
@@ -134,6 +164,7 @@ class Task(Base):
         Index("ix_tasks_assigned_to", "assigned_to"),
         Index("ix_tasks_status", "status"),
         Index("ix_tasks_priority", "priority"),
+        Index("ix_tasks_due_date", "due_date"),
     )
 
     def __repr__(self):
@@ -163,3 +194,168 @@ class ChatSession(Base):
 
     def __repr__(self):
         return f"<ChatSession {self.title}>"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  NEW TABLES — Integration Layer
+# ──────────────────────────────────────────────────────────────────────────────
+
+class GoogleToken(Base):
+    """Separate OAuth token storage (replaces columns on users table)."""
+    __tablename__ = "google_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    access_token = Column(Text, nullable=False)
+    refresh_token = Column(Text, nullable=True)
+    token_expiry = Column(DateTime, nullable=True)
+    scope = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="google_tokens")
+
+    __table_args__ = (
+        Index("ix_google_tokens_user_id", "user_id"),
+    )
+
+    def __repr__(self):
+        return f"<GoogleToken user={self.user_id}>"
+
+
+class Meeting(Base):
+    """Calendar event cache — synced from Google or created manually."""
+    __tablename__ = "meetings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(Text, nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=True)
+    location = Column(Text, nullable=True)
+    attendees = Column(JSONB, nullable=True)
+    source = Column(String(50), default="google")        # google | manual
+    last_synced_at = Column(DateTime, nullable=True)      # stale-data guard
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="meetings")
+
+    __table_args__ = (
+        Index("ix_meetings_user_id", "user_id"),
+        Index("ix_meetings_start_time", "start_time"),
+    )
+
+    def __repr__(self):
+        return f"<Meeting {self.title}>"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  NEW TABLES — Personalization
+# ──────────────────────────────────────────────────────────────────────────────
+
+class UserSettings(Base):
+    """Planner preferences — one row per user."""
+    __tablename__ = "user_settings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    timezone = Column(String(50), default="UTC")
+    work_start = Column(Time, nullable=True)              # e.g. 09:00
+    work_end = Column(Time, nullable=True)                # e.g. 18:00
+    productivity_mode = Column(String(20), default="balanced")  # balanced | aggressive | relaxed
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="settings")
+
+    __table_args__ = (
+        Index("ix_user_settings_user_id", "user_id"),
+    )
+
+    def __repr__(self):
+        return f"<UserSettings user={self.user_id}>"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  NEW TABLES — AI Persistence Layer
+# ──────────────────────────────────────────────────────────────────────────────
+
+class AIPlan(Base):
+    """Stores optimized schedule plans generated by LangGraph agents."""
+    __tablename__ = "ai_plans"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    plan_date = Column(Date, nullable=False)
+    optimized_schedule = Column(JSONB, nullable=True)
+    conflicts = Column(JSONB, nullable=True)
+    travel_plan = Column(JSONB, nullable=True)
+    productivity_score = Column(Integer, nullable=True)
+    overload_risk = Column(String(20), nullable=True)     # low | medium | high
+
+    # ── Extra metadata (per user feedback) ──
+    execution_time_ms = Column(Integer, nullable=True)    # total plan generation time
+    model_used = Column(String(100), nullable=True)       # LLM model name
+    optimization_mode = Column(String(20), nullable=True) # balanced | aggressive | relaxed
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="ai_plans")
+    agent_logs = relationship("AgentLog", back_populates="plan", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_ai_plans_user_id", "user_id"),
+        Index("ix_ai_plans_plan_date", "plan_date"),
+    )
+
+    def __repr__(self):
+        return f"<AIPlan {self.plan_date}>"
+
+
+class AgentLog(Base):
+    """Tracks individual LangGraph agent executions within a plan."""
+    __tablename__ = "agent_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plan_id = Column(UUID(as_uuid=True), ForeignKey("ai_plans.id", ondelete="CASCADE"), nullable=False)
+    agent_name = Column(String(100), nullable=False)      # e.g. ConflictAgent, TravelAgent
+    status = Column(String(20), nullable=False)            # success | error | skipped
+    execution_time_ms = Column(Integer, nullable=True)
+    output = Column(JSONB, nullable=True)
+    log_level = Column(String(10), default="INFO")         # DEBUG | INFO | WARN | ERROR
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    plan = relationship("AIPlan", back_populates="agent_logs")
+
+    __table_args__ = (
+        Index("ix_agent_logs_plan_id", "plan_id"),
+        Index("ix_agent_logs_agent_name", "agent_name"),
+    )
+
+    def __repr__(self):
+        return f"<AgentLog {self.agent_name} {self.status}>"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  NEW TABLES — Analytics
+# ──────────────────────────────────────────────────────────────────────────────
+
+class ProductivityMetric(Base):
+    """Daily aggregated snapshots for dashboard charts."""
+    __tablename__ = "productivity_metrics"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    date = Column(Date, nullable=False)
+    tasks_completed = Column(Integer, default=0)
+    meetings_count = Column(Integer, default=0)
+    travel_minutes = Column(Integer, default=0)
+    productivity_score = Column(Integer, nullable=True)
+
+    user = relationship("User", back_populates="productivity_metrics")
+
+    __table_args__ = (
+        Index("ix_productivity_metrics_user_id", "user_id"),
+        Index("ix_productivity_metrics_date", "date"),
+    )
+
+    def __repr__(self):
+        return f"<ProductivityMetric {self.date}>"

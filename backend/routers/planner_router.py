@@ -54,7 +54,7 @@ def plan_day_live(
     
     No input needed — all data is fetched from connected Google services.
     """
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(
             status_code=401,
             detail="Google not connected. Please connect Google account in Settings."
@@ -62,7 +62,7 @@ def plan_day_live(
     
     try:
         graph = ScheduleAgentGraph()
-        result = graph.execute_live()
+        result = graph.execute_live(current_user, db)
         
         return {
             "status": "success",

@@ -55,10 +55,10 @@ Return ONLY JSON:""")
         except Exception as e:
             return {**self._empty_result(), "recommendations": [f"Error: {str(e)}"], "raw_data": sheet_data}
 
-    def fetch_and_analyze(self, spreadsheet_id, range_name="Sheet1"):
+    def fetch_and_analyze(self, user, db, spreadsheet_id, range_name="Sheet1"):
         """Auto-fetch from Google Sheets and analyze."""
         try:
-            sheet_data = read_sheet(spreadsheet_id, range_name)
+            sheet_data = read_sheet(user, db, spreadsheet_id, range_name)
         except Exception as e:
             return {**self._empty_result(), "summary": f"Could not read sheet: {str(e)}"}
 

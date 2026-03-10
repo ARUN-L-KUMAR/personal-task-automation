@@ -55,10 +55,10 @@ Match attendees with contact records. Return ONLY JSON:""")
         except Exception as e:
             return {**self._empty_result(), "suggestions": [f"Error: {str(e)}"]}
 
-    def fetch_and_analyze(self, meetings):
+    def fetch_and_analyze(self, user, db, meetings):
         """Auto-fetch contacts from Google and match with meeting attendees."""
         try:
-            contacts = get_contacts(max_results=100)
+            contacts = get_contacts(user, db, max_results=100)
         except Exception as e:
             return {
                 **self._empty_result(),

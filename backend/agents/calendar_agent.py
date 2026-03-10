@@ -62,10 +62,10 @@ Return ONLY JSON:""")
                 "raw_events": meetings
             }
 
-    def fetch_and_analyze(self):
+    def fetch_and_analyze(self, user, db):
         """Auto-fetch from Google Calendar and analyze."""
         try:
-            events = get_today_events()
+            events = get_today_events(user, db)
         except Exception as e:
             return {
                 **self._empty_result(),

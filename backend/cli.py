@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 from graph.agent_graph import ScheduleAgentGraph
 from data.data_loader import DataLoader, list_all_scenarios
 from utils.google_auth import is_authenticated, get_auth_url, logout
+from database.connection import SessionLocal
+from database.models import User
 
 # Load environment variables
 load_dotenv()
@@ -213,14 +215,27 @@ def use_sample_scenario():
     return None, None
 
 
-def google_connect():
+def _get_cli_context():
+    """Helper to get a database session and a default user for CLI."""
+    db = SessionLocal()
+    user = db.query(User).first()
+    if not user:
+        # Create a default user for CLI if none exists
+        user = User(email="cli-user@example.com", full_name="CLI User", is_active=True)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user, db
+
+
+def google_connect(user, db):
     """Connect or check Google account status"""
-    if is_authenticated():
+    if is_authenticated(user, db):
         print("\n✅ Google account is already connected!")
         print("   All Google services are active.")
         disc = input("\n   Disconnect? (y/n): ").strip().lower()
         if disc == 'y':
-            logout()
+            logout(user, db)
             print("   ✅ Disconnected from Google.")
     else:
         print("\n🔗 Google account is NOT connected.")
@@ -233,7 +248,7 @@ def google_connect():
                 webbrowser.open(auth_url)
                 print("   After signing in, come back here and press Enter.")
                 input("\n   Press Enter after completing Google login... ")
-                if is_authenticated():
+                if is_authenticated(user, db):
                     print("   ✅ Google connected successfully!")
                 else:
                     print("   ❌ Connection not detected. Make sure you completed the login.")
@@ -241,9 +256,9 @@ def google_connect():
                 print("   ❌ credentials.json not found! Place it in the backend folder.")
 
 
-def run_live_mode():
+def run_live_mode(user, db):
     """Run analysis using real Google data"""
-    if not is_authenticated():
+    if not is_authenticated(user, db):
         print("\n❌ Google account not connected!")
         print("   Use option 4 to connect first.")
         return
@@ -255,7 +270,7 @@ def run_live_mode():
     try:
         agent_graph = ScheduleAgentGraph()
         print("🔄 Running 10-agent live pipeline...")
-        result = agent_graph.execute_live()
+        result = agent_graph.execute_live(user, db)
         display_results(result, mode="live")
         
         save_choice = input("\n💾 Save results to file? (y/n): ").strip().lower()
@@ -273,50 +288,57 @@ def run_live_mode():
 
 def main():
     """Main CLI application"""
-    print_header("🤖 AI Personal Task Automation (Multi-Agent CLI)")
+    user, db = _get_cli_context()
     
-    # Show Google status
-    google_status = "✅ Connected" if is_authenticated() else "❌ Not Connected"
-    
-    print(f"\n🎯 This system uses 10 AI agents to analyze your schedule:")
-    print(f"   ┌─ Data Agents (dual-mode: manual + Google) ───────┐")
-    print(f"   │  1. CalendarAgent  — Meeting analysis             │")
-    print(f"   │  2. TaskAgent      — Task prioritization          │")
-    print(f"   │  3. TravelAgent    — Travel planning (Maps)       │")
-    print(f"   │  4. EmailAgent     — Email analysis (Gmail)       │")
-    print(f"   │  5. ContactsAgent  — Contact matching             │")
-    print(f"   │  6. SheetsAgent    — Spreadsheet analysis         │")
-    print(f"   │  7. NotesAgent     — Smart note generation        │")
-    print(f"   ├─ Analysis Agents ────────────────────────────────┤")
-    print(f"   │  8. ConflictAgent  — Conflict detection           │")
-    print(f"   │  9. PlanningAgent  — Schedule optimization        │")
-    print(f"   │ 10. CoordinatorAgent — Final recommendations      │")
-    print(f"   └──────────────────────────────────────────────────┘")
-    print(f"\n   Google Services: {google_status}")
-    
-    print(f"\n📋 Choose input method:")
-    print(f"   1. Enter schedule manually")
-    print(f"   2. Use sample scenario")
-    print(f"   3. 🌐 Plan day LIVE (Google auto-fetch)")
-    print(f"   4. 🔗 Connect / Disconnect Google")
-    print(f"   5. Exit")
-    
-    choice = input("\nYour choice (1-5): ").strip()
-    
-    if choice == "5":
-        print("\n👋 Goodbye!")
-        sys.exit(0)
-    
-    if choice == "4":
-        google_connect()
-        print("\n" + "="*60)
-        input("Press Enter to return to menu...")
-        main()  # Return to menu
-        return
-    
-    if choice == "3":
-        run_live_mode()
-        return
+    try:
+        print_header("🤖 AI Personal Task Automation (Multi-Agent CLI)")
+        
+        # Show Google status
+        google_status = "✅ Connected" if is_authenticated(user, db) else "❌ Not Connected"
+        
+        print(f"\n🎯 This system uses 10 AI agents to analyze your schedule:")
+        print(f"   ┌─ Data Agents (dual-mode: manual + Google) ───────┐")
+        print(f"   │  1. CalendarAgent  — Meeting analysis             │")
+        print(f"   │  2. TaskAgent      — Task prioritization          │")
+        print(f"   │  3. TravelAgent    — Travel planning (Maps)       │")
+        print(f"   │  4. EmailAgent     — Email analysis (Gmail)       │")
+        print(f"   │  5. ContactsAgent  — Contact matching             │")
+        print(f"   │  6. SheetsAgent    — Spreadsheet analysis         │")
+        print(f"   │  7. NotesAgent     — Smart note generation        │")
+        print(f"   ├─ Analysis Agents ────────────────────────────────┤")
+        print(f"   │  8. ConflictAgent  — Conflict detection           │")
+        print(f"   │  9. PlanningAgent  — Schedule optimization        │")
+        print(f"   │ 10. CoordinatorAgent — Final recommendations      │")
+        print(f"   └──────────────────────────────────────────────────┘")
+        print(f"\n   Google Services: {google_status}")
+        
+        print(f"\n📋 Choose input method:")
+        print(f"   1. Enter schedule manually")
+        print(f"   2. Use sample scenario")
+        print(f"   3. 🌐 Plan day LIVE (Google auto-fetch)")
+        print(f"   4. 🔗 Connect / Disconnect Google")
+        print(f"   5. Exit")
+        
+        choice = input("\nYour choice (1-5): ").strip()
+        
+        if choice == "5":
+            print("\n👋 Goodbye!")
+            sys.exit(0)
+        
+        if choice == "4":
+            google_connect(user, db)
+            print("\n" + "="*60)
+            input("Press Enter to return to menu...")
+            # Reuse DB session or close/re-open? Simpler to close and wait for next call if recursive
+            db.close()
+            main()  # Return to menu
+            return
+        
+        if choice == "3":
+            run_live_mode(user, db)
+            return
+    finally:
+        db.close()
     
     # Manual / Sample modes
     meetings = []

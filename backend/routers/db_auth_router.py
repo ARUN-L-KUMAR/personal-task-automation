@@ -16,6 +16,7 @@ import os
 import json
 from pathlib import Path
 from google_auth_oauthlib.flow import Flow
+from utils.google_auth import _save_token_to_db
 
 from database.connection import get_db
 from database.models import User
@@ -164,21 +165,19 @@ async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db
             email=email,
             password="GOOGLE_OAUTH_" + google_id,  # placeholder, never used for login
             is_google_user=True,
-            google_access_token=creds.token,
-            google_refresh_token=creds.refresh_token,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
     else:
-        # Update name and tokens on every login
+        # Update name on every login
         user.name = name.strip() if name.strip() else user.name
         user.is_google_user = True
-        user.google_access_token = creds.token
-        if creds.refresh_token:  # Only update if a new refresh token was issued
-            user.google_refresh_token = creds.refresh_token
         db.commit()
         db.refresh(user)
+
+    # Save tokens to google_tokens table
+    _save_token_to_db(user, creds, db)
 
     jwt_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
 

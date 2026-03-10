@@ -39,7 +39,8 @@ async def get_current_user(
             detail="Token payload invalid",
         )
 
-    user = db.query(User).filter(User.id == user_id).first()
+    from sqlalchemy.orm import joinedload
+    user = db.query(User).options(joinedload(User.google_tokens)).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

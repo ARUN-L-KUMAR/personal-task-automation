@@ -29,7 +29,7 @@ def fetch_inbox(
     db: Session = Depends(get_db)
 ):
     """Fetch recent inbox emails for the current user."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -47,7 +47,7 @@ def fetch_email_detail(
     db: Session = Depends(get_db)
 ):
     """Get full email details."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -72,7 +72,7 @@ def send_new_email(
     db: Session = Depends(get_db)
 ):
     """Send an email from the current user's Gmail account."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:

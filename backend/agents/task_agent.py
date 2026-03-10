@@ -66,13 +66,13 @@ Return ONLY JSON:""")
                 "raw_tasks": tasks
             }
 
-    def fetch_and_analyze(self):
+    def fetch_and_analyze(self, user, db):
         """Auto-fetch from Google Tasks and analyze."""
         try:
-            task_lists = get_task_lists()
+            task_lists = get_task_lists(user, db)
             all_tasks = []
             for tl in task_lists:
-                tasks = get_tasks(list_id=tl["id"])
+                tasks = get_tasks(user, db, list_id=tl["id"])
                 for task in tasks:
                     task["list_name"] = tl["title"]
                 all_tasks.extend(tasks)

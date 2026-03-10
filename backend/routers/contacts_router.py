@@ -25,7 +25,7 @@ def fetch_contacts(
     db: Session = Depends(get_db)
 ):
     """Fetch contacts list."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -42,7 +42,7 @@ def search_contact(
     db: Session = Depends(get_db)
 ):
     """Search contacts by name."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:

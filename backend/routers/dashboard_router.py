@@ -239,7 +239,7 @@ async def get_dashboard_summary(
         "planning": "grey",
     }
 
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         return {
             "authenticated": False,
             "agent_status": agent_status,

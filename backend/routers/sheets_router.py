@@ -29,7 +29,7 @@ def list_user_sheets(
     db: Session = Depends(get_db)
 ):
     """List the user's Google Sheets files from Drive."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -68,7 +68,7 @@ def fetch_sheet_tabs(
     db: Session = Depends(get_db)
 ):
     """Get all sheet tab names from a spreadsheet."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -90,7 +90,7 @@ def fetch_sheet_data(
     db: Session = Depends(get_db)
 ):
     """Read data from a Google Sheet."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -120,7 +120,7 @@ def write_sheet_data(
     db: Session = Depends(get_db)
 ):
     """Write data to a Google Sheet."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -148,7 +148,7 @@ def append_sheet_data(
     db: Session = Depends(get_db)
 ):
     """Append rows to a Google Sheet."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:

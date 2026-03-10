@@ -58,10 +58,10 @@ Return ONLY JSON:""")
         except Exception as e:
             return {**self._empty_result(), "recommendations": [f"Error: {str(e)}"]}
 
-    def fetch_and_analyze(self, events, tasks):
+    def fetch_and_analyze(self, user, db, events, tasks):
         """Fetch existing notes from Google + generate new smart notes."""
         try:
-            existing_notes = get_notes()
+            existing_notes = get_notes(user, db)
         except Exception:
             existing_notes = []
 
@@ -77,10 +77,10 @@ Return ONLY JSON:""")
         except Exception as e:
             return {**self._empty_result(), "recommendations": [f"Error: {str(e)}"], "existing_notes": existing_notes}
 
-    def save_note(self, title, content):
+    def save_note(self, user, db, title, content):
         """Save a note to Google Tasks Notes list."""
         try:
-            return create_note(title, content)
+            return create_note(user, db, title, content)
         except Exception as e:
             return {"error": str(e)}
 

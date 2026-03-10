@@ -32,7 +32,7 @@ def fetch_tasks(
     db: Session = Depends(get_db)
 ):
     """Fetch Google Tasks."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -48,7 +48,7 @@ def fetch_task_lists(
     db: Session = Depends(get_db)
 ):
     """Fetch all task lists."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -76,7 +76,7 @@ def create_new_task(
     db: Session = Depends(get_db)
 ):
     """Create a new task."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -102,7 +102,7 @@ def mark_task_complete(
     db: Session = Depends(get_db)
 ):
     """Mark a task as completed."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -120,7 +120,7 @@ def delete_task_item(
     db: Session = Depends(get_db)
 ):
     """Delete a task."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -140,7 +140,7 @@ def fetch_notes(
     db: Session = Depends(get_db)
 ):
     """Fetch notes."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -162,7 +162,7 @@ def create_new_note(
     db: Session = Depends(get_db)
 ):
     """Create a new note."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:
@@ -179,7 +179,7 @@ def delete_note_item(
     db: Session = Depends(get_db)
 ):
     """Delete a note."""
-    if not is_authenticated(current_user):
+    if not is_authenticated(current_user, db):
         raise HTTPException(status_code=401, detail="Google not connected. Please connect Google account in Settings.")
     
     try:

@@ -41,6 +41,9 @@ class ScheduleState(TypedDict):
     travel_plan: Dict[str, Any]
     optimized_plan: Dict[str, Any]
     final_response: str
+    # Multi-user context
+    user: Any  # database.models.User
+    db: Any    # sqlalchemy.orm.Session
 
 
 class ScheduleAgentGraph:
@@ -134,23 +137,23 @@ class ScheduleAgentGraph:
 
     def _fetch_calendar_live(self, state: ScheduleState) -> ScheduleState:
         """Auto-fetch from Google Calendar."""
-        state["calendar_analysis"] = self.calendar_agent.fetch_and_analyze()
+        state["calendar_analysis"] = self.calendar_agent.fetch_and_analyze(state["user"], state["db"])
         return state
 
     def _fetch_tasks_live(self, state: ScheduleState) -> ScheduleState:
         """Auto-fetch from Google Tasks."""
-        state["task_analysis"] = self.task_agent.fetch_and_analyze()
+        state["task_analysis"] = self.task_agent.fetch_and_analyze(state["user"], state["db"])
         return state
 
     def _fetch_emails_live(self, state: ScheduleState) -> ScheduleState:
         """Auto-fetch from Gmail."""
-        state["google_emails"] = self.email_agent.fetch_and_analyze()
+        state["google_emails"] = self.email_agent.fetch_and_analyze(state["user"], state["db"])
         return state
 
     def _fetch_contacts_live(self, state: ScheduleState) -> ScheduleState:
         """Auto-fetch contacts and match with meeting attendees."""
         events = state.get("calendar_analysis", {}).get("raw_events", [])
-        state["google_contacts"] = self.contacts_agent.fetch_and_analyze(events)
+        state["google_contacts"] = self.contacts_agent.fetch_and_analyze(state["user"], state["db"], events)
         return state
 
     def _fetch_sheets_live(self, state: ScheduleState) -> ScheduleState:
@@ -172,7 +175,7 @@ class ScheduleAgentGraph:
         """Generate smart notes from real data."""
         events = state.get("calendar_analysis", {}).get("raw_events", [])
         tasks = state.get("task_analysis", {}).get("raw_tasks", [])
-        state["google_notes"] = self.notes_agent.fetch_and_analyze(events, tasks)
+        state["google_notes"] = self.notes_agent.fetch_and_analyze(state["user"], state["db"], events, tasks)
         return state
 
     # =============================================
@@ -257,10 +260,12 @@ class ScheduleAgentGraph:
         }
         return self.manual_graph.invoke(initial_state)
 
-    def execute_live(self) -> Dict[str, Any]:
+    def execute_live(self, user, db) -> Dict[str, Any]:
         """Execute in LIVE mode — auto-fetches from Google services."""
         initial_state: ScheduleState = {
             "mode": "live",
+            "user": user,
+            "db": db,
             "meetings": [],
             "tasks": [],
             "google_emails": {},

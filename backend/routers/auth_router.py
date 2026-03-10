@@ -15,7 +15,10 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from utils.google_auth import get_auth_url, handle_auth_callback, is_authenticated, logout
+from utils.google_auth import (
+    get_auth_url, handle_auth_callback, is_authenticated, logout,
+    _save_token_to_db, SCOPES, _get_client_id, _get_client_secret,
+)
 from database.connection import get_db
 from database.models import User
 from middleware import get_current_user
@@ -135,12 +138,19 @@ async def google_callback(
                     db.commit()
                     db.refresh(user)
                 
-                # Save Google service tokens to user
+                # Save Google service tokens via google_tokens table
                 from datetime import datetime, timedelta
-                user.google_access_token = access_token
-                user.google_refresh_token = refresh_token
-                user.google_token_expiry = datetime.utcnow() + timedelta(seconds=expires_in)
-                db.commit()
+                from google.oauth2.credentials import Credentials as GoogleCreds
+                creds_obj = GoogleCreds(
+                    token=access_token,
+                    refresh_token=refresh_token,
+                    token_uri="https://oauth2.googleapis.com/token",
+                    client_id=_get_client_id(),
+                    client_secret=_get_client_secret(),
+                    scopes=SCOPES,
+                    expiry=datetime.utcnow() + timedelta(seconds=expires_in),
+                )
+                _save_token_to_db(user, creds_obj, db)
                 
                 # Generate JWT for app access
                 jwt_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
@@ -172,11 +182,14 @@ async def google_callback(
 
 
 @router.get("/status")
-def auth_status(current_user: User = Depends(get_current_user)):
+def auth_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Check if current user has connected Google services."""
     return {
-        "authenticated": is_authenticated(current_user),
-        "message": "Google services connected" if is_authenticated(current_user) else "Not connected to Google"
+        "authenticated": is_authenticated(current_user, db),
+        "message": "Google services connected" if is_authenticated(current_user, db) else "Not connected to Google"
     }
 
 

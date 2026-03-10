@@ -61,10 +61,10 @@ Return ONLY JSON:""")
                 "raw_emails": emails
             }
 
-    def fetch_and_analyze(self, max_emails: int = 15):
+    def fetch_and_analyze(self, user, db, max_emails: int = 15):
         """Auto-fetch from Gmail and analyze."""
         try:
-            emails = get_inbox(max_results=max_emails)
+            emails = get_inbox(user, db, max_results=max_emails)
         except Exception as e:
             return {
                 **self._empty_result(),
