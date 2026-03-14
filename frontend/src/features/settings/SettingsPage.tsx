@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     User, Palette, Bell, Globe, LogOut, Check, ExternalLink, RefreshCw,
     Sun, Moon, Monitor, Wifi, WifiOff, Shield, Trash2, AlertCircle,
@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { cn } from '../../utils/cn';
+import api from '../../services/api';
 
 // ── Reusable toggle switch ──────────────────────────────────────────────────
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -266,6 +267,44 @@ function NotificationsTab() {
         digest_time: '08:00',
         digest_frequency: 'daily',
     });
+    const [isSaving, setIsSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Load notification preferences from backend on mount
+    useEffect(() => {
+        api.get('/api/settings').then(({ data }) => {
+            const prefs = data.preferences || {};
+            if (prefs.notifications) {
+                setNotifs(prev => ({ ...prev, ...prefs.notifications }));
+            }
+            setIsLoaded(true);
+        }).catch(() => setIsLoaded(true));
+    }, []);
+
+    const saveDigest = async () => {
+        setIsSaving(true);
+        try {
+            await api.put('/api/settings', {
+                preferences: {
+                    notifications: {
+                        email_summaries: notifs.email_summaries,
+                        calendar_reminders: notifs.calendar_reminders,
+                        task_due: notifs.task_due,
+                        ai_insights: notifs.ai_insights,
+                        conflict_alerts: notifs.conflict_alerts,
+                        browser_push: notifs.browser_push,
+                        sound: notifs.sound,
+                        digest_time: notifs.digest_time,
+                        digest_frequency: notifs.digest_frequency,
+                    },
+                },
+            });
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+        } catch { /* ignore */ }
+        setIsSaving(false);
+    };
 
     const toggle = (key: keyof typeof notifs) =>
         setNotifs(prev => ({ ...prev, [key]: !(prev[key] as any) }));
@@ -359,8 +398,8 @@ function NotificationsTab() {
                             </select>
                         </div>
                     </div>
-                    <Button size="sm" className="bg-brand-600 hover:bg-brand-700 text-white">
-                        Save Digest Settings
+                    <Button size="sm" className="bg-brand-600 hover:bg-brand-700 text-white" onClick={saveDigest} disabled={isSaving}>
+                        {isSaving ? 'Saving…' : saved ? '✓ Saved' : 'Save Digest Settings'}
                     </Button>
                 </Card>
             </div>
@@ -382,6 +421,44 @@ function GeneralTab() {
         auto_refresh: true,
         telemetry: false,
     });
+    const [isSaving, setIsSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+
+    // Load general preferences from backend on mount
+    useEffect(() => {
+        api.get('/api/settings').then(({ data }) => {
+            if (data.timezone) setSettings(prev => ({ ...prev, timezone: data.timezone }));
+            if (data.work_start) setSettings(prev => ({ ...prev, work_start: data.work_start }));
+            if (data.work_end) setSettings(prev => ({ ...prev, work_end: data.work_end }));
+            const prefs = data.preferences || {};
+            if (prefs.general) {
+                setSettings(prev => ({ ...prev, ...prefs.general }));
+            }
+        }).catch(() => {});
+    }, []);
+
+    const saveSettings = async () => {
+        setIsSaving(true);
+        try {
+            await api.put('/api/settings', {
+                timezone: settings.timezone,
+                preferences: {
+                    general: {
+                        language: settings.language,
+                        time_format: settings.time_format,
+                        date_format: settings.date_format,
+                        start_of_week: settings.start_of_week,
+                        ai_context_window: settings.ai_context_window,
+                        auto_refresh: settings.auto_refresh,
+                        telemetry: settings.telemetry,
+                    },
+                },
+            });
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+        } catch { /* ignore */ }
+        setIsSaving(false);
+    };
 
     const toggle = (key: keyof typeof settings) =>
         setSettings(prev => ({ ...prev, [key]: !(prev[key] as any) }));
@@ -475,8 +552,8 @@ function GeneralTab() {
             </div>
 
             <div className="flex justify-end">
-                <Button className="bg-brand-600 hover:bg-brand-700 text-white">
-                    Save Changes
+                <Button className="bg-brand-600 hover:bg-brand-700 text-white" onClick={saveSettings} disabled={isSaving}>
+                    {isSaving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
                 </Button>
             </div>
         </div>

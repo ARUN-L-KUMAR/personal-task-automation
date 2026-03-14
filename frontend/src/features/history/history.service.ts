@@ -7,10 +7,12 @@ export const historyService = {
         return response.data;
     },
 
-    // Future: fetch all history
     getHistory: async (): Promise<PlanHistoryItem[]> => {
-        // This endpoint might not exist yet, placeholder
-        const response = await api.get('/api/last-output'); // reusing for now
-        return [response.data];
-    }
+        const response = await api.get('/api/ai-plans');
+        return response.data;
+    },
+
+    deleteHistory: async (id: string): Promise<void> => {
+        await api.delete(`/api/ai-plans/${id}`);
+    },
 };

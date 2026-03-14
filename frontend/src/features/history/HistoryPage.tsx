@@ -35,8 +35,15 @@ export function HistoryPage() {
         setIsDeleteOpen(true);
     };
 
-    const confirmDelete = () => {
-        setHistory(history.filter(item => item.id !== planToDelete));
+    const confirmDelete = async () => {
+        if (planToDelete) {
+            try {
+                await historyService.deleteHistory(planToDelete);
+                setHistory(history.filter(item => item.id !== planToDelete));
+            } catch (err) {
+                console.error('Failed to delete plan', err);
+            }
+        }
         setIsDeleteOpen(false);
         setPlanToDelete(null);
     };
