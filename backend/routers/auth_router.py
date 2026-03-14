@@ -128,10 +128,11 @@ async def google_callback(
                 
                 if not user:
                     # Create new user
+                    from services import hash_password
                     user = User(
                         name=name or email.split("@")[0],
                         email=email,
-                        password="GOOGLE_OAUTH_" + google_id,  # Placeholder
+                        password=hash_password("GOOGLE_OAUTH_" + google_id),  # Hashed placeholder
                         is_google_user=True,
                     )
                     db.add(user)

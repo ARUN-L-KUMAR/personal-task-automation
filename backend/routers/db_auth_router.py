@@ -160,10 +160,11 @@ async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db
 
     if not user:
         base_name = name.strip() if name.strip() else email.split("@")[0]
+        from services import hash_password
         user = User(
             name=base_name,
             email=email,
-            password="GOOGLE_OAUTH_" + google_id,  # placeholder, never used for login
+            password=hash_password("GOOGLE_OAUTH_" + google_id),  # Hashed placeholder
             is_google_user=True,
         )
         db.add(user)

@@ -70,6 +70,46 @@ def get_credentials(user: User, db: Session) -> Credentials | None:
     return creds
 
 
+def ensure_fresh_credentials(user: User, db: Session) -> Credentials | None:
+    """
+    Get valid, fresh Google credentials for a user.
+    Proactively refreshes if token is expired or close to expiry.
+    
+    Returns None if tokens cannot be refreshed or user hasn't connected Google.
+    Raises exception only if refresh fails unexpectedly.
+    """
+    token_row = db.query(GoogleToken).filter(GoogleToken.user_id == user.id).first()
+    if not token_row:
+        return None
+
+    # Build credentials
+    creds = Credentials(
+        token=token_row.access_token,
+        refresh_token=token_row.refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=_get_client_id(),
+        client_secret=_get_client_secret(),
+        scopes=SCOPES
+    )
+
+    # Check if expired or close to expiry (with 5-minute buffer)
+    from datetime import datetime, timedelta
+    if creds.expiry and datetime.utcnow() >= creds.expiry - timedelta(minutes=5):
+        if not creds.refresh_token:
+            print(f"Token expired for user {user.id} and no refresh token available")
+            return None
+            
+        try:
+            creds.refresh(Request())
+            _save_token_to_db(user, creds, db)
+            print(f"Token refreshed successfully for user {user.id}")
+        except Exception as e:
+            print(f"Token refresh failed for user {user.id}: {str(e)}")
+            raise
+
+    return creds
+
+
 def get_auth_url(user_id: str) -> str | None:
     """
     Generate Google OAuth2 authorization URL.
