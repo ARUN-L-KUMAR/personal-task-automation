@@ -331,7 +331,9 @@ export function useChat() {
             timestamp: new Date(),
         };
 
-        setInput('');
+        if (text === undefined) {
+            setInput('');
+        }
         setMessages(prev => [...prev, userMsg]);
         setIsLoading(true);
 

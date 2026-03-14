@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
     Send, Sparkles, Trash2, Bot, Loader2,
     Calendar, Mail, CheckSquare, Map, Zap, Command,
@@ -9,9 +9,12 @@ import {
     BarChart3, Cpu, Settings, Power, Plus, Minus,
     PanelRightClose, PanelRightOpen,
     MessageSquare, Clock, MoreHorizontal, Pencil, Trash,
+    Mic, MicOff, Volume2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useChat, ChatSession } from '../../hooks/useChat';
+import { useChatVoice } from '../../hooks/useChatVoice';
+import { VOICE_LANGUAGES } from '../../hooks/useVoice';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import api from '../../services/api';
 
@@ -132,12 +135,17 @@ export function ChatbotPage() {
     const [sidebarTab, setSidebarTab] = useState<'actions' | 'session'>('actions');
     const [sidebarMinimized, setSidebarMinimized] = useState(false);
     // Collapsible state for sidebar sections
-    const [contextOpen, setContextOpen] = useState(true);
-    const [actionsOpen, setActionsOpen] = useState(true);
-    const [toolsOpen, setToolsOpen] = useState(true);
+    const [contextOpen, setContextOpen] = useState(false);
+    const [actionsOpen, setActionsOpen] = useState(false);
+    const [toolsOpen, setToolsOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(true);
     const [hoveredSession, setHoveredSession] = useState<string | null>(null);
-    const [sourcesOpen, setSourcesOpen] = useState(true);
+    const [sourcesOpen, setSourcesOpen] = useState(false);
+    const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+    const [autoSendVoice, setAutoSendVoice] = useState(false);
+    const [showVoiceFallbackNotice, setShowVoiceFallbackNotice] = useState(false);
+    const [voiceDraftPending, setVoiceDraftPending] = useState(false);
+    const [isPushTalking, setIsPushTalking] = useState(false);
     const modelMenuRef = useRef<HTMLDivElement>(null);
     const sessionModelRef = useRef<HTMLDivElement>(null);
 
@@ -159,11 +167,7 @@ export function ChatbotPage() {
     useEffect(() => { scrollToBottom(); }, [messages]);
     useEffect(() => { setShowSlashMenu(input.startsWith('/') && !input.includes(' ')); }, [input]);
 
-    const handleKey = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-    };
-
-    const handleSend = (text?: string) => {
+    const handleSend = useCallback(({ text, applyScope = false }: { text?: string; applyScope?: boolean } = {}) => {
         let msg = text ?? input;
         const slashMatch = SLASH_COMMANDS.find(c => msg.trim().toLowerCase() === c.cmd);
         if (slashMatch) {
@@ -177,7 +181,7 @@ export function ChatbotPage() {
             };
             msg = expanded[slashMatch.cmd] || msg;
         }
-        if (inputScope !== 'all' && !text) {
+        if (inputScope !== 'all' && (!text || applyScope)) {
             const prefix: Record<string, string> = {
                 calendar: 'Regarding my calendar: ', email: 'Regarding my emails: ',
                 tasks: 'Regarding my tasks: ', travel: 'Regarding travel: ',
@@ -185,7 +189,12 @@ export function ChatbotPage() {
             msg = (prefix[inputScope] || '') + msg;
         }
         sendMessage(msg);
+        setVoiceDraftPending(false);
         setShowSlashMenu(false);
+    }, [input, inputScope, sendMessage]);
+
+    const handleKey = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
     };
 
     const hasRealMessages = messages.filter(m => m.id !== 'welcome').length > 0;
@@ -219,6 +228,97 @@ export function ChatbotPage() {
         ? (currentModelSource || 'Auto')
         : (() => { const sel = availableModels.find(m => m.key === selectedModel); return sel?.provider || 'Unknown'; })();
     const activeModelKey = selectedModel === 'auto' ? currentModel.toLowerCase() : selectedModel;
+    const latestAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant' && m.id !== 'welcome') || null;
+    const {
+        isListening,
+        isSpeaking,
+        isStarting,
+        isVoiceMode,
+        interimTranscript,
+        error: voiceError,
+        lowConfidence,
+        language,
+        ttsRate,
+        inputMode,
+        availableVoices,
+        selectedVoiceName,
+        elevenVoiceId,
+        elevenVoices,
+        isSTTSupported,
+        isTTSSupported,
+        premiumTTSEnabled,
+        ttsFallbackNotice,
+        backendVoiceEngine,
+        backendModelId,
+        backendVoiceId,
+        setLanguage,
+        setTtsRate,
+        setInputMode,
+        setSelectedVoiceName,
+        setElevenVoiceId,
+        clearTTSFallbackNotice,
+        toggleListening,
+        startHoldToTalk,
+        endHoldToTalk,
+        stopAll,
+    } = useChatVoice({
+        latestAssistantMessage: latestAssistantMessage ? { id: latestAssistantMessage.id, content: latestAssistantMessage.content } : null,
+        isChatLoading: isLoading,
+        autoSendVoice,
+        onVoiceDraft: (text) => {
+            setInput(text);
+            setVoiceDraftPending(true);
+            setShowVoiceSettings(false);
+        },
+        onVoiceMessage: (text) => handleSend({ text, applyScope: true }),
+    });
+
+    useEffect(() => {
+        if (!ttsFallbackNotice) return;
+        setShowVoiceFallbackNotice(true);
+    }, [ttsFallbackNotice]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (!(event.altKey && event.key.toLowerCase() === 'm')) return;
+            const target = event.target as HTMLElement | null;
+            const isTypingField = !!target && (
+                target.tagName === 'INPUT' ||
+                target.tagName === 'TEXTAREA' ||
+                target.isContentEditable
+            );
+            if (isTypingField) return;
+            event.preventDefault();
+            void toggleListening();
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [toggleListening]);
+
+    const handlePushToTalkStart = useCallback(() => {
+        if (isPushTalking || isLoading) return;
+        setIsPushTalking(true);
+        void startHoldToTalk();
+    }, [isPushTalking, isLoading, startHoldToTalk]);
+
+    const handlePushToTalkEnd = useCallback(() => {
+        if (!isPushTalking) return;
+        setIsPushTalking(false);
+        endHoldToTalk();
+    }, [endHoldToTalk, isPushTalking]);
+
+    const voiceStatusLabel = isStarting
+        ? 'Connecting to microphone...'
+        : isListening
+        ? 'Listening... Speak now'
+        : isLoading
+            ? 'Thinking...'
+        : isSpeaking
+            ? 'Speaking reply...'
+                : isVoiceMode
+                    ? 'Ready'
+                    : 'Voice input';
 
     return (
         <div className="h-[calc(100vh-120px)] flex flex-col gap-2">
@@ -312,7 +412,7 @@ export function ChatbotPage() {
                                 {/* Starter prompts — 2x2 compact */}
                                 <div className="grid grid-cols-2 gap-1.5 max-w-sm w-full">
                                     {QUICK_ACTIONS.slice(0, 4).map(a => (
-                                        <button key={a.label} onClick={() => handleSend(a.label)}
+                                        <button key={a.label} onClick={() => handleSend({ text: a.label })}
                                             className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all text-left group">
                                             <span className={cn('flex-shrink-0', a.color)}>{a.icon}</span>
                                             <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white leading-tight">{a.label}</span>
@@ -378,6 +478,127 @@ export function ChatbotPage() {
 
                         <div className="px-4 pb-3 pt-1">
                             <div className="relative">
+                                {false && (
+                                    <div className="mb-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 space-y-2 text-[11px]">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="text-slate-500 dark:text-slate-300">Voice send mode</span>
+                                            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                                <button
+                                                    onClick={() => setAutoSendVoice(false)}
+                                                    className={cn(
+                                                        'px-2.5 py-1 text-[10px] font-medium',
+                                                        !autoSendVoice ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300'
+                                                    )}
+                                                >
+                                                    Review before send
+                                                </button>
+                                                <button
+                                                    onClick={() => setAutoSendVoice(true)}
+                                                    className={cn(
+                                                        'px-2.5 py-1 text-[10px] font-medium border-l border-slate-200 dark:border-slate-700',
+                                                        autoSendVoice ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300'
+                                                    )}
+                                                >
+                                                    Auto send
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="text-slate-500 dark:text-slate-300">Input mode</span>
+                                            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                                <button
+                                                    onClick={() => setInputMode('continuous')}
+                                                    className={cn(
+                                                        'px-2.5 py-1 text-[10px] font-medium',
+                                                        inputMode === 'continuous' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300'
+                                                    )}
+                                                >
+                                                    Continuous
+                                                </button>
+                                                <button
+                                                    onClick={() => setInputMode('push_to_talk')}
+                                                    className={cn(
+                                                        'px-2.5 py-1 text-[10px] font-medium border-l border-slate-200 dark:border-slate-700',
+                                                        inputMode === 'push_to_talk' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300'
+                                                    )}
+                                                >
+                                                    Push-to-talk
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-3">
+                                            <label htmlFor="chat-voice-language" className="text-slate-500 dark:text-slate-300">Language</label>
+                                            <select
+                                                id="chat-voice-language"
+                                                value={language}
+                                                onChange={(e) => setLanguage(e.target.value)}
+                                                className="h-8 min-w-[180px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-[11px] text-slate-700 dark:text-slate-200"
+                                            >
+                                                {VOICE_LANGUAGES.map(l => (
+                                                    <option key={l.code} value={l.code}>{l.flag} {l.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {availableVoices.length > 0 && (
+                                            <div className="flex items-center justify-between gap-3">
+                                                <label htmlFor="chat-voice-picker" className="text-slate-500 dark:text-slate-300">Browser voice</label>
+                                                <select
+                                                    id="chat-voice-picker"
+                                                    value={selectedVoiceName}
+                                                    onChange={(e) => setSelectedVoiceName(e.target.value)}
+                                                    className="h-8 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-[11px] text-slate-700 dark:text-slate-200"
+                                                >
+                                                    {availableVoices.map(v => (
+                                                        <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {premiumTTSEnabled && elevenVoices.length > 0 && (
+                                            <div className="flex items-center justify-between gap-3">
+                                                <label htmlFor="chat-eleven-voice" className="text-slate-500 dark:text-slate-300">ElevenLabs voice</label>
+                                                <select
+                                                    id="chat-eleven-voice"
+                                                    value={elevenVoiceId}
+                                                    onChange={(e) => setElevenVoiceId(e.target.value)}
+                                                    className="h-8 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 text-[11px] text-slate-700 dark:text-slate-200"
+                                                >
+                                                    {elevenVoices.map(v => (
+                                                        <option key={v.id} value={v.id}>{v.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between text-slate-500 dark:text-slate-300">
+                                                <span>Speech speed</span>
+                                                <span className="font-semibold">{ttsRate.toFixed(2)}x</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min={0.8}
+                                                max={1.2}
+                                                step={0.05}
+                                                value={ttsRate}
+                                                onChange={(e) => setTtsRate(parseFloat(e.target.value))}
+                                                className="w-full accent-indigo-600"
+                                            />
+                                        </div>
+
+                                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-2 text-[10px] text-slate-600 dark:text-slate-300">
+                                            Using {backendVoiceEngine === 'elevenlabs' ? 'ElevenLabs' : 'browser'}
+                                            {backendVoiceEngine === 'elevenlabs' && (
+                                                <span> · Model: {backendModelId} · Voice: {backendVoiceId}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Slash command menu */}
                                 {showSlashMenu && (
                                     <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden z-30">
@@ -396,9 +617,26 @@ export function ChatbotPage() {
                                 <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
                                     placeholder={inputScope === 'all' ? 'Ask anything or type / for commands…' : `Ask about ${inputScope}…`}
                                     rows={1} disabled={isLoading}
-                                    className="w-full resize-none bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-4 pr-14 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all disabled:opacity-60"
+                                    className="w-full resize-none bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-4 pr-24 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all disabled:opacity-60"
                                     style={{ minHeight: '46px', maxHeight: '120px' }}
                                 />
+                                <button
+                                    onClick={inputMode === 'continuous' ? (isVoiceMode || isStarting ? stopAll : () => void toggleListening()) : undefined}
+                                    onPointerDown={inputMode === 'push_to_talk' ? handlePushToTalkStart : undefined}
+                                    onPointerUp={inputMode === 'push_to_talk' ? handlePushToTalkEnd : undefined}
+                                    onPointerLeave={inputMode === 'push_to_talk' ? handlePushToTalkEnd : undefined}
+                                    onPointerCancel={inputMode === 'push_to_talk' ? handlePushToTalkEnd : undefined}
+                                    disabled={!isSTTSupported || (isLoading && !isVoiceMode && !isStarting)}
+                                    title={inputMode === 'push_to_talk' ? 'Hold to talk' : (isVoiceMode || isStarting ? 'Tap mic to stop' : 'Start voice conversation')}
+                                    className={cn(
+                                        'absolute right-14 bottom-2.5 h-10 w-10 md:h-9 md:w-9 rounded-lg flex items-center justify-center transition-all border touch-none',
+                                        (isVoiceMode || isStarting)
+                                            ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-300'
+                                            : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-700',
+                                        (!isSTTSupported || (isLoading && !isVoiceMode && !isStarting)) && 'opacity-50 cursor-not-allowed'
+                                    )}>
+                                    {isSpeaking ? <Volume2 className="h-4 w-4" /> : (isListening || isStarting || isPushTalking) ? <Mic className="h-4 w-4 animate-pulse" /> : <MicOff className="h-4 w-4" />}
+                                </button>
                                 <button onClick={() => handleSend()} disabled={isLoading || !input.trim()}
                                     className={cn(
                                         'absolute right-2.5 bottom-2.5 h-9 w-9 rounded-lg flex items-center justify-center transition-all',
@@ -409,6 +647,79 @@ export function ChatbotPage() {
                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </button>
                             </div>
+
+                            {(isVoiceMode || isStarting || interimTranscript || voiceError || lowConfidence || !isTTSSupported || (showVoiceFallbackNotice && !!ttsFallbackNotice) || voiceDraftPending) && (
+                                <div className="mt-2 space-y-2">
+                                    {showVoiceFallbackNotice && ttsFallbackNotice && (
+                                        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                                            <span className="flex-1">{ttsFallbackNotice}</span>
+                                            <button
+                                                onClick={() => {
+                                                    setShowVoiceFallbackNotice(false);
+                                                    clearTTSFallbackNotice();
+                                                }}
+                                                className="text-amber-500 hover:text-amber-700 transition-colors"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className={cn(
+                                        'flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px]',
+                                        (isVoiceMode || isStarting)
+                                            ? 'border-indigo-200 bg-indigo-50/80 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300'
+                                            : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300'
+                                    )}>
+                                        {isSpeaking ? <Volume2 className="h-3.5 w-3.5" /> : (isListening || isStarting) ? <Mic className="h-3.5 w-3.5 animate-pulse" /> : <MicOff className="h-3.5 w-3.5" />}
+                                        <span className="font-medium">{voiceStatusLabel}</span>
+                                        {(isListening || isSpeaking) && (
+                                            <span className="inline-flex items-end gap-0.5 ml-1" aria-hidden="true">
+                                                <span className={cn('w-1 rounded-full bg-current/70', isListening ? 'h-2 animate-pulse' : 'h-1')} style={{ animationDelay: '0ms' }} />
+                                                <span className={cn('w-1 rounded-full bg-current/70', isListening ? 'h-3 animate-pulse' : 'h-2')} style={{ animationDelay: '120ms' }} />
+                                                <span className={cn('w-1 rounded-full bg-current/70', isListening ? 'h-4 animate-pulse' : 'h-3')} style={{ animationDelay: '240ms' }} />
+                                            </span>
+                                        )}
+                                        {(isVoiceMode || isStarting) && <span className="ml-auto text-[10px] opacity-70">Replies will be spoken in this chat thread</span>}
+                                    </div>
+
+                                    {interimTranscript && (
+                                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-[11px] italic text-slate-600 dark:text-slate-300">
+                                            "{interimTranscript}<span className="animate-pulse text-slate-400">…</span>"
+                                        </div>
+                                    )}
+
+                                    {lowConfidence && (
+                                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                            The transcript confidence was low. Check the captured message if the response looks off.
+                                        </div>
+                                    )}
+
+                                    {!autoSendVoice && voiceDraftPending && !isLoading && (
+                                        <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 px-3 py-2 text-[11px] text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300 flex items-center gap-2">
+                                            <Pencil className="h-3.5 w-3.5" />
+                                            <span className="flex-1">Voice transcript is in the input box. Edit it, then press send.</span>
+                                        </div>
+                                    )}
+
+                                    {voiceError && (
+                                        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                                            {voiceError}
+                                        </div>
+                                    )}
+
+                                    {!isTTSSupported && (
+                                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                            Built-in speech playback is not available in this browser. Use Chrome or Edge for spoken replies.
+                                        </div>
+                                    )}
+
+                                    <div className="text-[10px] text-slate-400 px-1">
+                                        Tip: Press <span className="font-semibold text-slate-500">Alt + M</span> to toggle mic.
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Bottom bar — model selector + stats */}
                             <div className="flex items-center justify-between mt-2 px-0.5">
@@ -603,7 +914,7 @@ export function ChatbotPage() {
                                 {actionsOpen && (
                                     <div className="p-1">
                                         {QUICK_ACTIONS.map(a => (
-                                            <button key={a.label} onClick={() => handleSend(a.label)}
+                                            <button key={a.label} onClick={() => handleSend({ text: a.label })}
                                                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left group">
                                                 <div className={cn('h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0', a.bg)}>
                                                     <span className={a.color}>{a.icon}</span>
@@ -686,7 +997,7 @@ export function ChatbotPage() {
                                 {toolsOpen && (
                                     <div className="p-2 flex flex-wrap gap-1.5">
                                         {SLASH_COMMANDS.map(c => (
-                                            <button key={c.cmd} onClick={() => handleSend(c.cmd)}
+                                            <button key={c.cmd} onClick={() => handleSend({ text: c.cmd })}
                                                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800 transition-all text-[10px] font-medium text-slate-500 hover:text-indigo-600">
                                                 <span className="text-indigo-500">{c.icon}</span>
                                                 <span className="font-mono">{c.cmd}</span>
@@ -764,6 +1075,69 @@ export function ChatbotPage() {
                                         )}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Voice Settings */}
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                                <button onClick={() => setShowVoiceSettings(v => !v)}
+                                    className="w-full px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Mic className="h-3 w-3" /> Voice Settings
+                                    </h3>
+                                    <div className="flex items-center gap-1.5">
+                                        <ChevronRight className={cn('h-3.5 w-3.5 text-slate-400 transition-transform', showVoiceSettings && 'rotate-90')} />
+                                    </div>
+                                </button>
+                                {showVoiceSettings && <div className="px-3 py-3 space-y-3.5 text-[11px]">
+                                    <div className="space-y-1.5">
+                                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Send mode</span>
+                                        <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                            <button onClick={() => setAutoSendVoice(false)} className={cn('px-2.5 py-1.5 text-[10px] font-medium', !autoSendVoice ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300')}>Review</button>
+                                            <button onClick={() => setAutoSendVoice(true)} className={cn('px-2.5 py-1.5 text-[10px] font-medium border-l border-slate-200 dark:border-slate-700', autoSendVoice ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300')}>Auto</button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Input mode</span>
+                                        <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                            <button onClick={() => setInputMode('continuous')} className={cn('px-2.5 py-1.5 text-[10px] font-medium', inputMode === 'continuous' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300')}>Continuous</button>
+                                            <button onClick={() => setInputMode('push_to_talk')} className={cn('px-2.5 py-1.5 text-[10px] font-medium border-l border-slate-200 dark:border-slate-700', inputMode === 'push_to_talk' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-300')}>Push-to-talk</button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="sb-voice-language" className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Language</label>
+                                        <select id="sb-voice-language" value={language} onChange={e => setLanguage(e.target.value)} className="h-8 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[11px] text-slate-700 dark:text-slate-200">
+                                            {VOICE_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.flag} {l.label}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {availableVoices.length > 0 && (
+                                        <div className="space-y-1.5">
+                                            <label htmlFor="sb-browser-voice" className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Browser voice</label>
+                                            <select id="sb-browser-voice" value={selectedVoiceName} onChange={e => setSelectedVoiceName(e.target.value)} className="h-8 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[11px] text-slate-700 dark:text-slate-200">
+                                                {availableVoices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {premiumTTSEnabled && elevenVoices.length > 0 && (
+                                        <div className="space-y-1.5">
+                                            <label htmlFor="sb-eleven-voice" className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">ElevenLabs voice</label>
+                                            <select id="sb-eleven-voice" value={elevenVoiceId} onChange={e => setElevenVoiceId(e.target.value)} className="h-8 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 text-[11px] text-slate-700 dark:text-slate-200">
+                                                {elevenVoices.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                                            <span className="text-[10px] font-semibold uppercase tracking-wide">Speech speed</span>
+                                            <span className="font-semibold">{ttsRate.toFixed(2)}x</span>
+                                        </div>
+                                        <input type="range" min={0.8} max={1.2} step={0.05} value={ttsRate} onChange={e => setTtsRate(parseFloat(e.target.value))} className="w-full accent-indigo-600" />
+                                    </div>
+                                </div>}
                             </div>
 
                             {/* Stats */}
@@ -871,8 +1245,8 @@ export function ChatbotPage() {
                                 )}
                             </div>
 
-                            {/* Context Sources (last response) */}
-                            {(() => {
+                            {/* Context Sources (last response) — hidden */}
+                            {/* {(() => {
                                 const lastCtx = messages.filter(m => m.role === 'assistant' && m.meta?.contextSources?.length).pop();
                                 if (!lastCtx?.meta?.contextSources?.length) return null;
                                 return (
@@ -889,10 +1263,10 @@ export function ChatbotPage() {
                                         </div>
                                     </div>
                                 );
-                            })()}
+                            })()} */}
 
-                            {/* Agents Used (last response) */}
-                            {(() => {
+                            {/* Agents Used (last response) — hidden */}
+                            {/* {(() => {
                                 const lastAgent = messages.filter(m => m.role === 'assistant' && m.meta?.agentsUsed?.length).pop();
                                 if (!lastAgent?.meta?.agentsUsed?.length) return null;
                                 return (
@@ -909,7 +1283,8 @@ export function ChatbotPage() {
                                         </div>
                                     </div>
                                 );
-                            })()}
+                            })()} */}
+
                         </>)}
                     </div>
                         </>

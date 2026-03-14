@@ -144,8 +144,8 @@ export function ChatMessageBubble({ message, compact = false, showReasoning = fa
                     )}
                 </div>
 
-                {/* Context badge for assistant messages */}
-                {!isUser && message.usedContext && meta?.contextSources && meta.contextSources.length > 0 && (
+                {/* Context badge — hidden in compact (widget) mode to reduce clutter */}
+                {!isUser && !compact && message.usedContext && meta?.contextSources && meta.contextSources.length > 0 && (
                     <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
                         <Database className="h-2.5 w-2.5 text-emerald-500" />
                         <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
@@ -154,17 +154,26 @@ export function ChatMessageBubble({ message, compact = false, showReasoning = fa
                     </div>
                 )}
 
-                {/* Agents used indicator */}
+                {/* Agents used indicator — collapsed to a single dot-count badge in compact mode */}
                 {!isUser && !isError && meta?.agentsUsed && meta.agentsUsed.length > 0 && (
-                    <div className="flex items-center gap-1 flex-wrap">
-                        <span className="text-[9px] text-slate-400 font-medium">Agents:</span>
-                        {meta.agentsUsed.map(agent => (
-                            <span key={agent} className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                {AGENT_ICONS[agent] || <Activity className="h-2.5 w-2.5" />}
-                                {agent} ✓
+                    compact ? (
+                        <div className="flex items-center gap-1">
+                            <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                                <Activity className="h-2.5 w-2.5" />
+                                {meta.agentsUsed.length} agent{meta.agentsUsed.length > 1 ? 's' : ''} ✓
                             </span>
-                        ))}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[9px] text-slate-400 font-medium">Agents:</span>
+                            {meta.agentsUsed.map(agent => (
+                                <span key={agent} className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                                    {AGENT_ICONS[agent] || <Activity className="h-2.5 w-2.5" />}
+                                    {agent} ✓
+                                </span>
+                            ))}
+                        </div>
+                    )
                 )}
 
                 {/* Timestamp + metadata row */}
