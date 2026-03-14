@@ -7,14 +7,22 @@ Endpoints:
 - GET  /api/maps/geocode     → Geocode an address
 - GET  /api/maps/reverse     → Reverse geocode lat/lng
 - GET  /api/maps/suggest     → Place autocomplete suggestions
+- GET  /api/maps/saved-routes     → List saved routes
+- POST /api/maps/saved-routes     → Save a route
+- DELETE /api/maps/saved-routes/{id} → Delete a saved route
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from pydantic import BaseModel
 from typing import Optional
+from sqlalchemy.orm import Session
 from utils.google_maps import (
     get_directions, get_distance_matrix,
     geocode, reverse_geocode, get_place_suggestions,
 )
+from database.connection import get_db
+from database.models import User, SavedRoute
+from middleware import get_current_user
 
 router = APIRouter(prefix="/maps", tags=["Maps"])
 
@@ -101,3 +109,91 @@ def fetch_place_suggestions(
         return {"status": "success", "suggestions": results, "count": len(results)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Saved Routes (DB-backed) ────────────────────────────────────────────────
+
+
+class SavedRouteCreate(BaseModel):
+    label: str
+    origin: str
+    destination: str
+    mode: str = "driving"
+
+
+@router.get("/saved-routes")
+def list_saved_routes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all saved routes for the current user, newest first."""
+    routes = (
+        db.query(SavedRoute)
+        .filter(SavedRoute.user_id == current_user.id)
+        .order_by(SavedRoute.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return [
+        {
+            "id": str(r.id),
+            "label": r.label,
+            "origin": r.origin,
+            "destination": r.destination,
+            "mode": r.mode,
+        }
+        for r in routes
+    ]
+
+
+@router.post("/saved-routes")
+def create_saved_route(
+    body: SavedRouteCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Save a new route for the current user."""
+    route = SavedRoute(
+        user_id=current_user.id,
+        label=body.label,
+        origin=body.origin,
+        destination=body.destination,
+        mode=body.mode,
+    )
+    db.add(route)
+    db.commit()
+    db.refresh(route)
+    return {
+        "id": str(route.id),
+        "label": route.label,
+        "origin": route.origin,
+        "destination": route.destination,
+        "mode": route.mode,
+    }
+
+
+@router.delete("/saved-routes/{route_id}")
+def delete_saved_route(
+    route_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a saved route belonging to the current user."""
+    import uuid as _uuid
+
+    try:
+        rid = _uuid.UUID(route_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid route ID")
+
+    route = (
+        db.query(SavedRoute)
+        .filter(SavedRoute.id == rid, SavedRoute.user_id == current_user.id)
+        .first()
+    )
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+    db.delete(route)
+    db.commit()
+    return {"status": "deleted", "id": route_id}
