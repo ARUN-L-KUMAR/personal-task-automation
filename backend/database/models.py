@@ -88,6 +88,7 @@ class User(Base):
     ai_plans = relationship("AIPlan", back_populates="user", cascade="all, delete-orphan")
     meetings = relationship("Meeting", back_populates="user", cascade="all, delete-orphan")
     productivity_metrics = relationship("ProductivityMetric", back_populates="user", cascade="all, delete-orphan")
+    saved_routes = relationship("SavedRoute", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email}>"
@@ -262,6 +263,7 @@ class UserSettings(Base):
     work_start = Column(Time, nullable=True)              # e.g. 09:00
     work_end = Column(Time, nullable=True)                # e.g. 18:00
     productivity_mode = Column(String(20), default="balanced")  # balanced | aggressive | relaxed
+    preferences = Column(JSON, default=dict, nullable=False, server_default="{}")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="settings")
@@ -359,3 +361,29 @@ class ProductivityMetric(Base):
 
     def __repr__(self):
         return f"<ProductivityMetric {self.date}>"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  Saved Routes (Maps)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class SavedRoute(Base):
+    """User-saved map routes (previously stored in localStorage)."""
+    __tablename__ = "saved_routes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    label = Column(String(200), nullable=False)
+    origin = Column(String(500), nullable=False)
+    destination = Column(String(500), nullable=False)
+    mode = Column(String(20), nullable=False, default="driving")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="saved_routes")
+
+    __table_args__ = (
+        Index("ix_saved_routes_user_id", "user_id"),
+    )
+
+    def __repr__(self):
+        return f"<SavedRoute {self.label}>"
