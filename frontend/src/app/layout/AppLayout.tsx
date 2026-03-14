@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { cn } from '../../utils/cn';
 import { FloatingChatWidget } from '../../features/chatbot/FloatingChatWidget';
+import { FloatingVoiceWidget } from '../../features/voice/FloatingVoiceWidget';
 
 interface AppLayoutProps {
     children: React.ReactNode;
@@ -50,6 +51,8 @@ export function AppLayout({ children }: AppLayoutProps) {
 
             {/* Floating AI Chat — visible on every page */}
             <FloatingChatWidget />
+            {/* Floating Voice Assistant — sits above the chat button */}
+            <FloatingVoiceWidget />
         </div>
     );
 }
