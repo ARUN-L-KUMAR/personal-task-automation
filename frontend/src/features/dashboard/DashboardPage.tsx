@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useDashboardStore } from '../../store/useDashboardStore';
 import { cn } from '../../utils/cn';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // Sub-components
 import { AgentStatusStrip } from './AgentStatusStrip';
@@ -54,6 +55,22 @@ export function DashboardPage() {
         fetchDashboard();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // ── Register page context for voice assistant ──
+    const { setPageContext, clearPageContext } = usePageContextStore();
+    useEffect(() => {
+        if (!data) return;
+        const s = data.stats;
+        const lines: string[] = [
+            'Dashboard overview.',
+            s ? `Meetings: ${s.meetings}, Active tasks: ${s.active_tasks}, Overdue: ${s.overdue_tasks}, Urgent: ${s.urgent_tasks}, Conflicts: ${s.conflicts}, Productivity: ${s.productivity_score}%` : '',
+        ];
+        if (data.timeline) {
+            lines.push(`Upcoming: ${data.timeline.slice(0, 6).map(e => `${e.time || 'pending'} ${e.title}`).join('; ')}`);
+        }
+        setPageContext({ page: '/dashboard', pageLabel: 'Dashboard', visibleContent: lines.join('\n') });
+        return () => clearPageContext();
+    }, [data, setPageContext, clearPageContext]);
 
     // --- Loading State ---
     if (loading && !data) {

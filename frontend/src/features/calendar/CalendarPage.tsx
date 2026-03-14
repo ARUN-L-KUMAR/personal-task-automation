@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { calendarService } from '../../services/calendar.service';
 import { cn } from '../../utils/cn';
+import { usePageContextStore } from '../../store/usePageContextStore';
 import {
     format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
     addDays, addMonths, subMonths, isSameMonth, isSameDay,
@@ -638,6 +639,25 @@ export function CalendarPage() {
     }, [currentDate, viewMode]);
 
     useEffect(() => { fetchRange(); }, [fetchRange]);
+
+    // ── Register page context for voice assistant ──
+    const { setPageContext, clearPageContext } = usePageContextStore();
+    useEffect(() => {
+        const lines: string[] = [`Calendar ${viewMode} view. Showing ${events.length} events.`];
+        events.slice(0, 10).forEach(e => {
+            let line = `- ${e.title} | ${e.start}`;
+            if (e.end) line += ` → ${e.end}`;
+            if (e.location) line += ` | ${e.location}`;
+            if (e.attendees?.length) line += ` | With: ${e.attendees.slice(0, 3).join(', ')}`;
+            if (e.description) line += ` | ${e.description.slice(0, 100)}`;
+            lines.push(line);
+        });
+        if (selectedEvent) {
+            lines.push(`\nSelected event: "${selectedEvent.title}" at ${selectedEvent.start}${selectedEvent.location ? ' - ' + selectedEvent.location : ''}${selectedEvent.description ? ' - ' + selectedEvent.description.slice(0, 150) : ''}`);
+        }
+        setPageContext({ page: '/calendar', pageLabel: 'Calendar', visibleContent: lines.join('\n') });
+        return () => clearPageContext();
+    }, [events, selectedEvent, viewMode, setPageContext, clearPageContext]);
 
     // ── Navigation ──
     const navigate = (dir: 1 | -1) => {

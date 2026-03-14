@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { emailService } from '../../services/email.service';
 import { cn } from '../../utils/cn';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Email {
@@ -400,6 +401,22 @@ export function SmartInboxPage() {
     useEffect(() => {
         fetchEmails(activeFolder);
     }, [activeFolder, fetchEmails]);
+
+    // ── Register page context for voice assistant ──
+    const { setPageContext, clearPageContext } = usePageContextStore();
+    useEffect(() => {
+        const lines: string[] = [`Viewing ${activeFolder} folder. ${emails.length} emails shown.`];
+        if (selectedEmailId) {
+            const sel = emails.find(e => e.id === selectedEmailId);
+            if (sel) lines.push(`Selected email: "${sel.subject}" from ${sel.from} — ${sel.snippet}`);
+        } else {
+            emails.slice(0, 8).forEach(e =>
+                lines.push(`- ${e.is_unread ? '[UNREAD] ' : ''}"${e.subject}" from ${e.from} (${e.date}) — ${e.snippet}`)
+            );
+        }
+        setPageContext({ page: '/email', pageLabel: 'Email Inbox', visibleContent: lines.join('\n') });
+        return () => clearPageContext();
+    }, [emails, selectedEmailId, activeFolder, setPageContext, clearPageContext]);
 
     // ── Search: Enter key triggers backend search ──
     const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
