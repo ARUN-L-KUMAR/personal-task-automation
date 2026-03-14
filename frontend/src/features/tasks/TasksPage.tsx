@@ -12,6 +12,7 @@ import { tasksService } from '../../services/tasks.service';
 import { cn } from '../../utils/cn';
 import { format, parseISO, isPast, isToday, isTomorrow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface Task {
@@ -22,12 +23,25 @@ interface Task {
     status: 'needsAction' | 'completed';
     updated?: string;
     parent?: string;
+    source?: 'google';
 }
 
 interface TaskList {
     id: string;
     title: string;
     updated?: string;
+}
+
+interface DBTask {
+    id: string;
+    title: string;
+    description?: string;
+    due_date?: string;
+    status: 'open' | 'in_progress' | 'completed' | 'blocked';
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+    project_id?: string;
+    created_at?: string;
+    source: 'database';
 }
 
 interface Note {
@@ -38,7 +52,7 @@ interface Note {
     status?: string;
 }
 
-type TabView = 'tasks' | 'notes';
+type TabView = 'all-tasks' | 'tasks' | 'notes';
 type FilterMode = 'all' | 'pending' | 'completed';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -359,10 +373,13 @@ export function TasksPage() {
     const [taskLists, setTaskLists] = useState<TaskList[]>([]);
     const [currentListId, setCurrentListId] = useState('@default');
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [dbTasks, setDbTasks] = useState<DBTask[]>([]);
     const [notes, setNotes] = useState<Note[]>([]);
     const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+    const [isLoadingDbTasks, setIsLoadingDbTasks] = useState(true);
     const [isLoadingNotes, setIsLoadingNotes] = useState(true);
     const [tasksError, setTasksError] = useState<string | null>(null);
+    const [dbTasksError, setDbTasksError] = useState<string | null>(null);
     const [notesError, setNotesError] = useState<string | null>(null);
     const [filterMode, setFilterMode] = useState<FilterMode>('pending');
     const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -388,11 +405,37 @@ export function TasksPage() {
         try {
             const res = await tasksService.getTasks(listId, filterMode === 'completed');
             let t: Task[] = res.data.tasks || [];
+            t = t.map(task => ({ ...task, source: 'google' as const }));
             setTasks(t);
         } catch (e: any) {
             setTasksError(e?.message || 'Could not load tasks.');
         } finally { setIsLoadingTasks(false); }
     }, [currentListId, filterMode]);
+
+    const fetchDbTasks = useCallback(async () => {
+        setIsLoadingDbTasks(true); setDbTasksError(null);
+        try {
+            const res = await fetch('http://localhost:8000/api/db-tasks', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('g-one_token') || ''}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch database tasks');
+            const data = await res.json();
+            const tasks: DBTask[] = (data || []).map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                description: t.description,
+                due_date: t.due_date,
+                status: t.status,
+                priority: t.priority,
+                project_id: t.project_id,
+                created_at: t.created_at,
+                source: 'database' as const,
+            }));
+            setDbTasks(tasks);
+        } catch (e: any) {
+            setDbTasksError(e?.message || 'Could not load database tasks.');
+        } finally { setIsLoadingDbTasks(false); }
+    }, []);
 
     const fetchNotes = useCallback(async () => {
         setIsLoadingNotes(true); setNotesError(null);
@@ -406,7 +449,38 @@ export function TasksPage() {
 
     useEffect(() => { fetchTaskLists(); }, [fetchTaskLists]);
     useEffect(() => { fetchTasks(); }, [fetchTasks]);
+    useEffect(() => { if (tab === 'all-tasks') fetchDbTasks(); }, [tab, fetchDbTasks]);
     useEffect(() => { if (tab === 'notes') fetchNotes(); }, [tab, fetchNotes]);
+
+    // ── Register page context for voice assistant ──
+    const { setPageContext, clearPageContext } = usePageContextStore();
+    useEffect(() => {
+        const lines: string[] = [];
+        if (tab === 'all-tasks') {
+            lines.push(`Viewing All Tasks (Google + Database). ${tasks.length} Google tasks, ${dbTasks.length} database tasks.`);
+            [...tasks, ...dbTasks].slice(0, 10).forEach(t => {
+                    const title = t.source === 'database' ? `[DB] ${t.title}` : `[G] ${t.title}`;
+                    const due = t.source === 'database'
+                        ? (t.due_date ? ` (due ${t.due_date.slice(0, 10)})` : '')
+                        : (t.due ? ` (due ${t.due.slice(0, 10)})` : '');
+                lines.push(`- ${title}${due}`);
+            });
+        } else if (tab === 'tasks') {
+            lines.push(`Viewing ${tab === 'tasks' ? 'Google Tasks' : 'Notes'} tab. Filter: ${filterMode}.`);
+            const pending = tasks.filter(t => t.status === 'needsAction');
+            lines.push(`${pending.length} pending tasks, ${tasks.length - pending.length} completed.`);
+            tasks.slice(0, 10).forEach(t => {
+                const due = t.due ? ` (due ${t.due.slice(0, 10)})` : '';
+                const n = t.notes ? ` — ${t.notes.slice(0, 80)}` : '';
+                lines.push(`- [${t.status === 'completed' ? '✓' : ' '}] ${t.title}${due}${n}`);
+            });
+        } else {
+            lines.push(`${notes.length} notes.`);
+            notes.slice(0, 8).forEach(n => lines.push(`- ${n.title}${n.content ? ': ' + n.content.slice(0, 80) : ''}`));
+        }
+        setPageContext({ page: '/tasks', pageLabel: 'Tasks & Notes', visibleContent: lines.join('\n') });
+        return () => clearPageContext();
+    }, [tasks, dbTasks, notes, tab, filterMode, setPageContext, clearPageContext]);
 
     // ── Actions ──
     const handleToggleTask = async (taskId: string) => {
@@ -470,16 +544,16 @@ export function TasksPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Tasks & Notes</h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        {pendingCount} pending · {completedCount} completed · {notes.length} notes
+                        {pendingCount} Google · {dbTasks.length} Database · {notes.length} notes
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { fetchTasks(); if (tab === 'notes') fetchNotes(); }}
+                    <Button variant="outline" size="sm" onClick={() => { fetchTasks(); fetchDbTasks(); if (tab === 'notes') fetchNotes(); }}
                         className="h-9 dark:border-slate-700">
-                        <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isLoadingTasks || isLoadingNotes) && 'animate-spin')} />
+                        <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isLoadingTasks || isLoadingDbTasks || isLoadingNotes) && 'animate-spin')} />
                         Refresh
                     </Button>
-                    {tab === 'tasks' ? (
+                    {tab !== 'notes' ? (
                         <Button size="sm" onClick={() => setCreateTaskOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white h-9">
                             <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Task
                         </Button>
@@ -492,16 +566,29 @@ export function TasksPage() {
             </header>
 
             {/* ── Tab bar ── */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit overflow-x-auto">
+                <button
+                    onClick={() => setTab('all-tasks')}
+                    className={cn(
+                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
+                        tab === 'all-tasks'
+                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    )}>
+                    <List className="h-4 w-4" /> All Tasks
+                    {(tasks.length + dbTasks.length) > 0 && (
+                        <span className="text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 font-bold px-1.5 py-0.5 rounded-full">{tasks.length + dbTasks.length}</span>
+                    )}
+                </button>
                 <button
                     onClick={() => setTab('tasks')}
                     className={cn(
-                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
+                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
                         tab === 'tasks'
                             ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                     )}>
-                    <ClipboardList className="h-4 w-4" /> Tasks
+                    <ClipboardList className="h-4 w-4" /> Google
                     {pendingCount > 0 && (
                         <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>
                     )}
@@ -626,13 +713,128 @@ export function TasksPage() {
                         )}
                     </div>
 
+                    {/* All Tasks Tab (Unified View) */}
+                    {tab === 'all-tasks' && (
+                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                                <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                                    <List className="h-4 w-4 text-purple-500" />
+                                    All Tasks (Google + Database)
+                                    <span className="text-xs font-normal text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                        {tasks.length + dbTasks.length}
+                                    </span>
+                                </h3>
+                            </div>
+
+                            {isLoadingTasks || isLoadingDbTasks ? (
+                                <div className="p-6 space-y-3">
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <div key={i} className="h-14 bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : tasksError || dbTasksError ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                                    <AlertCircle className="h-10 w-10 text-red-300 mb-3" />
+                                    <p className="font-bold text-slate-700 dark:text-slate-300">Failed to load tasks</p>
+                                    <p className="text-sm text-slate-400 mt-1 max-w-xs">{tasksError || dbTasksError}</p>
+                                    <Button size="sm" onClick={() => { fetchTasks(); fetchDbTasks(); }} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white">
+                                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
+                                    </Button>
+                                </div>
+                            ) : tasks.length === 0 && dbTasks.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-center">
+                                    <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
+                                        <CheckSquare className="h-8 w-8 text-slate-300" />
+                                    </div>
+                                    <h4 className="font-bold text-slate-700 dark:text-slate-300">No tasks found</h4>
+                                    <p className="text-sm text-slate-400 mt-1">Your Google Tasks and project tasks will appear here.</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y-0 space-y-0">
+                                    {/* Google Tasks Section */}
+                                    {tasks.length > 0 && (
+                                        <>
+                                            <div className="px-5 py-2 bg-blue-50/30 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
+                                                <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                                                    <CheckCircle className="h-3 w-3" /> Google Tasks ({tasks.length})
+                                                </p>
+                                            </div>
+                                            {tasks.map(task => (
+                                                <div key={`google-${task.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all border-b border-slate-100 dark:border-slate-800/60">
+                                                    <div className="flex-shrink-0 flex items-center gap-2 mt-1">
+                                                        <input type="checkbox" checked={task.status === 'completed'} readOnly className="h-4 w-4 rounded accent-blue-500" />
+                                                        <Badge className="h-5 px-1.5 text-[9px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-0">Google</Badge>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className={cn('text-sm font-medium', task.status === 'completed' && 'line-through text-slate-400')}>
+                                                            {task.title}
+                                                        </p>
+                                                        {task.notes && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{task.notes.slice(0, 100)}</p>}
+                                                        {task.due && formatDue(task.due) && (
+                                                            <p className={cn('text-xs font-medium mt-1 px-2 py-0.5 rounded-full w-fit', formatDue(task.due)?.color)}>
+                                                                {formatDue(task.due)?.label}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
+
+                                    {/* Database Tasks Section */}
+                                    {dbTasks.length > 0 && (
+                                        <>
+                                            {tasks.length > 0 && <div className="h-4" />}
+                                            <div className="px-5 py-2 bg-emerald-50/30 dark:bg-emerald-900/10 border-b border-emerald-100 dark:border-emerald-900/20">
+                                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                                                    <CheckCircle className="h-3 w-3" /> Database Tasks ({dbTasks.length})
+                                                </p>
+                                            </div>
+                                            {dbTasks.map(task => (
+                                                <div key={`db-${task.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all border-b border-slate-100 dark:border-slate-800/60 last:border-0">
+                                                    <div className="flex-shrink-0 flex items-center gap-2 mt-1">
+                                                        <input type="checkbox" checked={task.status === 'completed'} readOnly className="h-4 w-4 rounded accent-emerald-500" />
+                                                        <Badge className="h-5 px-1.5 text-[9px] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-0">Database</Badge>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className={cn('text-sm font-medium', task.status === 'completed' && 'line-through text-slate-400')}>
+                                                            {task.title}
+                                                        </p>
+                                                        {task.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{task.description.slice(0, 100)}</p>}
+                                                        <div className="flex gap-2 mt-1 flex-wrap">
+                                                            {task.priority && (
+                                                                <Badge className={cn('h-5 px-1.5 text-[9px] border-0', 
+                                                                    task.priority === 'urgent' ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' :
+                                                                    task.priority === 'high' ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' :
+                                                                    task.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300' :
+                                                                    'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
+                                                                )}>
+                                                                    {task.priority}
+                                                                </Badge>
+                                                            )}
+                                                            {task.due_date && (
+                                                                <Badge className="h-5 px-1.5 text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-0">
+                                                                    {format(parseISO(task.due_date), 'MMM d')}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </Card>
+                    )}
+
                     {/* Tasks Tab */}
                     {tab === 'tasks' && (
                         <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
                             <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
                                 <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                                     <CheckSquare className="h-4 w-4 text-blue-500" />
-                                    {filterMode === 'all' ? 'All Tasks' : filterMode === 'pending' ? 'Pending Tasks' : 'Completed Tasks'}
+                                    Google Tasks
                                     <span className="text-xs font-normal text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                                         {filteredTasks.length}
                                     </span>
