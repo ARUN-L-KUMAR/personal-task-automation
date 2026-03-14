@@ -62,13 +62,7 @@ interface SavedRoute {
     mode: TravelMode;
 }
 
-const SAVED_KEY = 'maps_saved_routes';
-function loadSaved(): SavedRoute[] {
-    try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch { return []; }
-}
-function persistSaved(r: SavedRoute[]) {
-    localStorage.setItem(SAVED_KEY, JSON.stringify(r));
-}
+
 
 // ─── Toast ─────────────────────────────────────────────────────────────────────
 interface ToastMsg { id: number; type: 'success' | 'error'; text: string }
@@ -509,7 +503,14 @@ export function MapsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>(loadSaved);
+    const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+
+    // Load saved routes from backend on mount
+    useEffect(() => {
+        mapsService.getSavedRoutes()
+            .then(res => setSavedRoutes(res.data))
+            .catch(() => {});
+    }, []);
     const [activeTab, setActiveTab] = useState<'steps' | 'alternatives'>('steps');
 
     const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
@@ -555,20 +556,17 @@ export function MapsPage() {
     const removeWaypoint = (i: number) => setWaypoints(p => p.filter((_, idx) => idx !== i));
 
     // ── Save / Load ──
-    const saveRoute = () => {
+    const saveRoute = async () => {
         if (!routeData) return;
         const label = window.prompt('Name this route:', `${originInput} → ${destInput}`);
         if (!label) return;
-        const r: SavedRoute = {
-            id: Date.now().toString(),
-            label,
-            origin: originInput,
-            destination: destInput,
-            mode,
-        };
-        const updated = [r, ...savedRoutes].slice(0, 6);
-        setSavedRoutes(updated); persistSaved(updated);
-        pushToast('success', `Route "${label}" saved!`);
+        try {
+            const res = await mapsService.saveRoute({ label, origin: originInput, destination: destInput, mode });
+            setSavedRoutes(prev => [res.data, ...prev].slice(0, 20));
+            pushToast('success', `Route "${label}" saved!`);
+        } catch {
+            pushToast('error', 'Failed to save route');
+        }
     };
 
     const loadRoute = (r: SavedRoute) => {
@@ -578,9 +576,13 @@ export function MapsPage() {
         setWaypoints([]);
     };
 
-    const deleteSaved = (id: string) => {
-        const updated = savedRoutes.filter(r => r.id !== id);
-        setSavedRoutes(updated); persistSaved(updated);
+    const deleteSaved = async (id: string) => {
+        try {
+            await mapsService.deleteSavedRoute(id);
+            setSavedRoutes(prev => prev.filter(r => r.id !== id));
+        } catch {
+            pushToast('error', 'Failed to delete route');
+        }
     };
 
     // ── Google Maps open ──

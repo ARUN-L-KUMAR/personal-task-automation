@@ -15,6 +15,16 @@ export const mapsService = {
 
     getSuggestions: (query: string, sessionToken = '') =>
         api.get('/api/maps/suggest', { params: { query, session_token: sessionToken } }),
+
+    // Saved routes (DB-backed)
+    getSavedRoutes: () =>
+        api.get('/api/maps/saved-routes'),
+
+    saveRoute: (data: { label: string; origin: string; destination: string; mode: string }) =>
+        api.post('/api/maps/saved-routes', data),
+
+    deleteSavedRoute: (id: string) =>
+        api.delete(`/api/maps/saved-routes/${id}`),
 };
 
 export default mapsService;
