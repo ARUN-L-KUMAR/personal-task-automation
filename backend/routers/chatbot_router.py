@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     message: str
     history: Optional[List[ChatMessage]] = []
     preferred_model: Optional[str] = None  # "auto", "groq", "gemini", "openrouter"
+    page_context: Optional[str] = None     # current page + visible data from frontend
 
 
 def _get_raw_data(user: User, db: Session) -> dict:
@@ -132,18 +133,44 @@ def _get_raw_data(user: User, db: Session) -> dict:
 
 
 def _format_raw_to_text(raw: dict) -> str:
-    """Convert raw JSON data from Google to a human-readable prompt string."""
+    """Convert raw JSON data from Google to a detailed, human-readable prompt string."""
     parts = []
     
     if raw.get("calendar"):
         lines = []
-        for e in raw["calendar"][:5]:
+        for e in raw["calendar"][:6]:
             start = e.get("start", {}).get("dateTime", e.get("start", {}).get("date", ""))
-            lines.append(f"- {e.get('summary', 'Untitled')} @ {start}")
+            end   = e.get("end", {}).get("dateTime", e.get("end", {}).get("date", ""))
+            title = e.get('summary', 'Untitled')
+            loc   = e.get('location', '')
+            desc  = (e.get('description') or '')[:200]
+            attendees = e.get('attendees', [])
+            line = f"- {title} | Start: {start}"
+            if end:
+                line += f" | End: {end}"
+            if loc:
+                line += f" | Location: {loc}"
+            if desc:
+                line += f" | Details: {desc}"
+            if attendees:
+                names = [a.get('email','') for a in attendees[:4]]
+                line += f" | Attendees: {', '.join(names)}"
+            lines.append(line)
         parts.append("UPCOMING CALENDAR EVENTS:\n" + "\n".join(lines))
     
     if raw.get("tasks"):
-        lines = [f"- {t.get('title','')}" + (f" (due {t['due'][:10]})" if t.get('due') else "") for t in raw["tasks"][:7]]
+        lines = []
+        for t in raw["tasks"][:8]:
+            title = t.get('title', '')
+            due   = f" (due {t['due'][:10]})" if t.get('due') else ""
+            notes = (t.get('notes') or '')[:150]
+            status = t.get('status', '')
+            line = f"- {title}{due}"
+            if notes:
+                line += f" — {notes}"
+            if status:
+                line += f" [{status}]"
+            lines.append(line)
         parts.append("PENDING TASKS:\n" + "\n".join(lines))
         
     if raw.get("gmail"):
@@ -502,14 +529,31 @@ async def ask_chatbot(
 
     # Build conversation messages
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # Build page context section if provided
+    page_ctx_section = ""
+    if request.page_context and request.page_context.strip():
+        page_ctx_section = f"""\n\nUSER'S CURRENT PAGE CONTEXT (what the user is looking at right now):
+{request.page_context.strip()}
+
+When the user says "this", "that", "it", or refers to something on screen, use the page context above to understand what they mean."""
+
     system_prompt = f"""You are G-One, a professional AI Personal Assistant.
 You have access to the user's real-time Google data shown below.
-Answer concisely and helpfully. Use **bold**, bullet points, and short sentences.
-For greetings or general chat, be warm and brief (1-2 sentences).
-For data questions, use the context below — if data is missing, say so clearly.
+
+RESPONSE RULES:
+- Give **detailed, thorough answers**. Do NOT just list titles/headings — always explain the content, times, context, and any relevant details for each item.
+- For calendar questions: include the event name, exact date & time, location, attendees, and any description. Explain what's coming up and when.
+- For task questions: list each task with its due date, notes, and status. Explain priorities and what needs attention.
+- For email questions: include subject lines, senders, and any visible context. Summarize what the emails are about.
+- For planning/summary questions: provide a full structured breakdown of the user's day or schedule with times, details, and actionable suggestions.
+- Use **bold** for emphasis, bullet points for lists, and clear paragraphs for explanations.
+- For greetings or general chat, be warm and friendly (2-3 sentences).
+- If data is missing or unavailable, say so clearly and suggest what the user can do.
+- NEVER give one-word or heading-only answers. Always provide useful context and explanation.
 
 USER'S LIVE GOOGLE DATA:
-{context}
+{context}{page_ctx_section}
 
 Current date/time: {current_time} IST"""
 
