@@ -1,5 +1,4 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { Bot } from 'lucide-react';
 import { AppLayout } from './layout/AppLayout';
 import { AuthGuard } from './layout/AuthGuard';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -16,23 +15,9 @@ import { VoiceAssistantPage } from '../features/voice/VoiceAssistantPage';
 import { MapsPage } from '../features/maps/MapsPage';
 import { SheetsPage } from '../features/sheets/SheetsPage';
 import { ContactsPage } from '../features/contacts/ContactsPage';
-
-// Placeholder components for pages not yet implemented
-const ComingSoon = ({ title }: { title: string }) => (
-    <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-4">
-        <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400">
-            <Bot className="h-8 w-8" />
-        </div>
-        <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">{title}</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">This module is part of the next sprint. Stay tuned!</p>
-        </div>
-    </div>
-);
-
-const NotesPage = () => <ComingSoon title="Notes" />;
-const InsightsPage = () => <ComingSoon title="Productivity Insights" />;
-const GoogleConnectPage = () => <ComingSoon title="Google Connect" />;
+import { NotesPage } from '../features/notes/NotesPage';
+import { InsightsPage } from '../features/insights/InsightsPage';
+import { GoogleConnectPage } from '../features/google-connect/GoogleConnectPage';
 
 // Helper — wrap protected pages inside AuthGuard + AppLayout
 const Protected = ({ children }: { children: React.ReactNode }) => (
