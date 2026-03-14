@@ -8,6 +8,7 @@ Single ScheduleAgentGraph that supports TWO modes:
 10 agents, 1 graph, 2 modes.
 """
 
+import os
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
 from agents.calendar_agent import CalendarAgent
@@ -157,8 +158,50 @@ class ScheduleAgentGraph:
         return state
 
     def _fetch_sheets_live(self, state: ScheduleState) -> ScheduleState:
-        """Sheets placeholder (optional, needs spreadsheet ID config)."""
-        state["google_sheets"] = {"summary": "No spreadsheet configured", "data_insights": []}
+        """Fetch and analyze data from user's Google Sheets."""
+        user = state.get("user")
+        db = state.get("db")
+        
+        if not user or not db:
+            state["google_sheets"] = {"summary": "No user context", "data_insights": []}
+            return state
+        
+        try:
+            from utils.google_auth import get_credentials
+            creds = get_credentials(user, db)
+            
+            if not creds:
+                state["google_sheets"] = {"summary": "Google Sheets not connected", "data_insights": []}
+                return state
+            
+            # Try to use a configured spreadsheet ID from environment or settings
+            # For now, gracefully skip if no ID is configured
+            spreadsheet_id = os.getenv("GOOGLE_SHEETS_ID", None)
+            
+            if not spreadsheet_id:
+                # No default sheet configured — return empty but valid
+                state["google_sheets"] = {
+                    "summary": "No default sheet configured (add GOOGLE_SHEETS_ID env var)",
+                    "data_insights": [],
+                    "patterns": [],
+                    "recommendations": [],
+                    "action_items": []
+                }
+                return state
+            
+            # Fetch and analyze the configured sheet
+            result = self.sheets_agent.fetch_and_analyze(user, db, spreadsheet_id)
+            state["google_sheets"] = result
+            
+        except Exception as e:
+            state["google_sheets"] = {
+                "summary": f"Sheet fetch error: {str(e)}",
+                "data_insights": [],
+                "patterns": [],
+                "recommendations": [],
+                "action_items": []
+            }
+        
         return state
 
     def _analyze_travel_live(self, state: ScheduleState) -> ScheduleState:
@@ -207,7 +250,7 @@ class ScheduleAgentGraph:
         """Live mode: 10-node pipeline with Google auto-fetch."""
         workflow = StateGraph(ScheduleState)
 
-        # Phase 1: Google Data Fetch (4 agents)
+        # Phase 1: Google Data Fetch (5 agents)
         workflow.add_node("fetch_calendar", self._fetch_calendar_live)
         workflow.add_node("fetch_tasks", self._fetch_tasks_live)
         workflow.add_node("fetch_emails", self._fetch_emails_live)
