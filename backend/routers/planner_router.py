@@ -5,6 +5,8 @@ Endpoints:
 - POST /api/plan-day-live → Plan day using REAL Google data (auto-fetches everything)
 """
 
+import time
+from datetime import datetime, timezone, date as date_type
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
@@ -13,7 +15,7 @@ from sqlalchemy.orm import Session
 from utils.google_auth import is_authenticated
 from graph.agent_graph import ScheduleAgentGraph
 from database.connection import get_db
-from database.models import User
+from database.models import User, AIPlan
 from middleware import get_current_user
 
 router = APIRouter(tags=["Planner"])
@@ -62,10 +64,28 @@ def plan_day_live(
     
     try:
         graph = ScheduleAgentGraph()
+        t0 = time.time()
         result = graph.execute_live(current_user, db)
+        elapsed_ms = int((time.time() - t0) * 1000)
+
+        # ── Persist to ai_plans ──
+        plan = AIPlan(
+            user_id=current_user.id,
+            plan_date=date_type.today(),
+            optimized_schedule=result.get("optimized_plan"),
+            conflicts=result.get("conflicts"),
+            travel_plan=result.get("travel_plan"),
+            model_used="llama-3.3-70b-versatile",
+            execution_time_ms=elapsed_ms,
+            optimization_mode="balanced",
+        )
+        db.add(plan)
+        db.commit()
+        db.refresh(plan)
         
         return {
             "status": "success",
+            "plan_id": str(plan.id),
             "calendar_analysis": result.get("calendar_analysis", {}),
             "task_analysis": result.get("task_analysis", {}),
             "google_emails": result.get("google_emails", {}),
@@ -91,7 +111,11 @@ def plan_day_live(
 
 
 @router.post("/plan-day")
-def plan_day_manual(data: PlannerRequest):
+def plan_day_manual(
+    data: PlannerRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Manual planning using provided meetings and tasks."""
     try:
         graph = ScheduleAgentGraph()
@@ -100,11 +124,29 @@ def plan_day_manual(data: PlannerRequest):
         meetings_list = [m.dict() for m in data.meetings]
         tasks_list = [t.dict() for t in data.tasks]
         
+        t0 = time.time()
         result = graph.execute(meetings_list, tasks_list)
-        
+        elapsed_ms = int((time.time() - t0) * 1000)
+
+        # ── Persist to ai_plans ──
+        plan = AIPlan(
+            user_id=current_user.id,
+            plan_date=date_type.fromisoformat(data.date) if data.date else date_type.today(),
+            optimized_schedule=result.get("optimized_plan"),
+            conflicts=result.get("conflicts"),
+            travel_plan=result.get("travel_plan"),
+            model_used="llama-3.3-70b-versatile",
+            execution_time_ms=elapsed_ms,
+            optimization_mode="balanced",
+        )
+        db.add(plan)
+        db.commit()
+        db.refresh(plan)
+
         return {
             "status": "success",
-            "generated_at": "2024-03-24T12:00:00Z", # Placeholder for real timestamp
+            "plan_id": str(plan.id),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "conflict_analysis": result.get("conflicts", "No conflicts detected."),
             "travel_reminders": result.get("travel_plan", "No travel needed."),
             "ai_explanation": result.get("final_response", "Optimization complete."),
@@ -115,22 +157,55 @@ def plan_day_manual(data: PlannerRequest):
 
 
 @router.get("/last-output")
-def get_last_output():
-    """Get the most recently generated plan."""
+def get_last_output(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the most recently generated plan for the current user."""
+
+    plan = (
+        db.query(AIPlan)
+        .filter(AIPlan.user_id == current_user.id)
+        .order_by(AIPlan.created_at.desc())
+        .first()
+    )
+    if not plan:
+        return {
+            "id": None,
+            "input": {"date": None, "meetings": [], "tasks": []},
+            "output": {
+                "generated_at": None,
+                "conflict_analysis": "No conflicts detected.",
+                "travel_reminders": "No travel needed.",
+                "ai_explanation": "No plan generated yet.",
+                "rule_based_plan": "No plan generated yet."
+            },
+            "status": "empty",
+            "timestamp": None
+        }
+    return _plan_to_dict(plan)
+
+
+# ── Helper ──
+
+def _plan_to_dict(plan) -> dict:
     return {
-        "id": "last-session",
+        "id": str(plan.id),
         "input": {
-            "date": "2024-03-24",
+            "date": str(plan.plan_date) if plan.plan_date else None,
             "meetings": [],
-            "tasks": []
+            "tasks": [],
         },
         "output": {
-            "generated_at": "2024-03-24T12:00:00Z",
-            "conflict_analysis": "No conflicts detected.",
-            "travel_reminders": "No travel needed.",
-            "ai_explanation": "Optimization complete.",
-            "rule_based_plan": "No plan generated yet."
+            "generated_at": plan.created_at.isoformat() if plan.created_at else None,
+            "conflict_analysis": plan.conflicts or "No conflicts detected.",
+            "travel_reminders": plan.travel_plan or "No travel needed.",
+            "ai_explanation": plan.optimization_mode or "Optimization complete.",
+            "rule_based_plan": plan.optimized_schedule or "No plan generated yet.",
+            "productivity_score": plan.productivity_score,
+            "overload_risk": plan.overload_risk,
+            "model_used": plan.model_used,
         },
         "status": "success",
-        "timestamp": "2024-03-24T12:00:00Z"
+        "timestamp": plan.created_at.isoformat() if plan.created_at else None,
     }
