@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 import httpx
 import os
 import json
-from pathlib import Path
 from google_auth_oauthlib.flow import Flow
 from utils.google_auth import _save_token_to_db
 
@@ -89,19 +88,29 @@ def get_me(current_user: User = Depends(get_current_user)):
 @router.post("/google-login", response_model=AuthResponse)
 async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
     """Sign in (or register) with Google. Exchanges auth code for tokens, stores them per-user."""
-    credentials_file = Path(__file__).parent.parent / "credentials.json"
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
 
-    if not credentials_file.exists():
+    if not client_id or not client_secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google OAuth not configured on server (missing credentials.json)",
+            detail="Google OAuth not configured on server (missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET env vars)",
         )
 
     # Exchange the authorization code for access_token + refresh_token
     try:
         os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
-        flow = Flow.from_client_secrets_file(
-            str(credentials_file),
+        client_config = {
+            "web": {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["postmessage"],
+            }
+        }
+        flow = Flow.from_client_config(
+            client_config,
             scopes=[
                 "openid",
                 "https://www.googleapis.com/auth/userinfo.email",
@@ -120,16 +129,12 @@ async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db
         flow.fetch_token(code=payload.code)
         creds = flow.credentials
 
-        # Save to token.json so all existing Google API services (email, calendar, etc.) work
-        token_file = credentials_file.parent / "token.json"
-        with open(token_file, "w") as f:
-            f.write(creds.to_json())
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Failed to exchange Google auth code: {str(e)}",
         )
+
 
     # Fetch user info using the access token
     async with httpx.AsyncClient() as client:
