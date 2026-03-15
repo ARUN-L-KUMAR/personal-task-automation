@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Environment variables (secrets — NEVER commit these)
+.env
+.env.*
+!.env.example
+
+# Google OAuth sensitive files — store credentials as env vars on Render
+credentials.json
+token.json
+
+# Database files (use Neon PostgreSQL for production)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+pyrightconfig.json
+
+# Misc
+.DS_Store
+Thumbs.db
+*.bak
+schedule_analysis_*.json

@@ -73,7 +73,7 @@ function AccountTab() {
     const initials = user?.name
         ? user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
         : 'U';
-    const connectGoogle = () => { window.location.href = 'http://localhost:8000/api/auth/google'; };
+    const connectGoogle = () => { window.location.href = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/auth/google`; };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-300">

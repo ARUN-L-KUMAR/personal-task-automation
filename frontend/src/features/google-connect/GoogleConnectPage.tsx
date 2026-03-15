@@ -21,7 +21,7 @@ export function GoogleConnectPage() {
     const { isGoogleConnected, isChecking, refresh } = useGoogleStatus();
 
     const connectGoogle = () => {
-        window.location.href = 'http://localhost:8000/api/auth/google-connect';
+        window.location.href = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/auth/google-connect`;
     };
 
     return (

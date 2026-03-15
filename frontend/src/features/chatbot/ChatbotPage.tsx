@@ -1226,7 +1226,7 @@ export function ChatbotPage() {
                                         ) : (
                                             <button 
                                                 onClick={() => {
-                                                    window.location.href = 'http://localhost:8000/api/auth/google';
+                                                    window.location.href = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/auth/google`;
                                                 }}
                                                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 text-[11px] font-medium text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors mt-1"
                                             >

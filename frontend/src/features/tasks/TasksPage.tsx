@@ -415,7 +415,7 @@ export function TasksPage() {
     const fetchDbTasks = useCallback(async () => {
         setIsLoadingDbTasks(true); setDbTasksError(null);
         try {
-            const res = await fetch('http://localhost:8000/api/db-tasks', {
+            const res = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/db-tasks`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('g-one_token') || ''}` }
             });
             if (!res.ok) throw new Error('Failed to fetch database tasks');
