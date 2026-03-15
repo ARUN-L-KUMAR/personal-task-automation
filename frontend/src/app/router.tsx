@@ -18,6 +18,8 @@ import { ContactsPage } from '../features/contacts/ContactsPage';
 import { NotesPage } from '../features/notes/NotesPage';
 import { InsightsPage } from '../features/insights/InsightsPage';
 import { GoogleConnectPage } from '../features/google-connect/GoogleConnectPage';
+import { PrivacyPage } from '../features/legal/PrivacyPage';
+import { TermsPage } from '../features/legal/TermsPage';
 
 // Helper — wrap protected pages inside AuthGuard + AppLayout
 const Protected = ({ children }: { children: React.ReactNode }) => (
@@ -30,6 +32,8 @@ const router = createBrowserRouter([
     // ── Public routes ──
     { path: '/login', element: <LoginPage /> },
     { path: '/register', element: <RegisterPage /> },
+    { path: '/privacy', element: <PrivacyPage /> },
+    { path: '/terms', element: <TermsPage /> },
 
     // ── Protected routes ──
     { path: '/', element: <Protected><DashboardPage /></Protected> },
