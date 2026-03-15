@@ -1,0 +1,128 @@
+{
+  "sample_schedules": [
+    {
+      "id": "light_day",
+      "description": "Light workload day",
+      "meetings": [
+        {
+          "title": "Team Standup",
+          "time": "9:00 AM",
+          "location": "Office - Conference Room A"
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Review Email",
+          "deadline": "5:00 PM"
+        }
+      ]
+    },
+    {
+      "id": "busy_day",
+      "description": "Busy day with conflicts",
+      "meetings": [
+        {
+          "title": "Project Review",
+          "time": "10:00 AM",
+          "location": "College - Building 2"
+        },
+        {
+          "title": "Client Meeting",
+          "time": "2:00 PM",
+          "location": "Downtown Office"
+        },
+        {
+          "title": "Team Sync",
+          "time": "4:00 PM",
+          "location": "Virtual"
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Finish Assignment",
+          "deadline": "10:30 AM"
+        },
+        {
+          "title": "Prepare Presentation",
+          "deadline": "1:00 PM"
+        },
+        {
+          "title": "Code Review",
+          "deadline": "6:00 PM"
+        }
+      ]
+    },
+    {
+      "id": "travel_heavy",
+      "description": "Multiple locations requiring travel",
+      "meetings": [
+        {
+          "title": "Morning Standup",
+          "time": "9:00 AM",
+          "location": "Office Downtown"
+        },
+        {
+          "title": "Vendor Meeting",
+          "time": "11:00 AM",
+          "location": "Industrial Area - 15km away"
+        },
+        {
+          "title": "Lunch Meeting",
+          "time": "1:00 PM",
+          "location": "Restaurant - City Center"
+        },
+        {
+          "title": "Client Presentation",
+          "time": "3:30 PM",
+          "location": "Airport Road Office"
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Update Project Documents",
+          "deadline": "12:00 PM"
+        },
+        {
+          "title": "Send Proposal",
+          "deadline": "5:00 PM"
+        }
+      ]
+    }
+  ],
+  "location_database": {
+    "common_locations": [
+      {
+        "name": "Office - Conference Room A",
+        "type": "office",
+        "travel_time_from_home": "30 minutes"
+      },
+      {
+        "name": "College - Building 2",
+        "type": "educational",
+        "travel_time_from_home": "45 minutes"
+      },
+      {
+        "name": "Downtown Office",
+        "type": "office",
+        "travel_time_from_home": "40 minutes"
+      },
+      {
+        "name": "Virtual",
+        "type": "virtual",
+        "travel_time_from_home": "0 minutes"
+      }
+    ]
+  },
+  "time_zones": [
+    {
+      "zone": "IST",
+      "offset": "+05:30",
+      "description": "Indian Standard Time"
+    }
+  ],
+  "working_hours": {
+    "start": "9:00 AM",
+    "end": "6:00 PM",
+    "lunch_break": "12:30 PM - 1:30 PM"
+  }
+}

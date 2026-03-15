@@ -1,0 +1,147 @@
+{
+  "meetings": [
+    {
+      "title": "Project Review",
+      "time": "10:00 AM",
+      "location": "College - Building 2"
+    },
+    {
+      "title": "Client Meeting",
+      "time": "2:00 PM",
+      "location": "Downtown Office"
+    },
+    {
+      "title": "Team Sync",
+      "time": "4:00 PM",
+      "location": "Virtual"
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Finish Assignment",
+      "deadline": "10:30 AM"
+    },
+    {
+      "title": "Prepare Presentation",
+      "deadline": "1:00 PM"
+    },
+    {
+      "title": "Code Review",
+      "deadline": "6:00 PM"
+    }
+  ],
+  "calendar_analysis": {
+    "summary": "Calendar analysis completed for 3 meetings",
+    "busy_periods": [
+      "Analysis unavailable due to parsing error"
+    ],
+    "locations": [
+      "College - Building 2",
+      "Virtual",
+      "Downtown Office"
+    ],
+    "total_meetings": 3,
+    "insights": [
+      "Basic analysis: 3 meetings found",
+      "Error details: 'Input to ChatPromptTemplate is missing variables {\\'\\\\n    \"summary\"\\'}.  Expected: [\\'\\\\n    \"summary\"\\', \\'meetings\\'] Received: [\\'meetings\\']\\nNote: if you intended {\\n    \"summary\"} to be part of the string and not a variable, please escape it with double curly braces like: \\'{{\\n    \"summary\"}}\\'.\\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/INVALID_PROMPT_INPUT '"
+    ]
+  },
+  "task_analysis": {
+    "summary": "Task analysis completed for 3 tasks",
+    "urgent_tasks": [],
+    "priority_order": [
+      "Finish Assignment",
+      "Prepare Presentation",
+      "Code Review"
+    ],
+    "total_tasks": 3,
+    "workload_assessment": "moderate",
+    "recommendations": [
+      "Basic analysis: 3 tasks found",
+      "Error details: 'Input to ChatPromptTemplate is missing variables {\\'\\\\n    \"summary\"\\'}.  Expected: [\\'\\\\n    \"summary\"\\', \\'current_context\\', \\'tasks\\'] Received: [\\'tasks\\', \\'current_context\\']\\nNote: if you intended {\\n    \"summary\"} to be part of the string and not a variable, please escape it with double curly braces like: \\'{{\\n    \"summary\"}}\\'.\\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/INVALID_PROMPT_INPUT '"
+    ]
+  },
+  "conflicts": {
+    "has_conflicts": true,
+    "conflicts": [
+      {
+        "type": "potential_overlap",
+        "severity": "medium",
+        "description": "Basic analysis suggests potential scheduling conflicts",
+        "items_involved": [
+          "Multiple meetings and tasks detected"
+        ]
+      }
+    ],
+    "conflict_count": 1,
+    "summary": "Basic conflict analysis completed. Found 1 potential issues. Error details: 'Input to ChatPromptTemplate is missing variables {\\'\\\\n    \"has_conflicts\"\\'}.  Expected: [\\'\\\\n    \"has_conflicts\"\\', \\'meetings\\', \\'tasks\\'] Received: [\\'meetings\\', \\'tasks\\']\\nNote: if you intended {\\n    \"has_conflicts\"} to be part of the string and not a variable, please escape it with double curly braces like: \\'{{\\n    \"has_conflicts\"}}\\'.\\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/INVALID_PROMPT_INPUT '"
+  },
+  "travel_plan": {
+    "travel_plan": [
+      {
+        "meeting": "Project Review",
+        "location": "College - Building 2",
+        "meeting_time": "10:00 AM",
+        "recommended_departure": "15 minutes early",
+        "travel_duration": "30 minutes",
+        "preparation_buffer": "15 minutes",
+        "notes": "Basic travel planning - check actual routes"
+      },
+      {
+        "meeting": "Client Meeting",
+        "location": "Downtown Office",
+        "meeting_time": "2:00 PM",
+        "recommended_departure": "15 minutes early",
+        "travel_duration": "30 minutes",
+        "preparation_buffer": "15 minutes",
+        "notes": "Basic travel planning - check actual routes"
+      },
+      {
+        "meeting": "Team Sync",
+        "location": "Virtual",
+        "meeting_time": "4:00 PM",
+        "recommended_departure": "15 minutes early",
+        "travel_duration": "30 minutes",
+        "preparation_buffer": "15 minutes",
+        "notes": "Basic travel planning - check actual routes"
+      }
+    ],
+    "summary": "Basic travel planning for 3 meetings",
+    "total_travel_time": "90 minutes estimated. Error details: 'Input to ChatPromptTemplate is missing variables {\\'\\\\n    \"travel_plan\"\\'}.  Expected: [\\'\\\\n    \"travel_plan\"\\', \\'meetings\\'] Received: [\\'meetings\\']\\nNote: if you intended {\\n    \"travel_plan\"} to be part of the string and not a variable, please escape it with double curly braces like: \\'{{\\n    \"travel_plan\"}}\\'.\\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/INVALID_PROMPT_INPUT '"
+  },
+  "optimized_plan": {
+    "optimized_schedule": [
+      {
+        "time_block": "9:00-12:00",
+        "activity": "Morning meetings and tasks",
+        "type": "meeting",
+        "priority": "high"
+      },
+      {
+        "time_block": "12:00-13:00",
+        "activity": "Lunch break",
+        "type": "break",
+        "priority": "medium"
+      },
+      {
+        "time_block": "13:00-17:00",
+        "activity": "Afternoon work and remaining tasks",
+        "type": "task",
+        "priority": "high"
+      }
+    ],
+    "conflict_resolutions": [
+      "Basic schedule created - review conflicts manually"
+    ],
+    "time_management_tips": [
+      "Take regular breaks",
+      "Prioritize high-priority items"
+    ],
+    "focus_areas": [
+      "Complete critical tasks",
+      "Attend all meetings"
+    ],
+    "summary": "Basic daily plan created. Error details: 'Input to ChatPromptTemplate is missing variables {\\'\\\\n    \"optimized_schedule\"\\'}.  Expected: [\\'\\\\n    \"optimized_schedule\"\\', \\'calendar_analysis\\', \\'conflicts\\', \\'task_analysis\\', \\'travel_plan\\'] Received: [\\'calendar_analysis\\', \\'task_analysis\\', \\'conflicts\\', \\'travel_plan\\']\\nNote: if you intended {\\n    \"optimized_schedule\"} to be part of the string and not a variable, please escape it with double curly braces like: \\'{{\\n    \"optimized_schedule\"}}\\'.\\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/INVALID_PROMPT_INPUT '"
+  },
+  "final_response": "**Good morning! Let's make today work smoothly for you.** ☀️  \n\n---\n\n### **Your Day at a Glance**  \nYou have **3 key meetings** across different locations and **3 important tasks** to tackle. While there's a moderate workload, we'll focus on smart prioritization.\n\n---\n\n### **Key Highlights**  \n1. **Critical Meetings**:  \n   - 🎓 10:00 AM @ College (Building 2)  \n   - 💼 2:00 PM @ Downtown Office  \n   - 💻 4:00 PM Virtual Team Sync  \n\n2. **Top Tasks**:  \n   - 🏆 **Priority 1**: Finish Assignment  \n   - 🎯 **Priority 2**: Prepare Presentation  \n   - 🔍 **Priority 3**: Code Review  \n\n3. **Travel Alert**:  \n   - Allow **30 minutes total travel time** for in-person meetings (leave 15 mins early for each).  \n\n---\n\n### **⚠️ Conflict Alert**  \nA **potential schedule overlap** was detected between meetings/tasks. Let’s fix this:  \n- **Action**: Block 9:00-12:00 AM for your college meeting and prep work, then use 1:00-5:00 PM for the downtown meeting, virtual sync, and tasks.  \n- **Pro Tip**: Use your lunch break (12:00-1:00 PM) to recharge or review notes.  \n\n---\n\n### **Your Action Plan**  \n1. **Morning Focus (9:00 AM-12:00 PM)**:  \n   - Attend college meeting, then work on your **assignment** (priority 1).  \n\n2. **Afternoon Strategy (1:00-5:00 PM)**:  \n   - Downtown client meeting → Virtual team call → **Presentation prep** (priority 2).  \n\n3. **Flex Time**:  \n   - Squeeze in **code reviews** during gaps or early evening.  \n\n---\n\n### **Travel Prep Reminders**  \n- 🚗 **College & Downtown**: Check traffic apps *before* leaving (aim to depart 15 mins early).  \n- 🖥️ **Virtual Meeting**: Test your tech setup at 3:45 PM.  \n\n---\n\n### **You’ve Got This!**  \nToday’s manageable if you:  \n1. Stick to time blocks  \n2. Tackle priorities in order  \n3. Use travel time to mentally prep  \n\n*P.S. Hydrate and snack between meetings – you’ll think clearer!* 💧🍎  \n\nLet’s crush this day! 💪"
+}
