@@ -32,7 +32,7 @@ export function GoogleSignInButton() {
             setError('');
             try {
                 await googleLogin(codeResponse.code);
-                navigate('/');
+                navigate('/dashboard');
             } catch {
                 setError('Google sign-in failed. Please try again.');
             } finally {

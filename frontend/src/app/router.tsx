@@ -3,6 +3,7 @@ import { AppLayout } from './layout/AppLayout';
 import { AuthGuard } from './layout/AuthGuard';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
+import { LandingPage } from '../features/landing/LandingPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { PlannerPage } from '../features/planner/PlannerPage';
 import { HistoryPage } from '../features/history/HistoryPage';
@@ -30,13 +31,14 @@ const Protected = ({ children }: { children: React.ReactNode }) => (
 
 const router = createBrowserRouter([
     // ── Public routes ──
+    { path: '/', element: <LandingPage /> },
     { path: '/login', element: <LoginPage /> },
     { path: '/register', element: <RegisterPage /> },
     { path: '/privacy', element: <PrivacyPage /> },
     { path: '/terms', element: <TermsPage /> },
 
     // ── Protected routes ──
-    { path: '/', element: <Protected><DashboardPage /></Protected> },
+    { path: '/dashboard', element: <Protected><DashboardPage /></Protected> },
     { path: '/planner', element: <Protected><PlannerPage /></Protected> },
     { path: '/history', element: <Protected><HistoryPage /></Protected> },
     { path: '/calendar', element: <Protected><CalendarPage /></Protected> },
