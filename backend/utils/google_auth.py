@@ -203,10 +203,19 @@ _CLIENT_CONFIG = {"id": None, "secret": None}
 
 
 def _load_client_config():
-    """Load client ID and secret from credentials.json if not cached."""
+    """Load client ID and secret — env vars take priority over credentials.json."""
     if _CLIENT_CONFIG["id"]:
         return _CLIENT_CONFIG
 
+    # 1. Try environment variables first (needed for Render deployment)
+    env_id = os.getenv("GOOGLE_CLIENT_ID")
+    env_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    if env_id and env_secret:
+        _CLIENT_CONFIG["id"] = env_id
+        _CLIENT_CONFIG["secret"] = env_secret
+        return _CLIENT_CONFIG
+
+    # 2. Fallback: read from credentials.json (local dev)
     if not CREDENTIALS_FILE.exists():
         return None
 
@@ -223,13 +232,13 @@ def _load_client_config():
 
 
 def _get_client_id() -> str:
-    """Read client_id from credentials.json (cached)."""
+    """Get Google client ID from env vars or credentials.json."""
     config = _load_client_config()
     return config["id"] if config else ""
 
 
 def _get_client_secret() -> str:
-    """Read client_secret from credentials.json (cached)."""
+    """Get Google client secret from env vars or credentials.json."""
     config = _load_client_config()
     return config["secret"] if config else ""
 
@@ -239,8 +248,10 @@ def get_credentials(user: User, db: Session) -> Credentials | None:
     Get valid Google credentials for a specific user from google_tokens table.
     Returns None if user hasn't connected Google.
     """
-    config = _load_client_config()
-    if not config:
+    client_id = _get_client_id()
+    client_secret = _get_client_secret()
+    if not client_id or not client_secret:
+        print("Google OAuth client credentials not configured (set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars)")
         return None
 
     # Check if tokens are already loaded on the user object (cached via joinedload)
@@ -259,8 +270,8 @@ def get_credentials(user: User, db: Session) -> Credentials | None:
         token=token_row.access_token,
         refresh_token=token_row.refresh_token,
         token_uri="https://oauth2.googleapis.com/token",
-        client_id=config["id"],
-        client_secret=config["secret"],
+        client_id=client_id,
+        client_secret=client_secret,
         scopes=SCOPES
     )
 
