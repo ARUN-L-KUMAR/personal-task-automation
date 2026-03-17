@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { checkGoogleServicesStatus } from '../services/auth.service';
 
 /**
@@ -8,8 +8,21 @@ import { checkGoogleServicesStatus } from '../services/auth.service';
 export function useGoogleStatus() {
     const [isGoogleConnected, setIsGoogleConnected] = useState(false);
     const [isChecking, setIsChecking] = useState(true);
+    const inFlightRef = useRef(false);
 
     const checkStatus = async () => {
+        const token = localStorage.getItem('g-one_token');
+        if (!token) {
+            setIsGoogleConnected(false);
+            setIsChecking(false);
+            return;
+        }
+
+        if (document.visibilityState === 'hidden' || inFlightRef.current) {
+            return;
+        }
+
+        inFlightRef.current = true;
         setIsChecking(true);
         try {
             const status = await checkGoogleServicesStatus();
@@ -18,6 +31,7 @@ export function useGoogleStatus() {
             setIsGoogleConnected(false);
         } finally {
             setIsChecking(false);
+            inFlightRef.current = false;
         }
     };
 

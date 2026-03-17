@@ -22,7 +22,7 @@ const navSections = [
     {
         title: 'Core',
         items: [
-            { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+            { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
             { name: 'Plan Day', href: '/planner', icon: Zap },
             { name: 'Chatbot', href: '/chatbot', icon: MessageSquare },
         ]

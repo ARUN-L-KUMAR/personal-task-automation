@@ -148,8 +148,11 @@ export function ChatbotPage() {
     const [isPushTalking, setIsPushTalking] = useState(false);
     const modelMenuRef = useRef<HTMLDivElement>(null);
     const sessionModelRef = useRef<HTMLDivElement>(null);
+    const initDoneRef = useRef(false);
 
     useEffect(() => {
+        if (initDoneRef.current) return;
+        initDoneRef.current = true;
         fetchContextSnapshot(); fetchAvailableModels(); fetchChatSessions();
         const iv = setInterval(fetchContextSnapshot, 60000);
         return () => clearInterval(iv);

@@ -108,6 +108,8 @@ export function useChat() {
     const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
     const [contextSnapshot, setContextSnapshot] = useState<ContextSnapshot | null>(null);
     const [contextLoading, setContextLoading] = useState(false);
+    const contextFetchInFlightRef = useRef(false);
+    const contextCooldownUntilRef = useRef(0);
     const endRef = useRef<HTMLDivElement>(null);
 
     /* ── Session / History state ── */
@@ -284,20 +286,25 @@ export function useChat() {
 
     /** Fetch live context snapshot for the panel */
     const fetchContextSnapshot = useCallback(async () => {
+        const now = Date.now();
+        if (contextFetchInFlightRef.current || now < contextCooldownUntilRef.current) {
+            return;
+        }
+
+        contextFetchInFlightRef.current = true;
         setContextLoading(true);
         try {
-            console.log('[useChat] Fetching context snapshot...');
             const res = await api.get('/api/chatbot/context-snapshot', { timeout: 25000 });
-            console.log('[useChat] Context snapshot response:', res.data?.status, res.data?.snapshot ? 'has data' : 'no data');
             if (res.data?.snapshot) {
                 setContextSnapshot(res.data.snapshot);
-            } else {
-                console.warn('[useChat] Snapshot returned null — status:', res.data?.status);
             }
         } catch (err: any) {
+            // Avoid rapid-fire retries when backend is degraded/unavailable.
+            contextCooldownUntilRef.current = Date.now() + 20000;
             console.error('[useChat] Context snapshot fetch failed:', err?.message || err);
         } finally {
             setContextLoading(false);
+            contextFetchInFlightRef.current = false;
         }
     }, []);
 

@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import httpx
 import os
-import json
 from google_auth_oauthlib.flow import Flow
 from utils.google_auth import _save_token_to_db
 
@@ -88,13 +87,14 @@ def get_me(current_user: User = Depends(get_current_user)):
 @router.post("/google-login", response_model=AuthResponse)
 async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
     """Sign in (or register) with Google. Exchanges auth code for tokens, stores them per-user."""
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    # Prefer env vars in production, but fall back to credentials.json for local dev.
+    client_id = os.getenv("GOOGLE_CLIENT_ID") or _get_client_id()
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET") or _get_client_secret()
 
     if not client_id or not client_secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google OAuth not configured on server (missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET env vars)",
+            detail="Google OAuth not configured on server (set GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET or provide backend/credentials.json)",
         )
 
     # Exchange the authorization code for access_token + refresh_token
