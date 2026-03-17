@@ -11,6 +11,171 @@ import {
     IntelligenceInsights,
 } from '../../types/planner.types';
 
+function parseMinutes(value: unknown): number {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value !== 'string') return 0;
+    const normalized = value.toLowerCase();
+    const hourMatch = normalized.match(/(\d+)\s*h/);
+    const minMatch = normalized.match(/(\d+)\s*m/);
+    if (hourMatch || minMatch) {
+        const hours = hourMatch ? Number(hourMatch[1]) : 0;
+        const mins = minMatch ? Number(minMatch[1]) : 0;
+        return hours * 60 + mins;
+    }
+    const numberMatch = normalized.match(/\d+/);
+    return numberMatch ? Number(numberMatch[0]) : 0;
+}
+
+type ParsedRoute = {
+    from: string;
+    to: string;
+    minutes: number;
+    departure: string;
+};
+
+function toMinutes(hhmm: string, fallback = 0): number {
+    if (!hhmm || !hhmm.includes(':')) return fallback;
+    const [h, m] = hhmm.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return fallback;
+    return h * 60 + m;
+}
+
+function toHHMM(total: number): string {
+    const safe = Math.max(0, total);
+    const h = Math.floor(safe / 60) % 24;
+    const m = safe % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function isPhysicalLocation(location: string): boolean {
+    const l = (location || '').trim().toLowerCase();
+    if (!l) return false;
+    return !['zoom', 'virtual', 'google meet', 'meet', 'online', 'remote'].some((x) => l.includes(x));
+}
+
+function buildDemoSchedule(
+    settings: PlannerSettings,
+    meetings: MeetingInput[],
+    tasks: TaskInput[]
+): ScheduleEntry[] {
+    const workStart = toMinutes(settings.workStart, 9 * 60);
+    const sortedMeetings = [...meetings]
+        .filter((m) => m.startTime && m.endTime)
+        .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
+
+    const taskQueue = tasks
+        .filter((t) => t.title?.trim())
+        .map((t) => ({ title: t.title.trim(), duration: Math.max(15, t.estimatedDuration || 30), priority: t.priority }));
+
+    const schedule: ScheduleEntry[] = [];
+    let cursor = workStart;
+    let taskIndex = 0;
+
+    const placeTask = (start: number, duration: number, title: string, priority: TaskInput['priority']) => {
+        const end = start + duration;
+        schedule.push({
+            time: toHHMM(start),
+            endTime: toHHMM(end),
+            title,
+            type: 'task',
+            priority,
+        });
+        return end;
+    };
+
+    for (const meeting of sortedMeetings) {
+        const meetStart = toMinutes(meeting.startTime, cursor);
+        const meetEnd = toMinutes(meeting.endTime, meetStart + 30);
+
+        let gap = Math.max(0, meetStart - cursor);
+        while (taskIndex < taskQueue.length && taskQueue[taskIndex].duration <= gap) {
+            const t = taskQueue[taskIndex];
+            cursor = placeTask(cursor, t.duration, t.title, t.priority);
+            gap = Math.max(0, meetStart - cursor);
+            taskIndex += 1;
+        }
+
+        schedule.push({
+            time: meeting.startTime,
+            endTime: meeting.endTime,
+            title: meeting.title || 'Meeting',
+            type: 'meeting',
+            priority: meeting.priority,
+            location: meeting.location,
+        });
+        cursor = Math.max(cursor, meetEnd);
+    }
+
+    while (taskIndex < taskQueue.length) {
+        const t = taskQueue[taskIndex];
+        cursor = placeTask(cursor, t.duration, t.title, t.priority);
+        taskIndex += 1;
+    }
+
+    return schedule;
+}
+
+function buildDemoRoutes(meetings: MeetingInput[]): ParsedRoute[] {
+    const orderedLocations = meetings
+        .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime))
+        .map((m) => (m.location || '').trim())
+        .filter((loc) => isPhysicalLocation(loc));
+
+    if (orderedLocations.length < 2) return [];
+
+    return orderedLocations.slice(0, -1).map((from, i) => {
+        const to = orderedLocations[i + 1];
+        const minutes = 20 + (i % 3) * 10;
+        return {
+            from,
+            to,
+            minutes,
+            departure: '',
+        };
+    });
+}
+
+function enrichManualDemoResult(
+    result: PlannerResult,
+    settings: PlannerSettings,
+    meetings: MeetingInput[],
+    tasks: TaskInput[]
+): PlannerResult {
+    const expectedMinEntries = meetings.length + tasks.length;
+    const schedule = result.schedule.length < expectedMinEntries
+        ? buildDemoSchedule(settings, meetings, tasks)
+        : result.schedule;
+
+    let travel = result.travel;
+    if (travel.routes.length === 0) {
+        const demoRoutes = buildDemoRoutes(meetings);
+        if (demoRoutes.length > 0) {
+            const routeTotal = demoRoutes.reduce((sum, r) => sum + r.minutes, 0);
+            travel = {
+                ...travel,
+                routes: demoRoutes,
+                travelEventCount: demoRoutes.length,
+                longestRouteMinutes: Math.max(...demoRoutes.map((r) => r.minutes)),
+                totalMinutes: Math.max(travel.totalMinutes, routeTotal),
+            };
+        }
+    }
+
+    return {
+        ...result,
+        schedule,
+        travel,
+    };
+}
+
+function parseTimeBlock(value: unknown): { start: string; end: string } {
+    if (typeof value !== 'string') return { start: '', end: '' };
+    const normalized = value.trim();
+    const m = normalized.match(/(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/);
+    if (!m) return { start: '', end: '' };
+    return { start: m[1], end: m[2] };
+}
+
 /* ── Helper — normalise any backend shape into PlannerResult ── */
 function normalise(raw: any): PlannerResult {
     const plan = raw.rule_based_plan || raw.optimized_plan || '';
@@ -20,7 +185,16 @@ function normalise(raw: any): PlannerResult {
 
     // Parse schedule entries from optimized plan text
     const schedule: ScheduleEntry[] = [];
-    if (typeof plan === 'string') {
+    let parsedPlanObject: any = null;
+    if (typeof plan === 'string' && plan.trim().startsWith('{')) {
+        try {
+            parsedPlanObject = JSON.parse(plan);
+        } catch {
+            parsedPlanObject = null;
+        }
+    }
+
+    if (typeof plan === 'string' && !parsedPlanObject) {
         const lines = plan.split('\n').filter((l: string) => l.trim());
         const timeRe = /(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})\s*[:|]?\s*(.*)/i;
         lines.forEach((line: string) => {
@@ -46,6 +220,22 @@ function normalise(raw: any): PlannerResult {
                 type: e.type || 'task',
             })
         );
+    } else if ((plan && typeof plan === 'object') || parsedPlanObject) {
+        const source = parsedPlanObject || plan;
+        const entries = source.optimized_schedule || source.schedule || source.timeline || [];
+        if (Array.isArray(entries)) {
+            entries.forEach((e: any) => {
+                const block = parseTimeBlock(e.time_block || e.time || e.slot || '');
+                schedule.push({
+                    time: block.start || e.startTime || e.start || '',
+                    endTime: block.end || e.endTime || e.end || '',
+                    title: e.activity || e.title || 'Planned activity',
+                    type: e.type || 'task',
+                    priority: e.priority,
+                    location: e.location || '',
+                });
+            });
+        }
     }
 
     // Parse conflicts
@@ -59,6 +249,17 @@ function normalise(raw: any): PlannerResult {
             overlapMinutes: 0,
             suggestion: conflictRaw,
         });
+    } else if (conflictRaw && typeof conflictRaw === 'object' && Array.isArray((conflictRaw as any).conflicts)) {
+        (conflictRaw as any).conflicts.forEach((c: any) =>
+            conflicts.push({
+                type: c.type || 'schedule',
+                severity: c.severity || 'medium',
+                eventA: c.items_involved?.[0] || c.event_a || c.eventA || '-',
+                eventB: c.items_involved?.[1] || c.event_b || c.eventB || '-',
+                overlapMinutes: c.overlap_minutes || 0,
+                suggestion: c.description || c.suggestion || '',
+            })
+        );
     } else if (Array.isArray(conflictRaw)) {
         conflictRaw.forEach((c: any) =>
             conflicts.push({
@@ -73,12 +274,28 @@ function normalise(raw: any): PlannerResult {
     }
 
     // Travel
+    const routes: ParsedRoute[] = typeof travelRaw === 'object' && Array.isArray((travelRaw as any).routes)
+        ? (travelRaw as any).routes.map((r: any) => ({
+              from: r.origin || r.from || 'Unknown',
+              to: r.destination || r.to || 'Unknown',
+              minutes: parseMinutes(r.duration_text || r.duration || r.minutes),
+              departure: r.departure || '',
+          }))
+        : [];
+    const totalFromRoutes = routes.reduce((acc: number, r: ParsedRoute) => acc + (Number.isFinite(r.minutes) ? r.minutes : 0), 0);
+    const totalMinutes = typeof travelRaw === 'object'
+        ? travelRaw.total_minutes || parseMinutes(travelRaw.total_travel_time) || totalFromRoutes
+        : 0;
     const travel: TravelPlan = {
-        totalMinutes: typeof travelRaw === 'object' ? travelRaw.total_minutes || 0 : 0,
-        travelEventCount: typeof travelRaw === 'object' ? travelRaw.travel_event_count || 0 : 0,
-        longestRouteMinutes: typeof travelRaw === 'object' ? travelRaw.longest_route_minutes || 0 : 0,
-        optimizationTip: typeof travelRaw === 'string' ? travelRaw : travelRaw?.optimization_tip || 'No travel optimization needed.',
-        routes: [],
+        totalMinutes,
+        travelEventCount: typeof travelRaw === 'object' ? travelRaw.travel_event_count || routes.length : 0,
+        longestRouteMinutes: typeof travelRaw === 'object'
+            ? travelRaw.longest_route_minutes || Math.max(0, ...routes.map((r: ParsedRoute) => r.minutes || 0))
+            : 0,
+        optimizationTip: typeof travelRaw === 'string'
+            ? travelRaw
+            : travelRaw?.optimization_tip || travelRaw?.summary || 'No travel optimization needed.',
+        routes,
     };
 
     // Explanation
@@ -162,16 +379,23 @@ export const plannerService = {
                 title: m.title,
                 startTime: m.startTime,
                 endTime: m.endTime,
+                location: m.location,
+                isFlexible: m.isFlexible,
                 priority: m.priority,
             })),
             tasks: tasks.map((t) => ({
                 title: t.title,
                 duration: t.estimatedDuration,
+                deadline: t.deadline,
+                requiresTravel: t.requiresTravel,
+                flexibleDeadline: t.flexibleDeadline,
+                category: t.category,
                 priority: t.priority,
             })),
         };
         const res = await api.post('/api/plan-day', payload);
-        return normalise(res.data);
+        const normalized = normalise(res.data);
+        return enrichManualDemoResult(normalized, settings, meetings, tasks);
     },
 
     /** Live mode — let backend fetch from Google */

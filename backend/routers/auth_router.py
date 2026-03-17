@@ -13,7 +13,9 @@ SUPPORTS: Both new user login AND existing user service connection.
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 
 from utils.google_auth import (
     get_auth_url, handle_auth_callback, is_authenticated, logout,
@@ -22,9 +24,10 @@ from utils.google_auth import (
 from database.connection import get_db
 from database.models import User
 from middleware import get_current_user
-from services import create_access_token
+from services import create_access_token, decode_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+optional_bearer = HTTPBearer(auto_error=False)
 
 
 @router.get("/google")
@@ -184,14 +187,34 @@ async def google_callback(
 
 @router.get("/status")
 def auth_status(
-    current_user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer),
     db: Session = Depends(get_db),
 ):
-    """Check if current user has connected Google services."""
-    return {
-        "authenticated": is_authenticated(current_user, db),
-        "message": "Google services connected" if is_authenticated(current_user, db) else "Not connected to Google"
-    }
+    """Check Google service connection status without hard-failing during DB outages."""
+    if not credentials:
+        return {"authenticated": False, "message": "No auth token provided"}
+
+    payload = decode_access_token(credentials.credentials)
+    user_id = payload.get("sub") if payload else None
+    if not user_id:
+        return {"authenticated": False, "message": "Invalid or expired token"}
+
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {"authenticated": False, "message": "User not found"}
+
+        connected = is_authenticated(user, db)
+        return {
+            "authenticated": connected,
+            "message": "Google services connected" if connected else "Not connected to Google"
+        }
+    except OperationalError:
+        return {
+            "authenticated": False,
+            "message": "Database unavailable; cannot verify Google connection right now",
+            "service_unavailable": True,
+        }
 
 
 @router.post("/logout")

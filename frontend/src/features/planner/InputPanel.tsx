@@ -93,9 +93,9 @@ export function InputPanel({ disabled }: Props) {
     const loadSample = () => {
         setMeetings([
             { id: uid(), title: 'Team Standup', startTime: '09:00', endTime: '09:30', location: 'Zoom', priority: 'high', isFlexible: false },
-            { id: uid(), title: 'Client Review', startTime: '11:00', endTime: '12:00', location: 'Office A3', priority: 'high', isFlexible: false },
-            { id: uid(), title: '1:1 with Manager', startTime: '14:00', endTime: '14:30', location: '', priority: 'medium', isFlexible: true },
-            { id: uid(), title: 'Sprint Retro', startTime: '16:00', endTime: '17:00', location: 'Conf Room B', priority: 'medium', isFlexible: false },
+            { id: uid(), title: 'Client Review', startTime: '10:00', endTime: '11:00', location: 'T Nagar Office', priority: 'high', isFlexible: false },
+            { id: uid(), title: 'Architecture Sync', startTime: '10:30', endTime: '11:30', location: 'OMR Campus', priority: 'high', isFlexible: false },
+            { id: uid(), title: 'Sprint Retro', startTime: '15:30', endTime: '16:30', location: 'Guindy HQ', priority: 'medium', isFlexible: false },
         ]);
         setTasks([
             { id: uid(), title: 'Write API Documentation', deadline: '', estimatedDuration: 90, priority: 'high', requiresTravel: false, flexibleDeadline: false, category: 'work' },

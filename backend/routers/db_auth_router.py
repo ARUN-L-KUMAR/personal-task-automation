@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 import httpx
 import os
 from google_auth_oauthlib.flow import Flow
-from utils.google_auth import _save_token_to_db
+from utils.google_auth import _save_token_to_db, _get_client_id, _get_client_secret
 
 from database.connection import get_db
 from database.models import User

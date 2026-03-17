@@ -25,12 +25,18 @@ class Meeting(BaseModel):
     title: str
     startTime: str
     endTime: str
+    location: Optional[str] = ""
+    isFlexible: Optional[bool] = False
     priority: Optional[str] = "medium"
 
 
 class Task(BaseModel):
     title: str
     duration: int
+    deadline: Optional[str] = ""
+    requiresTravel: Optional[bool] = False
+    flexibleDeadline: Optional[bool] = False
+    category: Optional[str] = "work"
     priority: Optional[str] = "medium"
 
 
@@ -120,9 +126,18 @@ def plan_day_manual(
     try:
         graph = ScheduleAgentGraph()
         
-        # Convert Pydantic → dicts for the graph
-        meetings_list = [m.dict() for m in data.meetings]
-        tasks_list = [t.dict() for t in data.tasks]
+        # Normalize manual input so downstream agents get consistent keys.
+        meetings_list = []
+        for m in data.meetings:
+            md = m.dict()
+            md["time"] = f"{md.get('startTime', '')}-{md.get('endTime', '')}"
+            meetings_list.append(md)
+
+        tasks_list = []
+        for t in data.tasks:
+            td = t.dict()
+            td["estimatedDuration"] = td.get("duration", 0)
+            tasks_list.append(td)
         
         t0 = time.time()
         result = graph.execute(meetings_list, tasks_list)
