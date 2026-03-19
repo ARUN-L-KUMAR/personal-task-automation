@@ -311,9 +311,8 @@ export function ChatbotScreen() {
               onChangeText={setInput}
               placeholder="Message G-One..."
               placeholderTextColor="#94A3B8"
-              style={styles.input}
+              style={[styles.input, { maxHeight: 120 }]}
               multiline
-              maxHeight={120}
             />
           </View>
           <Pressable
