@@ -4,13 +4,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { CalendarScreen } from '@/screens/CalendarScreen';
-import { ChatbotScreen } from '@/screens/ChatbotScreen';
+import { AssistantScreen } from '@/screens/AssistantScreen';
 import { DashboardScreen } from '@/screens/DashboardScreen';
-import { HomeScreen } from '@/screens/HomeScreen';
 import { LoginScreen } from '@/screens/LoginScreen';
-import { ProjectsScreen } from '@/screens/ProjectsScreen';
+import { ProfileScreen } from '@/screens/ProfileScreen';
 import { RegisterScreen } from '@/screens/RegisterScreen';
+import { ServicesScreen } from '@/screens/ServicesScreen';
 import { TasksScreen } from '@/screens/TasksScreen';
 import { useAuthStore } from '@/store/useAuthStore';
 import { AppTabParamList, AuthStackParamList, RootStackParamList } from '@/navigation/types';
@@ -33,8 +32,8 @@ function AppTabsNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerTitleAlign: 'left',
-        tabBarActiveTintColor: '#0F766E',
-        tabBarInactiveTintColor: '#64748B',
+        tabBarActiveTintColor: '#4F46E5',
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
@@ -53,12 +52,31 @@ function AppTabsNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Workspace', tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Tasks" component={TasksScreen} options={{ title: 'My Tasks', tabBarLabel: 'Tasks' }} />
-      <Tab.Screen name="Projects" component={ProjectsScreen} options={{ title: 'Projects', tabBarLabel: 'Projects' }} />
-      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ title: 'Dashboard', tabBarLabel: 'Dashboard' }} />
-      <Tab.Screen name="Calendar" component={CalendarScreen} options={{ title: 'Calendar', tabBarLabel: 'Calendar' }} />
-      <Tab.Screen name="Chatbot" component={ChatbotScreen} options={{ title: 'Chatbot', tabBarLabel: 'Chat' }} />
+      <Tab.Screen 
+        name="Home" 
+        component={DashboardScreen} 
+        options={{ title: 'Overview', tabBarLabel: 'Home' }} 
+      />
+      <Tab.Screen 
+        name="Assistant" 
+        component={AssistantScreen} 
+        options={{ title: 'AI Assistant', tabBarLabel: 'Assistant' }} 
+      />
+      <Tab.Screen 
+        name="Tasks" 
+        component={TasksScreen} 
+        options={{ title: 'Plan My Day', tabBarLabel: 'Tasks' }} 
+      />
+      <Tab.Screen 
+        name="Services" 
+        component={ServicesScreen} 
+        options={{ title: 'Services', tabBarLabel: 'Services' }} 
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ title: 'My Profile', tabBarLabel: 'Profile' }} 
+      />
     </Tab.Navigator>
   );
 }
@@ -67,19 +85,19 @@ function getTabIconName(routeName: keyof AppTabParamList, focused: boolean): Rea
   if (routeName === 'Home') {
     return focused ? 'home' : 'home-outline';
   }
+  if (routeName === 'Assistant') {
+    return focused ? 'sparkles' : 'sparkles-outline';
+  }
   if (routeName === 'Tasks') {
-    return focused ? 'checkbox' : 'checkbox-outline';
+    return focused ? 'list' : 'list-outline';
   }
-  if (routeName === 'Projects') {
-    return focused ? 'folder' : 'folder-outline';
+  if (routeName === 'Services') {
+    return focused ? 'apps' : 'apps-outline';
   }
-  if (routeName === 'Dashboard') {
-    return focused ? 'grid' : 'grid-outline';
+  if (routeName === 'Profile') {
+    return focused ? 'person' : 'person-outline';
   }
-  if (routeName === 'Calendar') {
-    return focused ? 'calendar' : 'calendar-outline';
-  }
-  return focused ? 'chatbubble' : 'chatbubble-outline';
+  return 'help-circle-outline';
 }
 
 export function AppNavigator() {

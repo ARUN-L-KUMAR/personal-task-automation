@@ -5,11 +5,10 @@ export type AuthStackParamList = {
 
 export type AppTabParamList = {
   Home: undefined;
+  Assistant: undefined;
   Tasks: undefined;
-  Projects: undefined;
-  Dashboard: undefined;
-  Calendar: undefined;
-  Chatbot: undefined;
+  Services: undefined;
+  Profile: undefined;
 };
 
 export type RootStackParamList = {
