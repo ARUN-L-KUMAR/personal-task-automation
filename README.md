@@ -116,40 +116,31 @@ Each agent is **AI-powered** using LangChain and performs intelligent reasoning,
 ```
 Personal_Task/
 ├── README.md
+├── docs/
+│   ├── architecture/            # Architecture references and diagrams
+│   ├── guides/                  # Quickstart, run, and testing guides
+│   ├── migrations/              # Migration completion and status notes
+│   └── research/                # Defense and prompt/data summary docs
 ├── backend/
-│   ├── main.py                    # FastAPI server with LangGraph integration
-│   ├── requirements.txt           # Updated with LangChain dependencies
-│   ├── .env                       # OpenRouter API key
-│   ├── config/
-│   │   └── settings.py           # LLM configuration
-│   ├── agents/
-│   │   ├── calendar_agent.py     # AI-powered calendar analysis
-│   │   ├── task_agent.py         # AI-powered task analysis
-│   │   ├── conflict_agent.py     # AI-powered conflict detection
-│   │   ├── travel_agent.py       # AI-powered travel planning
-│   │   ├── planning_agent.py     # AI-powered schedule optimization
-│   │   └── coordinator.py        # AI-powered response coordination
-│   ├── graph/
-│   │   └── agent_graph.py        # LangGraph workflow definition
-│   ├── prompts/
-│   │   └── README.md             # Prompt documentation
-│   └── utils/
-│       └── time_parser.py        # Time parsing utilities
-└── frontend/
-    ├── package.json
-    ├── public/
-    └── src/
-```
-
----
-    └── src/
-        ├── App.css
-        ├── App.js
-        ├── App.test.js
-        ├── index.css
-        ├── index.js
-        ├── reportWebVitals.js
-        └── setupTests.js
+│   ├── main.py                  # FastAPI entrypoint
+│   ├── app/                     # Main application package
+│   ├── agents/                  # LangGraph agents
+│   ├── graph/                   # Agent graph/workflow
+│   ├── routers/                 # API route modules
+│   ├── services/                # Service-layer logic
+│   ├── scripts/
+│   │   └── maintenance/         # One-off maintenance utilities
+│   ├── prompts/                 # Agent prompts
+│   ├── data/                    # Seed/sample data
+│   └── requirements.txt
+├── frontend/
+│   ├── package.json
+│   ├── public/
+│   ├── build/                   # Production build output
+│   └── src/
+└── archive/
+  ├── backend/                 # Archived diagnostics/tests
+  └── frontend/                # Archived backup files
 ```
 
 ---
