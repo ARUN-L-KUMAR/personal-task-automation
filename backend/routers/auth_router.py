@@ -11,7 +11,12 @@ Endpoints:
 SUPPORTS: Both new user login AND existing user service connection.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+import base64
+import json
+import os
+from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
+
+from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -19,7 +24,7 @@ from sqlalchemy.exc import OperationalError
 
 from utils.google_auth import (
     get_auth_url, handle_auth_callback, is_authenticated, logout,
-    _save_token_to_db, SCOPES, _get_client_id, _get_client_secret,
+    _save_token_to_db, SCOPES, _get_client_id, _get_client_secret, get_redirect_uri,
 )
 from database.connection import get_db
 from database.models import User
@@ -28,6 +33,110 @@ from services import create_access_token, decode_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 optional_bearer = HTTPBearer(auto_error=False)
+
+FRONTEND_LOGIN_REDIRECT = os.getenv("FRONTEND_LOGIN_REDIRECT", "http://localhost:3000/login")
+FRONTEND_SETTINGS_REDIRECT = os.getenv("FRONTEND_SETTINGS_REDIRECT", "http://localhost:3000/settings")
+
+
+def _append_query(url: str, params: dict[str, str]) -> str:
+    parsed = urlparse(url)
+    existing = parse_qs(parsed.query)
+    for key, value in params.items():
+        existing[key] = [value]
+    query = urlencode(existing, doseq=True)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, query, parsed.fragment))
+
+
+def _encode_mobile_state(redirect_uri: str) -> str:
+    payload = {
+        "flow": "mobile_login",
+        "redirect_uri": redirect_uri,
+    }
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    token = base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
+    return f"mobile:{token}"
+
+
+def _decode_mobile_state(state: str) -> dict | None:
+    if not state or not state.startswith("mobile:"):
+        return None
+    data = state.split(":", 1)[1]
+    padding = "=" * (-len(data) % 4)
+    try:
+        raw = base64.urlsafe_b64decode((data + padding).encode("utf-8")).decode("utf-8")
+        payload = json.loads(raw)
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+async def _handle_google_login_exchange(code: str, db: Session) -> tuple[str, str]:
+    import httpx
+
+    async with httpx.AsyncClient() as client:
+        token_response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": _get_client_id(),
+                "client_secret": _get_client_secret(),
+                "redirect_uri": get_redirect_uri(),
+                "grant_type": "authorization_code",
+            },
+        )
+
+        if token_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to exchange code for tokens")
+
+        tokens = token_response.json()
+        access_token = tokens.get("access_token")
+        refresh_token = tokens.get("refresh_token")
+        expires_in = tokens.get("expires_in", 3600)
+
+        user_response = await client.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if user_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to get user info from Google")
+
+        userinfo = user_response.json()
+        email = userinfo.get("email")
+        name = userinfo.get("name", "")
+        google_id = userinfo.get("sub", "")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not provided by Google")
+
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            from services import hash_password
+            user = User(
+                name=name or email.split("@")[0],
+                email=email,
+                password=hash_password("GOOGLE_OAUTH_" + google_id),
+                is_google_user=True,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        from datetime import datetime, timedelta
+        from google.oauth2.credentials import Credentials as GoogleCreds
+        creds_obj = GoogleCreds(
+            token=access_token,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=_get_client_id(),
+            client_secret=_get_client_secret(),
+            scopes=SCOPES,
+            expiry=datetime.utcnow() + timedelta(seconds=expires_in),
+        )
+        _save_token_to_db(user, creds_obj, db)
+
+        jwt_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+        return jwt_token, email
 
 
 @router.get("/google")
@@ -42,6 +151,25 @@ def google_auth_login(db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500,
             detail="credentials.json not found. Please set up Google Cloud OAuth2 credentials."
+        )
+    return RedirectResponse(url=url)
+
+
+@router.get("/google-mobile")
+def google_auth_mobile(
+    redirect_uri: str = Query(..., description="Deep-link URI such as personaltask://auth"),
+    db: Session = Depends(get_db),
+):
+    """
+    Start Google OAuth2 flow for mobile clients.
+    Redirects callback back to the provided deep link with token/error.
+    """
+    state = _encode_mobile_state(redirect_uri)
+    url = get_auth_url(state)
+    if not url:
+        raise HTTPException(
+            status_code=500,
+            detail="credentials.json not found. Please set up Google Cloud OAuth2 credentials.",
         )
     return RedirectResponse(url=url)
 
@@ -74,99 +202,38 @@ async def google_callback(
     - If state='new': Login flow (create/find user, save tokens, return JWT)
     - If state=user_id: Connect services to existing user
     """
-    if error:
-        return RedirectResponse(url=f"http://localhost:3000/login?error={error}")
-
     if not code or not state:
         raise HTTPException(status_code=400, detail="No authorization code or state received")
 
+    mobile_state = _decode_mobile_state(state)
+
+    if error:
+        if mobile_state and mobile_state.get("redirect_uri"):
+            return RedirectResponse(url=_append_query(mobile_state["redirect_uri"], {"error": error}))
+        return RedirectResponse(url=_append_query(FRONTEND_LOGIN_REDIRECT, {"error": error}))
+
+    if mobile_state and mobile_state.get("flow") == "mobile_login":
+        try:
+            jwt_token, email = await _handle_google_login_exchange(code, db)
+            target = mobile_state.get("redirect_uri", "")
+            return RedirectResponse(url=_append_query(target, {"token": jwt_token, "email": email}))
+        except Exception as e:
+            print(f"Mobile login flow error: {e}")
+            import traceback
+            traceback.print_exc()
+            target = mobile_state.get("redirect_uri", "")
+            return RedirectResponse(url=_append_query(target, {"error": "auth_failed"}))
+
     # CASE 1: New user login flow
     if state == "new":
-        import httpx
-        from services import hash_password
-        
-        # First, get user info from Google to create/find account
         try:
-            # Exchange code for tokens
-            from utils.google_auth import _get_client_id, _get_client_secret
-            async with httpx.AsyncClient() as client:
-                token_response = await client.post(
-                    "https://oauth2.googleapis.com/token",
-                    data={
-                        "code": code,
-                        "client_id": _get_client_id(),
-                        "client_secret": _get_client_secret(),
-                        "redirect_uri": "http://localhost:8000/api/auth/google/callback",
-                        "grant_type": "authorization_code",
-                    }
-                )
-                
-                if token_response.status_code != 200:
-                    raise HTTPException(status_code=400, detail="Failed to exchange code for tokens")
-                
-                tokens = token_response.json()
-                access_token = tokens.get("access_token")
-                refresh_token = tokens.get("refresh_token")
-                expires_in = tokens.get("expires_in", 3600)
-                
-                # Get user info from Google
-                user_response = await client.get(
-                    "https://www.googleapis.com/oauth2/v3/userinfo",
-                    headers={"Authorization": f"Bearer {access_token}"}
-                )
-                
-                if user_response.status_code != 200:
-                    raise HTTPException(status_code=400, detail="Failed to get user info from Google")
-                
-                userinfo = user_response.json()
-                email = userinfo.get("email")
-                name = userinfo.get("name", "")
-                google_id = userinfo.get("sub", "")
-                
-                if not email:
-                    raise HTTPException(status_code=400, detail="Email not provided by Google")
-                
-                # Find or create user
-                user = db.query(User).filter(User.email == email).first()
-                
-                if not user:
-                    # Create new user
-                    from services import hash_password
-                    user = User(
-                        name=name or email.split("@")[0],
-                        email=email,
-                        password=hash_password("GOOGLE_OAUTH_" + google_id),  # Hashed placeholder
-                        is_google_user=True,
-                    )
-                    db.add(user)
-                    db.commit()
-                    db.refresh(user)
-                
-                # Save Google service tokens via google_tokens table
-                from datetime import datetime, timedelta
-                from google.oauth2.credentials import Credentials as GoogleCreds
-                creds_obj = GoogleCreds(
-                    token=access_token,
-                    refresh_token=refresh_token,
-                    token_uri="https://oauth2.googleapis.com/token",
-                    client_id=_get_client_id(),
-                    client_secret=_get_client_secret(),
-                    scopes=SCOPES,
-                    expiry=datetime.utcnow() + timedelta(seconds=expires_in),
-                )
-                _save_token_to_db(user, creds_obj, db)
-                
-                # Generate JWT for app access
-                jwt_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
-                
-                # Redirect to frontend with JWT
-                return RedirectResponse(url=f"http://localhost:3000/login?token={jwt_token}&email={email}")
-                
+            jwt_token, email = await _handle_google_login_exchange(code, db)
+            return RedirectResponse(url=_append_query(FRONTEND_LOGIN_REDIRECT, {"token": jwt_token, "email": email}))
         except Exception as e:
             print(f"Login flow error: {e}")
             import traceback
             traceback.print_exc()
-            return RedirectResponse(url=f"http://localhost:3000/login?error=auth_failed")
+            return RedirectResponse(url=_append_query(FRONTEND_LOGIN_REDIRECT, {"error": "auth_failed"}))
     
     # CASE 2: Existing user connecting services
     else:
@@ -180,7 +247,7 @@ async def google_callback(
 
         success = handle_auth_callback(code, state, user, db)
         if success:
-            return RedirectResponse(url="http://localhost:3000/settings?auth=success")
+            return RedirectResponse(url=_append_query(FRONTEND_SETTINGS_REDIRECT, {"auth": "success"}))
         else:
             raise HTTPException(status_code=500, detail="Failed to complete authentication. Check backend terminal for details.")
 

@@ -89,6 +89,7 @@ class User(Base):
     meetings = relationship("Meeting", back_populates="user", cascade="all, delete-orphan")
     productivity_metrics = relationship("ProductivityMetric", back_populates="user", cascade="all, delete-orphan")
     saved_routes = relationship("SavedRoute", back_populates="user", cascade="all, delete-orphan")
+    notification_devices = relationship("NotificationDevice", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email}>"
@@ -387,3 +388,32 @@ class SavedRoute(Base):
 
     def __repr__(self):
         return f"<SavedRoute {self.label}>"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  Notification Devices (Mobile Push)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class NotificationDevice(Base):
+    """Registered mobile devices for Expo push notifications."""
+    __tablename__ = "notification_devices"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    expo_push_token = Column(String(255), nullable=False, unique=True)
+    platform = Column(String(20), nullable=True)             # android | ios
+    device_name = Column(String(200), nullable=True)
+    app_version = Column(String(50), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    last_seen_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="notification_devices")
+
+    __table_args__ = (
+        Index("ix_notification_devices_user_id", "user_id"),
+        Index("ix_notification_devices_is_active", "is_active"),
+    )
+
+    def __repr__(self):
+        return f"<NotificationDevice {self.platform} {self.user_id}>"

@@ -37,6 +37,7 @@ from routers.metrics_router import router as metrics_router
 from routers.agent_logs_router import router as agent_logs_router
 from routers.meetings_router import router as meetings_router
 from routers.notes_router import router as notes_router
+from routers.notifications_router import router as notifications_router
 
 # ── Error handlers ──
 from middleware.error_handlers import (
@@ -100,6 +101,7 @@ app.include_router(metrics_router, prefix="/api")
 app.include_router(agent_logs_router, prefix="/api")
 app.include_router(meetings_router, prefix="/api")
 app.include_router(notes_router, prefix="/api")
+app.include_router(notifications_router, prefix="/api")
 
 # Initialize the unified agent graph (supports manual + live modes)
 agent_graph = ScheduleAgentGraph()

@@ -39,6 +39,45 @@ CREDENTIALS_FILE = BASE_DIR / "credentials.json"
 REDIRECT_URI = "http://localhost:8000/api/auth/google/callback"
 
 
+def get_redirect_uri() -> str:
+    """Resolve OAuth callback URI from environment, fallback to local dev."""
+    return os.getenv("GOOGLE_REDIRECT_URI", REDIRECT_URI)
+
+
+def _build_oauth_flow(state: str) -> Flow | None:
+    """Build OAuth flow from credentials.json or env-provided client credentials."""
+    redirect_uri = get_redirect_uri()
+
+    if CREDENTIALS_FILE.exists():
+        return Flow.from_client_secrets_file(
+            str(CREDENTIALS_FILE),
+            scopes=SCOPES,
+            redirect_uri=redirect_uri,
+            state=state,
+        )
+
+    client_id = _get_client_id()
+    client_secret = _get_client_secret()
+    if not client_id or not client_secret:
+        return None
+
+    client_config = {
+        "web": {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
+    }
+
+    return Flow.from_client_config(
+        client_config,
+        scopes=SCOPES,
+        redirect_uri=redirect_uri,
+        state=state,
+    )
+
+
 def get_credentials(user: User, db: Session) -> Credentials | None:
     """
     Get valid Google credentials for a specific user from google_tokens table.
@@ -116,15 +155,9 @@ def get_auth_url(user_id: str) -> str | None:
     Uses state parameter to track which user is connecting.
     Returns None if credentials.json is missing.
     """
-    if not CREDENTIALS_FILE.exists():
+    flow = _build_oauth_flow(user_id)
+    if not flow:
         return None
-
-    flow = Flow.from_client_secrets_file(
-        str(CREDENTIALS_FILE),
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI,
-        state=user_id  # Track which user is connecting
-    )
 
     auth_url, _ = flow.authorization_url(
         access_type="offline",
@@ -141,16 +174,10 @@ def handle_auth_callback(code: str, state: str, user: User, db: Session) -> bool
     Saves tokens to the user's database record.
     Returns True if successful.
     """
-    if not CREDENTIALS_FILE.exists():
-        return False
-
     try:
-        flow = Flow.from_client_secrets_file(
-            str(CREDENTIALS_FILE),
-            scopes=SCOPES,
-            redirect_uri=REDIRECT_URI,
-            state=state
-        )
+        flow = _build_oauth_flow(state)
+        if not flow:
+            return False
 
         flow.fetch_token(code=code)
         creds = flow.credentials
@@ -293,15 +320,9 @@ def get_auth_url(user_id: str) -> str | None:
     Uses state parameter to track which user is connecting.
     Returns None if credentials.json is missing.
     """
-    if not CREDENTIALS_FILE.exists():
+    flow = _build_oauth_flow(user_id)
+    if not flow:
         return None
-
-    flow = Flow.from_client_secrets_file(
-        str(CREDENTIALS_FILE),
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI,
-        state=user_id  # Track which user is connecting
-    )
 
     auth_url, _ = flow.authorization_url(
         access_type="offline",
@@ -318,16 +339,10 @@ def handle_auth_callback(code: str, state: str, user: User, db: Session) -> bool
     Saves tokens to the user's database record.
     Returns True if successful.
     """
-    if not CREDENTIALS_FILE.exists():
-        return False
-
     try:
-        flow = Flow.from_client_secrets_file(
-            str(CREDENTIALS_FILE),
-            scopes=SCOPES,
-            redirect_uri=REDIRECT_URI,
-            state=state
-        )
+        flow = _build_oauth_flow(state)
+        if not flow:
+            return False
 
         flow.fetch_token(code=code)
         creds = flow.credentials
