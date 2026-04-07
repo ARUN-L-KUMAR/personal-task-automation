@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
     StickyNote, Plus, Trash2, Pencil, Save, X, Loader2,
     Search, FileText, AlertCircle,
@@ -9,6 +9,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
 import { cn } from '../../utils/cn';
 import { notesService, Note } from './notes.service';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 export function NotesPage() {
     const [notes, setNotes] = useState<Note[]>([]);
@@ -25,6 +26,7 @@ export function NotesPage() {
 
     // Delete
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
     const titleRef = useRef<HTMLInputElement>(null);
 
@@ -47,13 +49,13 @@ export function NotesPage() {
     };
 
     // ── Create / Update ──
-    const openCreate = () => {
+    const openCreate = useCallback(() => {
         setEditingId(null);
         setFormTitle('');
         setFormContent('');
         setShowForm(true);
         setTimeout(() => titleRef.current?.focus(), 100);
-    };
+    }, []);
 
     const openEdit = (note: Note) => {
         setEditingId(note.id);
@@ -99,22 +101,21 @@ export function NotesPage() {
         n.content.toLowerCase().includes(search.toLowerCase())
     );
 
-    return (
-        <div className="space-y-8 pb-12">
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Notes</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">
-                        Synced with Google Tasks — <span className="font-medium">AI Agent Notes</span> list.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: (
+                <>
+                    Synced with Google Tasks - <span className="font-medium">AI Agent Notes</span> list.
+                </>
+            ),
+            actions: (
+                <>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Search notes…"
+                            placeholder="Search notes..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="pl-9 pr-4 py-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
@@ -123,9 +124,14 @@ export function NotesPage() {
                     <Button onClick={openCreate} className="bg-brand-600 hover:bg-brand-700 text-white">
                         <Plus className="h-4 w-4 mr-2" /> New Note
                     </Button>
-                </div>
-            </header>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, openCreate, search, setHeaderContext]);
 
+    return (
+        <div className="space-y-4 pb-4">
             {/* Error banner */}
             {error && (
                 <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">

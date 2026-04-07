@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Navigate, createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AppLayout } from './layout/AppLayout';
 import { AuthGuard } from './layout/AuthGuard';
 import { LoginPage } from '../features/auth/LoginPage';
@@ -14,9 +14,7 @@ import { TasksPage } from '../features/tasks/TasksPage';
 import { ChatbotPage } from '../features/chatbot/ChatbotPage';
 import { VoiceAssistantPage } from '../features/voice/VoiceAssistantPage';
 import { MapsPage } from '../features/maps/MapsPage';
-import { SheetsPage } from '../features/sheets/SheetsPage';
-import { ContactsPage } from '../features/contacts/ContactsPage';
-import { NotesPage } from '../features/notes/NotesPage';
+import { AllHubPage } from '../features/all/AllHubPage';
 import { InsightsPage } from '../features/insights/InsightsPage';
 import { GoogleConnectPage } from '../features/google-connect/GoogleConnectPage';
 import { PrivacyPage } from '../features/legal/PrivacyPage';
@@ -44,13 +42,14 @@ const router = createBrowserRouter([
     { path: '/calendar', element: <Protected><CalendarPage /></Protected> },
     { path: '/email', element: <Protected><SmartInboxPage /></Protected> },
     { path: '/tasks', element: <Protected><TasksPage /></Protected> },
-    { path: '/contacts', element: <Protected><ContactsPage /></Protected> },
+    { path: '/all', element: <Protected><AllHubPage /></Protected> },
+    { path: '/contacts', element: <Protected><Navigate to="/all?tab=contacts" replace /></Protected> },
     { path: '/maps', element: <Protected><MapsPage /></Protected> },
-    { path: '/sheets', element: <Protected><SheetsPage /></Protected> },
+    { path: '/sheets', element: <Protected><Navigate to="/all?tab=sheets" replace /></Protected> },
     { path: '/chatbot', element: <Protected><ChatbotPage /></Protected> },
     { path: '/voice-assistant', element: <Protected><VoiceAssistantPage /></Protected> },
     { path: '/settings', element: <Protected><SettingsPage /></Protected> },
-    { path: '/notes', element: <Protected><NotesPage /></Protected> },
+    { path: '/notes', element: <Protected><Navigate to="/all?tab=notes" replace /></Protected> },
     { path: '/insights', element: <Protected><InsightsPage /></Protected> },
     { path: '/google-connect', element: <Protected><GoogleConnectPage /></Protected> },
     {

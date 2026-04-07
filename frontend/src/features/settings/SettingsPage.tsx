@@ -11,6 +11,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { cn } from '../../utils/cn';
 import api from '../../services/api';
+import { useGoogleStatus } from '../../hooks/useGoogleStatus';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // ── Reusable toggle switch ──────────────────────────────────────────────────
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -68,12 +70,35 @@ function SectionHeader({ title, desc }: { title: string; desc?: string }) {
 // TAB: Account
 // ════════════════════════════════════════════════════════════════════════════
 function AccountTab() {
-    const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
+    const { user } = useAuthStore();
+    const { isGoogleConnected, isChecking, googleServiceStatus, connectedServices, refresh } = useGoogleStatus();
+    const [isRevoking, setIsRevoking] = useState(false);
     const displayName = user?.name || 'User';
     const initials = user?.name
         ? user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
         : 'U';
-    const connectGoogle = () => { window.location.href = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/auth/google`; };
+    const connectGoogle = () => { window.location.href = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/auth/google-connect`; };
+
+    useEffect(() => {
+        refresh(true);
+    }, [refresh]);
+
+    const handleRevoke = async () => {
+        setIsRevoking(true);
+        try {
+            await api.post('/api/auth/logout');
+            await refresh(true);
+        } finally {
+            setIsRevoking(false);
+        }
+    };
+
+    const serviceTiles = [
+        { icon: Calendar, label: 'Calendar', color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' },
+        { icon: Mail, label: 'Gmail', color: 'text-red-500 bg-red-50 dark:bg-red-900/20' },
+        { icon: CheckSquare, label: 'Tasks', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' },
+        { icon: User, label: 'Contacts', color: 'text-violet-500 bg-violet-50 dark:bg-violet-900/20' },
+    ];
 
     return (
         <div className="space-y-8 animate-in fade-in duration-300">
@@ -91,11 +116,11 @@ function AccountTab() {
                             <div className="flex items-center gap-2 mt-2">
                                 <span className={cn(
                                     'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full',
-                                    isAuthenticated
+                                    isGoogleConnected
                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800'
                                         : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-800'
                                 )}>
-                                    {isAuthenticated
+                                    {isGoogleConnected
                                         ? <><Wifi className="h-3 w-3" /> Google Connected</>
                                         : <><WifiOff className="h-3 w-3" /> Not Connected</>
                                     }
@@ -122,13 +147,13 @@ function AccountTab() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                {isAuthenticated ? (
+                                {isGoogleConnected ? (
                                     <>
                                         <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-900/30">
-                                            <Check className="h-3 w-3" /> Connected
+                                            <Check className="h-3 w-3" /> {connectedServices.length} Services Connected
                                         </span>
-                                        <Button variant="outline" size="sm" onClick={() => checkAuth()} className="dark:border-slate-700">
-                                            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+                                        <Button variant="outline" size="sm" onClick={() => refresh(true)} className="dark:border-slate-700">
+                                            <RefreshCw className={cn("h-4 w-4 mr-2", isChecking && "animate-spin")} />
                                             Refresh
                                         </Button>
                                     </>
@@ -141,20 +166,21 @@ function AccountTab() {
                             </div>
                         </div>
 
-                        {isAuthenticated && (
+                        {isGoogleConnected && (
                             <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {[
-                                    { icon: Calendar, label: 'Calendar', color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' },
-                                    { icon: Mail, label: 'Gmail', color: 'text-red-500 bg-red-50 dark:bg-red-900/20' },
-                                    { icon: CheckSquare, label: 'Tasks', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' },
-                                    { icon: User, label: 'Contacts', color: 'text-violet-500 bg-violet-50 dark:bg-violet-900/20' },
-                                ].map(({ icon: Icon, label, color }) => (
-                                    <div key={label} className={cn('flex items-center gap-2.5 px-3 py-2 rounded-xl', color)}>
-                                        <Icon className="h-4 w-4 flex-shrink-0" />
-                                        <span className="text-xs font-semibold">{label}</span>
-                                        <Check className="h-3 w-3 ml-auto" />
-                                    </div>
-                                ))}
+                                {serviceTiles.map(({ icon: Icon, label, color }) => {
+                                    const connected = !!googleServiceStatus[label];
+                                    return (
+                                        <div key={label} className={cn('flex items-center gap-2.5 px-3 py-2 rounded-xl', color)}>
+                                            <Icon className="h-4 w-4 flex-shrink-0" />
+                                            <span className="text-xs font-semibold">{label}</span>
+                                            {connected
+                                                ? <Check className="h-3 w-3 ml-auto" />
+                                                : <WifiOff className="h-3 w-3 ml-auto text-slate-400" />
+                                            }
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -185,8 +211,14 @@ function AccountTab() {
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Disconnects all Google services. You will need to reconnect.</p>
                             </div>
                         </div>
-                        <Button variant="outline" size="sm" className="text-red-600 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 ml-4">
-                            Revoke
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRevoke}
+                            disabled={isRevoking}
+                            className="text-red-600 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 ml-4"
+                        >
+                            {isRevoking ? 'Revoking…' : 'Revoke'}
                         </Button>
                     </div>
                 </Card>
@@ -566,6 +598,7 @@ function GeneralTab() {
 export function SettingsPage() {
     const [activeTab, setActiveTab] = useState('account');
     const { logout } = useAuthStore();
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
     const tabs = [
         { id: 'account', label: 'Account', icon: User },
@@ -574,13 +607,16 @@ export function SettingsPage() {
         { id: 'general', label: 'General', icon: Globe },
     ];
 
-    return (
-        <div className="space-y-8 pb-12">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your account, preferences, and connected services.</p>
-            </div>
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: 'Manage your account, preferences, and connected services.',
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, setHeaderContext]);
 
+    return (
+        <div className="space-y-4 pb-4">
             <Card className="flex flex-col md:flex-row border-slate-200 dark:border-slate-800 shadow-soft overflow-hidden min-h-[680px]">
                 {/* ── Left tab nav ── */}
                 <div className="w-full md:w-60 bg-slate-50/50 dark:bg-slate-900/50 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-4 flex flex-col flex-shrink-0">

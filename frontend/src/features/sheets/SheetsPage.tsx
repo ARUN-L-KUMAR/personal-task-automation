@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { sheetsService } from '../../services/sheets.service';
 import { cn } from '../../utils/cn';
 import { format, parseISO } from 'date-fns';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface DriveSheet {
@@ -368,6 +369,7 @@ export function SheetsPage() {
 
     const [connectOpen, setConnectOpen] = useState(false);
     const [appendOpen, setAppendOpen] = useState(false);
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
     const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
 
@@ -450,21 +452,12 @@ export function SheetsPage() {
         !driveSearch || s.name.toLowerCase().includes(driveSearch.toLowerCase())
     );
 
-    return (
-        <div className="space-y-6 pb-12">
-            {/* ── Header ── */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-                        Google Sheets
-                        <span className="text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full">Drive</span>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        {driveSheets.length} spreadsheet{driveSheets.length !== 1 ? 's' : ''} in your Drive
-                        {sheetData && ` · Viewing ${sheetData.rows} rows`}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: `${driveSheets.length} spreadsheet${driveSheets.length !== 1 ? 's' : ''} in your Drive${sheetData ? ` · Viewing ${sheetData.rows} rows` : ''}`,
+            actions: (
+                <>
                     <Button variant="outline" size="sm" onClick={() => fetchList(driveSearch)}
                         disabled={isLoadingList} className="h-9 dark:border-slate-700">
                         <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', isLoadingList && 'animate-spin')} /> Refresh
@@ -473,9 +466,14 @@ export function SheetsPage() {
                         className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white">
                         <Link2 className="h-3.5 w-3.5 mr-1.5" /> Connect by ID
                     </Button>
-                </div>
-            </header>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, driveSearch, driveSheets.length, fetchList, isLoadingList, setHeaderContext, sheetData]);
 
+    return (
+        <div className="space-y-4 pb-4">
             {/* ── Active Sheet Viewer ── */}
             {(isLoadingSheet || sheetData || sheetError) && (
                 <div className="space-y-3">

@@ -29,9 +29,9 @@ export function ResultPanel({ result }: Props) {
     const conflictCount = result.conflicts.length;
 
     return (
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             {/* Tab bar */}
-            <div className="flex border-b border-slate-200 bg-slate-50/50 overflow-x-auto">
+            <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 overflow-x-auto">
                 {tabs.map(tab => {
                     const active = activeTab === tab.id;
                     const Icon = tab.icon;
@@ -41,7 +41,7 @@ export function ResultPanel({ result }: Props) {
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
                                 'relative flex items-center gap-1.5 px-4 py-3 text-xs font-semibold transition-all whitespace-nowrap',
-                                active ? 'text-blue-700' : 'text-slate-500 hover:text-slate-700',
+                                active ? 'text-blue-700 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
                             )}
                         >
                             <Icon className="h-3.5 w-3.5" />

@@ -4,7 +4,7 @@ import {
     AlertCircle, CheckCircle2, X, XCircle,
     Loader2, Plus, Trash2, Car, Footprints,
     Bike, Bus, Zap, BarChart3, ArrowRight, Route,
-    Star,
+    Star, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -13,6 +13,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { mapsService } from '../../services/maps.service';
 import { cn } from '../../utils/cn';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // Fix Leaflet default icon issue with webpack
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -512,6 +513,8 @@ export function MapsPage() {
             .catch(() => {});
     }, []);
     const [activeTab, setActiveTab] = useState<'steps' | 'alternatives'>('steps');
+    const [plannerCollapsed, setPlannerCollapsed] = useState(false);
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
     const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
 
@@ -594,117 +597,158 @@ export function MapsPage() {
     };
 
     const modeConfig = MODES.find(m => m.value === mode) || MODES[0];
+    const showQuickCompare = originInput && destInput && !routeData && !isLoading && !error;
+    const showRouteStats = !!currentRoute;
+    const hasSupplementaryPanels = showQuickCompare || showRouteStats;
+    const hasRightSidebar = showRouteStats || savedRoutes.length > 0;
+
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: 'Interactive maps with OpenStreetMap + real-time directions via Google Maps API.',
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, setHeaderContext]);
 
     return (
-        <div className="space-y-5 pb-12">
-            {/* ── Header ── */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-                        Maps & Travel
-                        <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">Free</span>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        Interactive maps with OpenStreetMap + real-time directions via Google Maps API.
-                    </p>
-                </div>
-            </header>
-
-            {/* ── Route Planner ── */}
-            <Card className="p-5 border-slate-200 dark:border-slate-800">
-                {/* Mode selector */}
-                <div className="flex items-center gap-2 mb-4">
-                    {MODES.map(m => (
-                        <button key={m.value} onClick={() => {
-                            setMode(m.value);
-                            if (routeData) fetchDirections(m.value);
-                        }}
-                            className={cn(
-                                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
-                                mode === m.value
-                                    ? `${m.color} text-white shadow-md`
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            )}>
-                            {m.icon} {m.label}
+        <div className="h-[calc(100vh-120px)] flex flex-col overflow-hidden">
+            <div className="flex flex-col flex-1 min-h-0 border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                {/* ── Route Planner ── */}
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Route Planner
+                        </p>
+                        <button
+                            onClick={() => setPlannerCollapsed(prev => !prev)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            {plannerCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                            {plannerCollapsed ? 'Expand' : 'Collapse'}
                         </button>
-                    ))}
-                </div>
-
-                {/* Origin / Destination row */}
-                <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
-                    <PlaceInput
-                        value={originInput}
-                        onChange={setOriginInput}
-                        placeholder="Origin — e.g. New Delhi, India"
-                        icon={<div className="h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" />}
-                    />
-
-                    {/* Swap button */}
-                    <button onClick={handleSwap}
-                        className="hidden md:flex h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all flex-shrink-0 self-center">
-                        <ArrowRight className="h-4 w-4" />
-                    </button>
-
-                    <PlaceInput
-                        value={destInput}
-                        onChange={setDestInput}
-                        placeholder="Destination — e.g. Mumbai, India"
-                        icon={<div className="h-3 w-3 rounded-full bg-blue-600 ring-2 ring-blue-600/20" />}
-                    />
-
-                    <Button onClick={() => fetchDirections()} disabled={isLoading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white h-[42px] px-5 flex-shrink-0 whitespace-nowrap">
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Navigation className="h-4 w-4 mr-1.5" />}
-                        {isLoading ? 'Finding…' : 'Get Directions'}
-                    </Button>
-                </div>
-
-                {/* Waypoints */}
-                <div className="mt-3">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={wpInput}
-                            onChange={e => setWpInput(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && addWaypoint()}
-                            placeholder="Add a stop along the way… (optional, max 4)"
-                            className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-                        />
-                        <Button variant="ghost" size="sm" onClick={addWaypoint} disabled={!wpInput.trim() || waypoints.length >= 4} className="h-9 text-xs">
-                            <Plus className="h-3.5 w-3.5 mr-1" /> Stop
-                        </Button>
                     </div>
-                    {waypoints.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                            {waypoints.map((wp, i) => (
-                                <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs font-medium rounded-lg border border-blue-100 dark:border-blue-800/40">
-                                    <Route className="h-3 w-3" /> {wp}
-                                    <button onClick={() => removeWaypoint(i)} className="ml-0.5 text-blue-400 hover:text-blue-700"><X className="h-3 w-3" /></button>
-                                </span>
-                            ))}
+
+                    {!plannerCollapsed ? (
+                        <>
+                            {/* Mode selector */}
+                            <div className="flex items-center gap-2 mb-4">
+                                {MODES.map(m => (
+                                    <button key={m.value} onClick={() => {
+                                        setMode(m.value);
+                                        if (routeData) fetchDirections(m.value);
+                                    }}
+                                        className={cn(
+                                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                                            mode === m.value
+                                                ? `${m.color} text-white shadow-md`
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                        )}>
+                                        {m.icon} {m.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Origin / Destination row */}
+                            <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
+                                <PlaceInput
+                                    value={originInput}
+                                    onChange={setOriginInput}
+                                    placeholder="Origin — e.g. New Delhi, India"
+                                    icon={<div className="h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" />}
+                                />
+
+                                {/* Swap button */}
+                                <button onClick={handleSwap}
+                                    className="hidden md:flex h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all flex-shrink-0 self-center">
+                                    <ArrowRight className="h-4 w-4" />
+                                </button>
+
+                                <PlaceInput
+                                    value={destInput}
+                                    onChange={setDestInput}
+                                    placeholder="Destination — e.g. Mumbai, India"
+                                    icon={<div className="h-3 w-3 rounded-full bg-blue-600 ring-2 ring-blue-600/20" />}
+                                />
+
+                                <Button onClick={() => fetchDirections()} disabled={isLoading}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white h-[42px] px-5 flex-shrink-0 whitespace-nowrap">
+                                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Navigation className="h-4 w-4 mr-1.5" />}
+                                    {isLoading ? 'Finding…' : 'Get Directions'}
+                                </Button>
+                            </div>
+
+                            {/* Waypoints */}
+                            <div className="mt-3">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={wpInput}
+                                        onChange={e => setWpInput(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && addWaypoint()}
+                                        placeholder="Add a stop along the way… (optional, max 4)"
+                                        className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                                    />
+                                    <Button variant="ghost" size="sm" onClick={addWaypoint} disabled={!wpInput.trim() || waypoints.length >= 4} className="h-9 text-xs">
+                                        <Plus className="h-3.5 w-3.5 mr-1" /> Stop
+                                    </Button>
+                                </div>
+                                {waypoints.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {waypoints.map((wp, i) => (
+                                            <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs font-medium rounded-lg border border-blue-100 dark:border-blue-800/40">
+                                                <Route className="h-3 w-3" /> {wp}
+                                                <button onClick={() => removeWaypoint(i)} className="ml-0.5 text-blue-400 hover:text-blue-700"><X className="h-3 w-3" /></button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Error */}
+                            {error && (
+                                <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-2.5">
+                                    <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-xs font-bold text-red-700 dark:text-red-400">Error</p>
+                                        <p className="text-xs text-red-600/80 dark:text-red-400/70 leading-relaxed mt-0.5">{error}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs">
+                            <span className="truncate text-slate-500 dark:text-slate-400">
+                                {originInput || destInput
+                                    ? `${originInput || 'Origin'} -> ${destInput || 'Destination'}`
+                                    : 'Planner minimized. Expand to edit route inputs.'}
+                            </span>
+                            {originInput.trim() && destInput.trim() && (
+                                <Button size="sm" onClick={() => fetchDirections()} className="h-7 px-2.5 text-[11px] bg-blue-600 hover:bg-blue-700 text-white">
+                                    Go
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
 
-                {/* Error */}
-                {error && (
-                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-2.5">
-                        <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                            <p className="text-xs font-bold text-red-700 dark:text-red-400">Error</p>
-                            <p className="text-xs text-red-600/80 dark:text-red-400/70 leading-relaxed mt-0.5">{error}</p>
-                        </div>
-                    </div>
-                )}
-            </Card>
+                {/* ── Main Grid ── */}
+                <div className={cn('grid gap-0 flex-1 min-h-0', hasRightSidebar ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1')}>
 
-            {/* ── Main Grid ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-
-                {/* ── Map + Distance Comparison ── */}
-                <div className="lg:col-span-3 space-y-4">
+                    {/* ── Map + Distance Comparison ── */}
+                    <div className={cn(
+                        'min-h-0 overflow-y-auto custom-scrollbar',
+                        hasRightSidebar && 'lg:col-span-3'
+                    )}>
                     {/* Map Card */}
-                    <Card className="border-slate-200 dark:border-slate-800 overflow-hidden" style={{ height: 400 }}>
+                    <Card
+                        className={cn(
+                            'overflow-hidden rounded-none shadow-none border-x-0 border-t-0',
+                            hasSupplementaryPanels
+                                ? 'border-slate-200 dark:border-slate-800'
+                                : 'h-full border-0 rounded-none shadow-none'
+                        )}
+                        style={hasSupplementaryPanels ? { height: 400 } : undefined}
+                    >
                         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div className="flex items-center gap-2.5">
                                 <MapIcon className="h-4 w-4 text-blue-500" />
@@ -717,7 +761,7 @@ export function MapsPage() {
                                 <ExternalLink className="h-3.5 w-3.5" /> Open in Google Maps
                             </button>
                         </div>
-                        <div style={{ height: 'calc(400px - 49px)' }}>
+                        <div className={cn(!hasSupplementaryPanels && 'h-full')} style={hasSupplementaryPanels ? { height: 'calc(400px - 49px)' } : undefined}>
                             <LeafletMap
                                 origin={currentRoute?.origin || originInput}
                                 destination={currentRoute?.destination || destInput}
@@ -728,7 +772,7 @@ export function MapsPage() {
                     </Card>
 
                     {/* Multi-mode comparison */}
-                    {originInput && destInput && !routeData && !isLoading && !error && (
+                    {showQuickCompare && (
                         <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
                             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -756,30 +800,31 @@ export function MapsPage() {
                     )}
 
                     {/* Route loaded — quick stats */}
-                    {currentRoute && (
-                        <div className="grid grid-cols-3 gap-3">
-                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
+                    {showRouteStats && (
+                        <div className="grid grid-cols-3 border-x-0 border-b border-slate-200 dark:border-slate-800 divide-x divide-slate-200 dark:divide-slate-800">
+                            <div className="p-4 text-center bg-white dark:bg-slate-900">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Distance</p>
                                 <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{currentRoute.distance}</p>
-                            </Card>
-                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
+                            </div>
+                            <div className="p-4 text-center bg-white dark:bg-slate-900">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Duration</p>
                                 <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">{currentRoute.duration}</p>
-                            </Card>
-                            <Card className="border-slate-200 dark:border-slate-800 p-4 text-center">
+                            </div>
+                            <div className="p-4 text-center bg-white dark:bg-slate-900">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Steps</p>
                                 <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{currentRoute.steps.length}</p>
-                            </Card>
+                            </div>
                         </div>
                     )}
-                </div>
+                    </div>
 
-                {/* ── Right Sidebar ── */}
-                <aside className="lg:col-span-1 space-y-4">
+                    {/* ── Right Sidebar ── */}
+                    {hasRightSidebar && (
+                    <aside className="lg:col-span-1 space-y-0 p-0 min-h-0 overflow-y-auto custom-scrollbar border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
 
                     {/* Route Summary Card */}
                     {currentRoute && (
-                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                        <div className="overflow-hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                             <div className="px-4 py-3 bg-blue-600 text-white flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     {modeConfig.icon}
@@ -896,12 +941,12 @@ export function MapsPage() {
                                     )}
                                 </>
                             )}
-                        </Card>
+                        </div>
                     )}
 
                     {/* Saved Routes */}
                     {savedRoutes.length > 0 && (
-                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                        <div className="overflow-hidden bg-white dark:bg-slate-900">
                             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                                     <Star className="h-3 w-3" /> Saved Routes
@@ -921,9 +966,11 @@ export function MapsPage() {
                                     </div>
                                 ))}
                             </div>
-                        </Card>
+                        </div>
                     )}
-                </aside>
+                    </aside>
+                    )}
+                </div>
             </div>
 
             <ToastContainer toasts={toasts} onDismiss={dismissToast} />

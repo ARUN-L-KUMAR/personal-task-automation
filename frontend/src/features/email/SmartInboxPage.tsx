@@ -403,7 +403,7 @@ export function SmartInboxPage() {
     }, [activeFolder, fetchEmails]);
 
     // ── Register page context for voice assistant ──
-    const { setPageContext, clearPageContext } = usePageContextStore();
+    const { setPageContext, clearPageContext, setHeaderContext, clearHeaderContext } = usePageContextStore();
     useEffect(() => {
         const lines: string[] = [`Viewing ${activeFolder} folder. ${emails.length} emails shown.`];
         if (selectedEmailId) {
@@ -440,10 +440,10 @@ export function SmartInboxPage() {
         : emails;
 
     // ── Compose helpers ──
-    const openCompose = (to = '', subject = '') => {
+    const openCompose = useCallback((to = '', subject = '') => {
         setComposeDefaults({ to, subject });
         setComposeOpen(true);
-    };
+    }, []);
 
     const handleSent = () => {
         pushToast('success', 'Email sent successfully!');
@@ -459,23 +459,12 @@ export function SmartInboxPage() {
 
     const currentFolder = FOLDERS.find(f => f.key === activeFolder)!;
 
-    return (
-        <div className="flex flex-col h-[calc(100vh-120px)] space-y-0 overflow-hidden">
-
-            {/* ── Page Header ── */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 flex-shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-                        Smart Inbox
-                        <Badge variant="secondary" className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-none text-[11px]">
-                            <Sparkles className="h-3 w-3 mr-1" /> Gmail
-                        </Badge>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        Real-time Gmail inbox — read, search and compose.
-                    </p>
-                </div>
-                <div className="flex gap-2">
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: `${displayedEmails.length} message${displayedEmails.length !== 1 ? 's' : ''} in ${currentFolder.label}`,
+            actions: (
+                <>
                     <Button
                         variant="outline"
                         size="sm"
@@ -486,22 +475,39 @@ export function SmartInboxPage() {
                         <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', isLoading && 'animate-spin')} />
                         Refresh
                     </Button>
-                    <Button
-                        size="sm"
-                        onClick={() => openCompose()}
-                        className="bg-blue-600 hover:bg-blue-700 text-white h-9"
-                    >
-                        <PenSquare className="h-3.5 w-3.5 mr-1.5" /> Compose
-                    </Button>
-                </div>
-            </header>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [
+        activeFolder,
+        clearHeaderContext,
+        currentFolder.label,
+        displayedEmails.length,
+        fetchEmails,
+        isLoading,
+        openCompose,
+        searchQuery,
+        setHeaderContext,
+    ]);
+
+    return (
+        <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
 
             {/* ── Main Panel ── */}
-            <div className="flex flex-1 gap-4 overflow-hidden min-h-0">
+            <div className="flex flex-1 gap-0 overflow-hidden min-h-0 border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 
                 {/* ── Sidebar ── */}
-                <aside className="hidden md:flex flex-col w-52 flex-shrink-0 gap-2">
-                    <nav className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-2 space-y-0.5">
+                <aside className="hidden md:flex flex-col w-52 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
+                    <div className="p-3 pb-2">
+                        <Button
+                            onClick={() => openCompose()}
+                            className="w-full h-11 rounded-2xl justify-start px-4 bg-blue-100 hover:bg-blue-200 text-slate-800 border border-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/40 dark:text-blue-100 dark:border-blue-900/40"
+                        >
+                            <PenSquare className="h-4 w-4 mr-2" /> Compose
+                        </Button>
+                    </div>
+                    <nav className="p-2 space-y-0.5">
                         {FOLDERS.map(folder => (
                             <button
                                 key={folder.key}
@@ -520,7 +526,7 @@ export function SmartInboxPage() {
                     </nav>
 
                     {/* Tips */}
-                    <div className="mt-auto bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 border border-blue-100 dark:border-blue-900/40">
+                    <div className="mt-auto bg-blue-50/70 dark:bg-blue-900/20 p-3 border-t border-blue-100 dark:border-blue-900/40">
                         <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1.5">
                             <Sparkles className="h-3 w-3" /> Gmail Search Tips
                         </p>
@@ -533,7 +539,7 @@ export function SmartInboxPage() {
                 </aside>
 
                 {/* ── Email Panel ── */}
-                <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 overflow-hidden">
 
                     {selectedEmailId ? (
                         /* ── Email Detail ── */
@@ -576,6 +582,12 @@ export function SmartInboxPage() {
 
                             {/* ── Mobile folder tabs ── */}
                             <div className="flex md:hidden gap-1 px-3 py-2 border-b border-slate-100 dark:border-slate-800 overflow-x-auto flex-shrink-0">
+                                <button
+                                    onClick={() => openCompose()}
+                                    className="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white inline-flex items-center gap-1"
+                                >
+                                    <PenSquare className="h-3 w-3" /> Compose
+                                </button>
                                 {FOLDERS.map(f => (
                                     <button
                                         key={f.key}

@@ -28,6 +28,16 @@ export interface AuthResponse {
     token_type: string;
 }
 
+export interface GoogleAuthStatus {
+    authenticated: boolean;
+    message: string;
+}
+
+export interface GoogleServicesStatus extends GoogleAuthStatus {
+    service_status: Record<string, boolean>;
+    connected_services: string[];
+}
+
 // --- Token helpers ---
 
 const TOKEN_KEY = 'g-one_token';
@@ -68,7 +78,12 @@ export const googleLoginUser = async (code: string): Promise<AuthResponse> => {
     return data;
 };
 
-export const checkGoogleServicesStatus = async (): Promise<{ authenticated: boolean; message: string }> => {
+export const checkGoogleServicesStatus = async (): Promise<GoogleAuthStatus> => {
     const response = await api.get('/api/auth/status');
+    return response.data;
+};
+
+export const checkGoogleDetailedServicesStatus = async (): Promise<GoogleServicesStatus> => {
+    const response = await api.get('/api/auth/services-status');
     return response.data;
 };

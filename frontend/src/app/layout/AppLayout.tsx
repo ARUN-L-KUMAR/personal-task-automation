@@ -42,8 +42,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                     onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
                     isSidebarCollapsed={isSidebarCollapsed}
                 />
-                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 custom-scrollbar">
-                    <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                    <div className="w-full p-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {children}
                     </div>
                 </main>

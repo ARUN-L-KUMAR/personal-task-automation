@@ -1,5 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
-import { checkGoogleServicesStatus } from '../services/auth.service';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { checkGoogleDetailedServicesStatus, checkGoogleServicesStatus } from '../services/auth.service';
+import type { GoogleAuthStatus, GoogleServicesStatus } from '../services/auth.service';
+
+function isDetailedGoogleStatus(status: GoogleAuthStatus | GoogleServicesStatus): status is GoogleServicesStatus {
+    return (
+        'service_status' in status
+        && typeof status.service_status === 'object'
+        && status.service_status !== null
+        && Array.isArray(status.connected_services)
+    );
+}
 
 /**
  * Hook to check if Google services are connected for the current user.
@@ -8,12 +18,16 @@ import { checkGoogleServicesStatus } from '../services/auth.service';
 export function useGoogleStatus() {
     const [isGoogleConnected, setIsGoogleConnected] = useState(false);
     const [isChecking, setIsChecking] = useState(true);
+    const [googleServiceStatus, setGoogleServiceStatus] = useState<Record<string, boolean>>({});
+    const [connectedServices, setConnectedServices] = useState<string[]>([]);
     const inFlightRef = useRef(false);
 
-    const checkStatus = async () => {
+    const checkStatus = useCallback(async (includeServices = false) => {
         const token = localStorage.getItem('g-one_token');
         if (!token) {
             setIsGoogleConnected(false);
+            setGoogleServiceStatus({});
+            setConnectedServices([]);
             setIsChecking(false);
             return;
         }
@@ -25,22 +39,36 @@ export function useGoogleStatus() {
         inFlightRef.current = true;
         setIsChecking(true);
         try {
-            const status = await checkGoogleServicesStatus();
+            const status = includeServices
+                ? await checkGoogleDetailedServicesStatus()
+                : await checkGoogleServicesStatus();
             setIsGoogleConnected(status.authenticated);
+            if (isDetailedGoogleStatus(status)) {
+                setGoogleServiceStatus(status.service_status);
+                setConnectedServices(status.connected_services);
+            }
         } catch (error) {
             setIsGoogleConnected(false);
+            setGoogleServiceStatus({});
+            setConnectedServices([]);
         } finally {
             setIsChecking(false);
             inFlightRef.current = false;
         }
-    };
-
-    useEffect(() => {
-        checkStatus();
-        // Recheck every 30 seconds
-        const interval = setInterval(checkStatus, 30000);
-        return () => clearInterval(interval);
     }, []);
 
-    return { isGoogleConnected, isChecking, refresh: checkStatus };
+    useEffect(() => {
+        checkStatus(false);
+        // Recheck every 30 seconds
+        const interval = setInterval(() => checkStatus(false), 30000);
+        return () => clearInterval(interval);
+    }, [checkStatus]);
+
+    return {
+        isGoogleConnected,
+        isChecking,
+        googleServiceStatus,
+        connectedServices,
+        refresh: checkStatus,
+    };
 }

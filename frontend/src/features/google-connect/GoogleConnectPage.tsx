@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     Calendar, Mail, CheckSquare, User, Map, FileSpreadsheet,
     Check, X, Loader2, ExternalLink, RefreshCw, Wifi, WifiOff, Shield,
@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useGoogleStatus } from '../../hooks/useGoogleStatus';
 import { cn } from '../../utils/cn';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 const SERVICES = [
     { key: 'calendar', label: 'Google Calendar', desc: 'View and manage your events, detect conflicts.', icon: Calendar, color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' },
@@ -19,26 +20,29 @@ const SERVICES = [
 
 export function GoogleConnectPage() {
     const { isGoogleConnected, isChecking, refresh } = useGoogleStatus();
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
     const connectGoogle = () => {
         window.location.href = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/auth/google-connect`;
     };
 
-    return (
-        <div className="space-y-8 pb-12">
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Google Connect</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">
-                        Manage your Google Workspace integration.
-                    </p>
-                </div>
-                <Button variant="outline" onClick={refresh} disabled={isChecking}>
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: isGoogleConnected
+                ? 'Google services are connected and ready to use.'
+                : 'Connect your Google account to enable all integrations.',
+            actions: (
+                <Button variant="outline" onClick={() => refresh()} disabled={isChecking}>
                     <RefreshCw className={cn('h-4 w-4 mr-2', isChecking && 'animate-spin')} /> Refresh Status
                 </Button>
-            </header>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, isChecking, isGoogleConnected, refresh, setHeaderContext]);
 
+    return (
+        <div className="space-y-4 pb-4">
             {/* Connection status banner */}
             <Card className={cn(
                 'p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-2',

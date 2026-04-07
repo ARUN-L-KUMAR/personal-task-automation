@@ -17,7 +17,7 @@ const statusIcon: Record<string, React.ReactNode> = {
 };
 
 const statusLine: Record<string, string> = {
-    idle: 'bg-slate-200',
+    idle: 'bg-slate-200 dark:bg-slate-700',
     running: 'bg-blue-400 animate-pulse',
     success: 'bg-emerald-400',
     warning: 'bg-amber-400',
@@ -26,8 +26,8 @@ const statusLine: Record<string, string> = {
 
 export function ExecutionTimeline({ steps }: Props) {
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-1">
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-1">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-3">
                 AI Agent Execution Pipeline
             </h3>
             <div className="space-y-0">
@@ -51,15 +51,15 @@ export function ExecutionTimeline({ steps }: Props) {
                         <div className="flex-1 flex items-center justify-between py-2.5">
                             <span className={cn(
                                 'text-xs font-semibold',
-                                step.status === 'running' ? 'text-blue-700' :
-                                step.status === 'success' ? 'text-slate-700' :
-                                step.status === 'error' ? 'text-red-600' :
-                                'text-slate-400'
+                                step.status === 'running' ? 'text-blue-700 dark:text-blue-300' :
+                                step.status === 'success' ? 'text-slate-700 dark:text-slate-200' :
+                                step.status === 'error' ? 'text-red-600 dark:text-red-300' :
+                                'text-slate-400 dark:text-slate-500'
                             )}>
                                 {step.label}
                             </span>
                             {step.summary && (
-                                <span className="text-[10px] text-slate-400 max-w-[50%] truncate text-right">
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 max-w-[50%] truncate text-right">
                                     {step.summary}
                                 </span>
                             )}

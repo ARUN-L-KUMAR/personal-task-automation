@@ -424,10 +424,17 @@ export function useChat() {
         }
     }, [input, isLoading, messages, selectedModel, persistCurrentChat]);
 
-    const clearChat = () => {
+    const clearChat = useCallback(() => {
         setActiveSessionId(null);
-        setMessages([WELCOME]);
-    };
+        setMessages([
+            {
+                id: 'welcome',
+                role: 'assistant',
+                content: "👋 Hi! I'm **G-One**, your AI personal assistant.\n\nI can help with your **calendar**, **tasks**, **emails**, **maps**, and more. What would you like to know?",
+                timestamp: new Date(),
+            },
+        ]);
+    }, []);
 
     return {
         messages, input, setInput, isLoading,

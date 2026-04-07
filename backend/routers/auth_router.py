@@ -14,6 +14,8 @@ SUPPORTS: Both new user login AND existing user service connection.
 import base64
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 
 from fastapi import APIRouter, HTTPException, Depends, Query
@@ -24,7 +26,7 @@ from sqlalchemy.exc import OperationalError
 
 from utils.google_auth import (
     get_auth_url, handle_auth_callback, is_authenticated, logout,
-    _save_token_to_db, SCOPES, _get_client_id, _get_client_secret, get_redirect_uri,
+    _save_token_to_db, SCOPES, _get_client_id, _get_client_secret, get_redirect_uri, get_credentials,
 )
 from database.connection import get_db
 from database.models import User
@@ -36,6 +38,84 @@ optional_bearer = HTTPBearer(auto_error=False)
 
 FRONTEND_LOGIN_REDIRECT = os.getenv("FRONTEND_LOGIN_REDIRECT", "http://localhost:3000/login")
 FRONTEND_SETTINGS_REDIRECT = os.getenv("FRONTEND_SETTINGS_REDIRECT", "http://localhost:3000/settings")
+
+GOOGLE_SERVICE_KEYS = ["Calendar", "Gmail", "Tasks", "Contacts", "Drive"]
+
+
+def _empty_service_status() -> dict[str, bool]:
+    return {service: False for service in GOOGLE_SERVICE_KEYS}
+
+
+def _probe_google_service_status(creds) -> dict[str, bool]:
+    """Probe each Google API with a lightweight request to confirm service-level connectivity."""
+    from googleapiclient.discovery import build
+
+    status = _empty_service_status()
+
+    def check_calendar() -> bool:
+        try:
+            calendar = build("calendar", "v3", credentials=creds)
+            calendar.events().list(
+                calendarId="primary",
+                timeMin=datetime.now(timezone.utc).isoformat(),
+                maxResults=1,
+                singleEvents=True,
+                orderBy="startTime",
+            ).execute()
+            return True
+        except Exception:
+            return False
+
+    def check_gmail() -> bool:
+        try:
+            gmail = build("gmail", "v1", credentials=creds)
+            gmail.users().labels().list(userId="me").execute()
+            return True
+        except Exception:
+            return False
+
+    def check_tasks() -> bool:
+        try:
+            tasks = build("tasks", "v1", credentials=creds)
+            tasks.tasklists().list(maxResults=1).execute()
+            return True
+        except Exception:
+            return False
+
+    def check_contacts() -> bool:
+        try:
+            people = build("people", "v1", credentials=creds)
+            people.people().get(resourceName="people/me", personFields="names").execute()
+            return True
+        except Exception:
+            return False
+
+    def check_drive() -> bool:
+        try:
+            drive = build("drive", "v3", credentials=creds)
+            drive.files().list(pageSize=1, fields="files(id)").execute()
+            return True
+        except Exception:
+            return False
+
+    checks = {
+        "Calendar": check_calendar,
+        "Gmail": check_gmail,
+        "Tasks": check_tasks,
+        "Contacts": check_contacts,
+        "Drive": check_drive,
+    }
+
+    with ThreadPoolExecutor(max_workers=len(checks)) as executor:
+        futures = {executor.submit(fn): key for key, fn in checks.items()}
+        for future in as_completed(futures, timeout=10):
+            key = futures[future]
+            try:
+                status[key] = bool(future.result())
+            except Exception:
+                status[key] = False
+
+    return status
 
 
 def _append_query(url: str, params: dict[str, str]) -> str:
@@ -281,6 +361,75 @@ def auth_status(
             "authenticated": False,
             "message": "Database unavailable; cannot verify Google connection right now",
             "service_unavailable": True,
+        }
+
+
+@router.get("/services-status")
+def auth_services_status(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer),
+    db: Session = Depends(get_db),
+):
+    """Return real per-service Google connection status for the current user."""
+    if not credentials:
+        return {
+            "authenticated": False,
+            "message": "No auth token provided",
+            "service_status": _empty_service_status(),
+            "connected_services": [],
+        }
+
+    payload = decode_access_token(credentials.credentials)
+    user_id = payload.get("sub") if payload else None
+    if not user_id:
+        return {
+            "authenticated": False,
+            "message": "Invalid or expired token",
+            "service_status": _empty_service_status(),
+            "connected_services": [],
+        }
+
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return {
+                "authenticated": False,
+                "message": "User not found",
+                "service_status": _empty_service_status(),
+                "connected_services": [],
+            }
+
+        if not is_authenticated(user, db):
+            return {
+                "authenticated": False,
+                "message": "Not connected to Google",
+                "service_status": _empty_service_status(),
+                "connected_services": [],
+            }
+
+        creds = get_credentials(user, db)
+        if not creds:
+            return {
+                "authenticated": False,
+                "message": "Google credentials unavailable",
+                "service_status": _empty_service_status(),
+                "connected_services": [],
+            }
+
+        service_status = _probe_google_service_status(creds)
+        connected_services = [name for name, connected in service_status.items() if connected]
+        return {
+            "authenticated": True,
+            "message": "Fetched live Google service status",
+            "service_status": service_status,
+            "connected_services": connected_services,
+        }
+    except OperationalError:
+        return {
+            "authenticated": False,
+            "message": "Database unavailable; cannot verify Google connection right now",
+            "service_unavailable": True,
+            "service_status": _empty_service_status(),
+            "connected_services": [],
         }
 
 

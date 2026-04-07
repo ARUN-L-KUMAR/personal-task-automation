@@ -106,27 +106,27 @@ export function InputPanel({ disabled }: Props) {
         ]);
     };
 
-    const selectCls = 'h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500';
-    const inputCls = 'h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500';
+    const selectCls = 'h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500';
+    const inputCls = 'h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
     return (
         <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-180px)] pr-1 scrollbar-thin">
             {/* ── Settings ── */}
-            <Card className="border-slate-200">
+            <Card className="border-slate-200 dark:border-slate-800">
                 <CardHeader className="py-3 px-4">
-                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300 flex items-center gap-2">
                         <Settings2 className="h-3.5 w-3.5" /> Plan Settings
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-0">
                     {/* ── Time Settings ── */}
                     <div className="pb-3">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-2 flex items-center gap-1.5">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
                             <Clock className="h-3 w-3" /> Time Settings
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Date</label>
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Date</label>
                                 <input
                                     type="date"
                                     value={settings.date}
@@ -136,13 +136,13 @@ export function InputPanel({ disabled }: Props) {
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Timezone</label>
-                                <input value={settings.timezone} readOnly disabled className={cn(inputCls, 'bg-slate-50 text-slate-400')} />
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Timezone</label>
+                                <input value={settings.timezone} readOnly disabled className={cn(inputCls, 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500')} />
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 mt-3">
                             <div>
-                                <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Work Start</label>
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Work Start</label>
                                 <input
                                     type="time"
                                     value={settings.workStart}
@@ -152,7 +152,7 @@ export function InputPanel({ disabled }: Props) {
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-semibold text-slate-500 uppercase mb-1 block">Work End</label>
+                                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1 block">Work End</label>
                                 <input
                                     type="time"
                                     value={settings.workEnd}
@@ -165,11 +165,11 @@ export function InputPanel({ disabled }: Props) {
                     </div>
 
                     {/* ── Divider ── */}
-                    <div className="border-t border-dashed border-slate-200 my-1" />
+                    <div className="border-t border-dashed border-slate-200 dark:border-slate-700 my-1" />
 
                     {/* ── Productivity Strategy ── */}
                     <div className="pt-3">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-2 flex items-center gap-1.5">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
                             <Tag className="h-3 w-3" /> Productivity Strategy
                         </p>
                         <div className="grid grid-cols-3 gap-2">
@@ -182,12 +182,12 @@ export function InputPanel({ disabled }: Props) {
                                         className={cn(
                                             'w-full rounded-lg border px-2.5 py-2 text-center transition-all',
                                             settings.preference === p.value
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm shadow-blue-100'
-                                                : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm shadow-blue-100 dark:shadow-none'
+                                                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
                                         )}
                                     >
                                         <span className="text-[11px] font-bold block">{p.label}</span>
-                                        <span className="text-[9px] text-slate-400 block mt-0.5">{p.desc}</span>
+                                        <span className="text-[9px] text-slate-400 dark:text-slate-500 block mt-0.5">{p.desc}</span>
                                     </button>
                                     {/* Tooltip */}
                                     <div className="absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 px-3 py-2 rounded-lg bg-slate-800 text-white text-[10px] leading-snug opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity shadow-lg text-center">
@@ -223,20 +223,20 @@ export function InputPanel({ disabled }: Props) {
             </div>
 
             {/* ── Meetings ── */}
-            <Card className="border-slate-200">
+            <Card className="border-slate-200 dark:border-slate-800">
                 <CardHeader className="py-3 px-4 cursor-pointer select-none" onClick={() => setMeetingsOpen(!meetingsOpen)}>
                     <div className="flex items-center justify-between">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300 flex items-center gap-2">
                             <Clock className="h-3.5 w-3.5 text-blue-500" /> Meetings
-                            <span className="ml-1 bg-blue-100 text-blue-700 text-[10px] font-black px-1.5 py-0.5 rounded-full">{meetings.length}</span>
+                            <span className="ml-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-black px-1.5 py-0.5 rounded-full">{meetings.length}</span>
                         </CardTitle>
-                        {meetingsOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+                        {meetingsOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
                     </div>
                 </CardHeader>
                 {meetingsOpen && (
                     <CardContent className="px-4 pb-4 space-y-3">
                         {meetings.map((m) => (
-                            <div key={m.id} className="bg-slate-50 rounded-lg p-3 space-y-2 border border-slate-100 relative group">
+                            <div key={m.id} className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 space-y-2 border border-slate-100 dark:border-slate-700 relative group">
                                 <button
                                     onClick={() => removeMeeting(m.id)}
                                     disabled={disabled}
@@ -266,7 +266,7 @@ export function InputPanel({ disabled }: Props) {
                                         disabled={disabled}
                                         className={cn(inputCls, 'flex-1')}
                                     />
-                                    <label className={cn('flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-md border cursor-pointer', m.isFlexible ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-400')}>
+                                    <label className={cn('flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded-md border cursor-pointer', m.isFlexible ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500')}>
                                         <input type="checkbox" checked={m.isFlexible} onChange={(e) => updateMeeting(m.id, { isFlexible: e.target.checked })} disabled={disabled} className="sr-only" />
                                         Flexible
                                     </label>
@@ -287,20 +287,20 @@ export function InputPanel({ disabled }: Props) {
             </Card>
 
             {/* ── Tasks ── */}
-            <Card className="border-slate-200">
+            <Card className="border-slate-200 dark:border-slate-800">
                 <CardHeader className="py-3 px-4 cursor-pointer select-none" onClick={() => setTasksOpen(!tasksOpen)}>
                     <div className="flex items-center justify-between">
-                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300 flex items-center gap-2">
                             <Tag className="h-3.5 w-3.5 text-emerald-500" /> Tasks
-                            <span className="ml-1 bg-emerald-100 text-emerald-700 text-[10px] font-black px-1.5 py-0.5 rounded-full">{tasks.length}</span>
+                            <span className="ml-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-black px-1.5 py-0.5 rounded-full">{tasks.length}</span>
                         </CardTitle>
-                        {tasksOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+                        {tasksOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
                     </div>
                 </CardHeader>
                 {tasksOpen && (
                     <CardContent className="px-4 pb-4 space-y-3">
                         {tasks.map((t) => (
-                            <div key={t.id} className="bg-slate-50 rounded-lg p-3 space-y-2 border border-slate-100 relative group">
+                            <div key={t.id} className="bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3 space-y-2 border border-slate-100 dark:border-slate-700 relative group">
                                 <button
                                     onClick={() => removeTask(t.id)}
                                     disabled={disabled}
@@ -317,7 +317,7 @@ export function InputPanel({ disabled }: Props) {
                                 />
                                 <div className="grid grid-cols-3 gap-2">
                                     <div>
-                                        <label className="text-[9px] text-slate-400 block mb-0.5">Duration (min)</label>
+                                        <label className="text-[9px] text-slate-400 dark:text-slate-500 block mb-0.5">Duration (min)</label>
                                         <input
                                             type="number"
                                             value={t.estimatedDuration}
@@ -327,24 +327,24 @@ export function InputPanel({ disabled }: Props) {
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[9px] text-slate-400 block mb-0.5">Priority</label>
+                                        <label className="text-[9px] text-slate-400 dark:text-slate-500 block mb-0.5">Priority</label>
                                         <select value={t.priority} onChange={(e) => updateTask(t.id, { priority: e.target.value as Priority })} disabled={disabled} className={selectCls}>
                                             {PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-[9px] text-slate-400 block mb-0.5">Category</label>
+                                        <label className="text-[9px] text-slate-400 dark:text-slate-500 block mb-0.5">Category</label>
                                         <select value={t.category} onChange={(e) => updateTask(t.id, { category: e.target.value as TaskCategory })} disabled={disabled} className={selectCls}>
                                             {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                                         </select>
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
-                                    <label className={cn('flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md border cursor-pointer', t.requiresTravel ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 text-slate-400')}>
+                                    <label className={cn('flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md border cursor-pointer', t.requiresTravel ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500')}>
                                         <input type="checkbox" checked={t.requiresTravel} onChange={(e) => updateTask(t.id, { requiresTravel: e.target.checked })} disabled={disabled} className="sr-only" />
                                         <MapPin className="h-2.5 w-2.5" /> Travel
                                     </label>
-                                    <label className={cn('flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md border cursor-pointer', t.flexibleDeadline ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-400')}>
+                                    <label className={cn('flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-md border cursor-pointer', t.flexibleDeadline ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500')}>
                                         <input type="checkbox" checked={t.flexibleDeadline} onChange={(e) => updateTask(t.id, { flexibleDeadline: e.target.checked })} disabled={disabled} className="sr-only" />
                                         Flexible
                                     </label>

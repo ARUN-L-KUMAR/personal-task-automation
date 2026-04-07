@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     BarChart3, TrendingUp, Clock, CalendarCheck, AlertCircle,
     Loader2, RefreshCw, Activity,
@@ -11,6 +11,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../utils/cn';
 import { insightsService, Metric } from './insights.service';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // ── Stat card ─────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, sub, color }: {
@@ -45,8 +46,9 @@ export function InsightsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [days, setDays] = useState(30);
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -57,9 +59,38 @@ export function InsightsPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [days]);
 
-    useEffect(() => { load(); }, [days]);
+    useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: (
+                <>
+                    Trends from the last <span className="font-medium">{days} days</span>.
+                </>
+            ),
+            actions: (
+                <>
+                    <select
+                        value={days}
+                        onChange={e => setDays(Number(e.target.value))}
+                        className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                    >
+                        <option value={7}>7 days</option>
+                        <option value={14}>14 days</option>
+                        <option value={30}>30 days</option>
+                        <option value={90}>90 days</option>
+                    </select>
+                    <Button variant="outline" onClick={load} disabled={isLoading}>
+                        <RefreshCw className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')} /> Refresh
+                    </Button>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, days, isLoading, load, setHeaderContext]);
 
     // ── Derived stats ──
     const totalTasks = metrics.reduce((s, m) => s + (m.tasks_completed || 0), 0);
@@ -76,32 +107,7 @@ export function InsightsPage() {
     }));
 
     return (
-        <div className="space-y-8 pb-12">
-            {/* Header */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Productivity Insights</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">
-                        Trends from the last <span className="font-medium">{days} days</span>.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <select
-                        value={days}
-                        onChange={e => setDays(Number(e.target.value))}
-                        className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    >
-                        <option value={7}>7 days</option>
-                        <option value={14}>14 days</option>
-                        <option value={30}>30 days</option>
-                        <option value={90}>90 days</option>
-                    </select>
-                    <Button variant="outline" onClick={load} disabled={isLoading}>
-                        <RefreshCw className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')} /> Refresh
-                    </Button>
-                </div>
-            </header>
-
+        <div className="space-y-4 pb-4">
             {/* Error */}
             {error && (
                 <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">

@@ -2,9 +2,9 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Calendar, History, Settings, Bot,
-    Mail, CheckSquare, Users, Map, FileSpreadsheet,
+    Mail, CheckSquare, Map,
     MessageSquare, Mic, ChevronLeft, ChevronRight, X,
-    Wifi, WifiOff, Sparkles, Zap, StickyNote, BarChart3,
+    Wifi, WifiOff, Zap, BarChart3, LayoutGrid,
     LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,13 +38,13 @@ const navSections = [
     {
         title: 'Google Services',
         items: [
-            { name: 'Calendar', href: '/calendar', icon: Calendar },
+             { name: 'Email', href: '/email', icon: Mail },
             { name: 'Tasks', href: '/tasks', icon: CheckSquare },
-            { name: 'Email', href: '/email', icon: Mail },
-            { name: 'Contacts', href: '/contacts', icon: Users },
+            { name: 'Calendar', href: '/calendar', icon: Calendar },
+            
+           
             { name: 'Maps', href: '/maps', icon: Map },
-            { name: 'Sheets', href: '/sheets', icon: FileSpreadsheet },
-            { name: 'Notes', href: '/notes', icon: StickyNote },
+            { name: 'ALL', href: '/all', icon: LayoutGrid }
         ]
     },
     {

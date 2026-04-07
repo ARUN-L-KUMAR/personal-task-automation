@@ -641,7 +641,7 @@ export function CalendarPage() {
     useEffect(() => { fetchRange(); }, [fetchRange]);
 
     // ── Register page context for voice assistant ──
-    const { setPageContext, clearPageContext } = usePageContextStore();
+    const { setPageContext, clearPageContext, setHeaderContext, clearHeaderContext } = usePageContextStore();
     useEffect(() => {
         const lines: string[] = [`Calendar ${viewMode} view. Showing ${events.length} events.`];
         events.slice(0, 10).forEach(e => {
@@ -689,23 +689,12 @@ export function CalendarPage() {
 
     const todayEvents = events.filter(e => { const s = eventStart(e); return s && isToday(s); });
 
-    return (
-        <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
-            {/* ── Header ── */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 flex-shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-                        Calendar
-                        <Badge variant="secondary" className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-none text-[11px]">
-                            <CalendarDays className="h-3 w-3 mr-1" /> Google
-                        </Badge>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        {events.length} event{events.length !== 1 ? 's' : ''} · {title}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {/* View mode toggle */}
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: `${events.length} event${events.length !== 1 ? 's' : ''} · ${title}`,
+            actions: (
+                <>
                     <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                         {([['month', Grid3X3], ['week', CalendarRange], ['day', LayoutList]] as [ViewMode, React.ElementType][]).map(([mode, Icon]) => (
                             <button
@@ -725,7 +714,6 @@ export function CalendarPage() {
                         ))}
                     </div>
 
-                    {/* Navigation */}
                     <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                         <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
                             <ChevronLeft className="h-4 w-4" />
@@ -745,16 +733,21 @@ export function CalendarPage() {
                     <Button variant="outline" size="sm" onClick={fetchRange} disabled={isLoading} className="h-9 dark:border-slate-700">
                         <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
                     </Button>
-                </div>
-            </header>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, events.length, fetchRange, isLoading, setHeaderContext, title, viewMode]);
 
+    return (
+        <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
             {/* ── Main ── */}
-            <div className="flex flex-1 gap-4 overflow-hidden min-h-0">
+            <div className="flex flex-1 gap-0 overflow-hidden min-h-0 border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 
                 {/* ── Sidebar ── */}
-                <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 gap-3">
+                <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 gap-0 border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
                     {/* Mini month nav */}
-                    <Card className="p-3 border-slate-200 dark:border-slate-800">
+                    <Card className="p-3 border-0 border-b border-slate-200 dark:border-slate-800 rounded-none shadow-none">
                         <MiniMonthGrid
                             viewDate={currentDate}
                             selectedDate={currentDate}
@@ -764,7 +757,7 @@ export function CalendarPage() {
                     </Card>
 
                     {/* Today agenda */}
-                    <Card className="p-3 border-slate-200 dark:border-slate-800 flex-1 overflow-y-auto custom-scrollbar">
+                    <Card className="p-3 border-0 border-b border-slate-200 dark:border-slate-800 rounded-none shadow-none flex-1 overflow-y-auto custom-scrollbar">
                         <DayAgenda
                             date={new Date()}
                             events={events}
@@ -773,7 +766,7 @@ export function CalendarPage() {
                     </Card>
 
                     {/* Stats */}
-                    <Card className="p-3 border-slate-200 dark:border-slate-800">
+                    <Card className="p-3 border-0 rounded-none shadow-none">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Stats</p>
                         <div className="space-y-1.5 text-xs">
                             <div className="flex justify-between">
@@ -789,7 +782,7 @@ export function CalendarPage() {
                 </aside>
 
                 {/* ── Calendar Panel ── */}
-                <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+                <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
                     {isLoading ? (
                         <div className="flex-1 flex items-center justify-center">
                             <div className="flex flex-col items-center gap-3">

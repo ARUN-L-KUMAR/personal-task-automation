@@ -17,6 +17,7 @@ import { useChatVoice } from '../../hooks/useChatVoice';
 import { VOICE_LANGUAGES } from '../../hooks/useVoice';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import api from '../../services/api';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 /* ── Group chat sessions by time period (ChatGPT-style) ── */
 function groupSessionsByTime(sessions: ChatSession[]): { label: string; sessions: ChatSession[] }[] {
@@ -40,7 +41,10 @@ function groupSessionsByTime(sessions: ChatSession[]): { label: string; sessions
         else groups['Older'].push(s);
     }
 
-    return Object.entries(groups).filter(([, v]) => v.length > 0).map(([label, sessions]) => ({ label, sessions }));
+    const order: Array<keyof typeof groups> = ['Today', 'Yesterday', 'Previous 7 Days', 'Previous 30 Days', 'Older'];
+    return order
+        .filter((label) => groups[label].length > 0)
+        .map((label) => ({ label, sessions: groups[label] }));
 }
 
 /* ── Quick Actions ── */
@@ -127,6 +131,7 @@ export function ChatbotPage() {
     } = useChat();
 
     const [showReasoning, setShowReasoning] = useState(false);
+        const { setHeaderContext, clearHeaderContext } = usePageContextStore();
     const [inputScope, setInputScope] = useState('all');
     const [showSlashMenu, setShowSlashMenu] = useState(false);
     const [showModelMenu, setShowModelMenu] = useState(false);
@@ -211,6 +216,7 @@ export function ChatbotPage() {
     const cs = contextSnapshot;
     const msgCount = messages.filter(m => m.id !== 'welcome').length;
     const lastBot = messages.filter(m => m.role === 'assistant' && m.meta?.latency).pop();
+    const apiBaseUrl = (api.defaults.baseURL || 'http://localhost:8000').replace(/\/$/, '');
 
     /* Email display — separate unread count and urgent */
     const emailValue = (() => {
@@ -322,27 +328,12 @@ export function ChatbotPage() {
                 : isVoiceMode
                     ? 'Ready'
                     : 'Voice input';
-
-    return (
-        <div className="h-[calc(100vh-120px)] flex flex-col gap-2">
-
-            {/* ═══ Top Bar ═══ */}
-            <div className="flex-shrink-0 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm">
-                        <Bot className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight flex items-center gap-2">
-                            G-One Assistant
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online
-                            </span>
-                        </h1>
-                        <p className="text-[11px] text-slate-400 leading-tight">Multi-agent AI · Real-time Google data</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-1.5">
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: 'Multi-agent AI · Real-time Google data',
+            actions: (
+                <>
                     <button onClick={() => setShowReasoning(!showReasoning)}
                         className={cn(
                             'h-8 px-3 rounded-lg text-[11px] font-medium flex items-center gap-1.5 border transition-colors',
@@ -361,14 +352,19 @@ export function ChatbotPage() {
                         className="h-8 px-3 rounded-lg text-[11px] font-medium flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-500 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors disabled:opacity-50">
                         <RefreshCw className={cn('h-3.5 w-3.5', contextLoading && 'animate-spin')} /> Sync
                     </button>
-                </div>
-            </div>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearChat, clearHeaderContext, contextLoading, fetchContextSnapshot, setHeaderContext, showReasoning]);
 
+    return (
+        <div className="h-[calc(100vh-120px)] flex flex-col">
             {/* ═══ Main Content ═══ */}
-            <div className="flex-1 flex gap-3 min-h-0">
+            <div className="flex-1 flex gap-0 min-h-0 border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 
                 {/* ── Chat Panel ── */}
-                <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm relative">
+                <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-hidden relative">
 
                     {/* Fallback notice */}
                     {(() => {
@@ -781,7 +777,7 @@ export function ChatbotPage() {
                 {/* ── RIGHT SIDEBAR                           ── */}
                 {/* ══════════════════════════════════════════════ */}
                 <aside className={cn(
-                    "flex flex-col flex-shrink-0 min-h-0 gap-2 transition-all duration-300",
+                    "flex flex-col flex-shrink-0 min-h-0 gap-1 p-1 bg-slate-50/60 dark:bg-slate-900/40 transition-all duration-300",
                     sidebarMinimized ? "w-[48px]" : "w-[280px]"
                 )}>
                     {!sidebarMinimized ? (
@@ -1183,7 +1179,7 @@ export function ChatbotPage() {
                                 {sourcesOpen && (
                                     <div className="p-2 space-y-1">
                                         {GOOGLE_SERVICES.map(svc => {
-                                            const connected = cs?.connected_services?.includes(svc.key);
+                                            const connected = (cs?.connected_services || []).indexOf(svc.key) !== -1;
                                             return (
                                                 <div key={svc.key} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                                                     <div className={cn('h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0', svc.bg)}>
@@ -1229,7 +1225,7 @@ export function ChatbotPage() {
                                         ) : (
                                             <button 
                                                 onClick={() => {
-                                                    window.location.href = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000'}/api/auth/google`;
+                                                    window.location.href = `${apiBaseUrl}/api/auth/google`;
                                                 }}
                                                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 text-[11px] font-medium text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors mt-1"
                                             >
