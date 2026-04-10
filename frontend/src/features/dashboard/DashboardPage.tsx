@@ -229,7 +229,7 @@ function BoardColumn({ title, count, dotClassName, items, emptyMessage, emptyHin
             {items.length > 0 ? (
                 <div className="space-y-3">
                     {items.map((item) => (
-                        <div key={item.id} className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition-shadow hover:shadow-md dark:hover:shadow-none">
+                        <div key={item.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm shadow-slate-200/60 dark:shadow-none transition-all hover:-translate-y-0.5 hover:shadow-lg dark:hover:shadow-none">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <p className="text-base font-semibold text-slate-900 dark:text-white">{item.title}</p>
@@ -246,7 +246,7 @@ function BoardColumn({ title, count, dotClassName, items, emptyMessage, emptyHin
                     ))}
                 </div>
             ) : (
-                <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 px-6 text-center">
+                <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 px-6 text-center shadow-inner">
                     <div>
                         <p className="text-base font-semibold text-slate-500 dark:text-slate-300">{emptyMessage}</p>
                         <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">{emptyHint}</p>
@@ -334,7 +334,7 @@ export function DashboardPage() {
                         Insights
                     </button>
                     <span className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{dateChip}</span>
-                    <button onClick={() => navigate('/planner')} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-slate-800">
+                    <button onClick={() => navigate('/planner')} className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-violet-700">
                         <Zap className="h-4 w-4" /> Plan day
                     </button>
                 </motion.div>
@@ -364,12 +364,24 @@ export function DashboardPage() {
                         </motion.div>
                     )}
 
+                    <motion.div variants={itemVariants} className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Daily board</h2>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{todoCards.length + scheduledCards.length + doneCards.length} items tracked</p>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                            <BoardColumn title="To Do" count={todoCards.length} dotClassName="bg-amber-400" items={todoCards} emptyMessage="Nothing waiting in your queue" emptyHint="Add a task or sync Google Tasks to start filling this column." />
+                            <BoardColumn title="Scheduled" count={scheduledCards.length} dotClassName="bg-blue-500" items={scheduledCards} emptyMessage="Your schedule is open" emptyHint="Meetings and planned work blocks will land here." />
+                            <BoardColumn title="Done" count={doneCards.length} dotClassName="bg-emerald-500" items={doneCards} emptyMessage="Nothing completed yet" emptyHint="Finished DB tasks updated today will appear here automatically." />
+                        </div>
+                    </motion.div>
+
                     {/* KPI Row */}
                     <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         {kpis.map((item) => {
                             const Icon = item.icon;
                             return (
-                                <div key={item.id} className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4 transition-shadow hover:shadow-sm dark:hover:shadow-none">
+                                <div key={item.id} className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/60 dark:shadow-none transition-all hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none">
                                     <div className="mb-5 flex items-center justify-between gap-3">
                                         <div className={cn('rounded-xl p-2.5', item.iconWrap)}>
                                             <Icon className={cn('h-5 w-5', item.iconColor)} />
@@ -384,32 +396,20 @@ export function DashboardPage() {
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                        <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/60 dark:shadow-none">
                             <p className="text-sm text-slate-500 dark:text-slate-400">Total projects</p>
                             <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{dbStats?.total_projects ?? 0}</p>
                             <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">{dbStats?.active_projects ?? 0} active right now</p>
                         </div>
-                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                        <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/60 dark:shadow-none">
                             <p className="text-sm text-slate-500 dark:text-slate-400">Database tasks</p>
                             <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{dbStats?.total_tasks ?? 0}</p>
                             <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">{dbStats?.in_progress_tasks ?? 0} in progress</p>
                         </div>
-                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                        <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/60 dark:shadow-none">
                             <p className="text-sm text-slate-500 dark:text-slate-400">Completed this week</p>
                             <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{dbStats?.completed_this_week ?? 0}</p>
                             <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">{dbStats?.completion_rate ?? 0}% completion rate</p>
-                        </div>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Daily board</h2>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{todoCards.length + scheduledCards.length + doneCards.length} items tracked</p>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                            <BoardColumn title="To Do" count={todoCards.length} dotClassName="bg-amber-400" items={todoCards} emptyMessage="Nothing waiting in your queue" emptyHint="Add a task or sync Google Tasks to start filling this column." />
-                            <BoardColumn title="Scheduled" count={scheduledCards.length} dotClassName="bg-blue-500" items={scheduledCards} emptyMessage="Your schedule is open" emptyHint="Meetings and planned work blocks will land here." />
-                            <BoardColumn title="Done" count={doneCards.length} dotClassName="bg-emerald-500" items={doneCards} emptyMessage="Nothing completed yet" emptyHint="Finished DB tasks updated today will appear here automatically." />
                         </div>
                     </motion.div>
 
@@ -434,7 +434,7 @@ export function DashboardPage() {
                                     {scheduledCards.length > 0 ? (
                                         <div className="space-y-3">
                                             {scheduledCards.map((item) => (
-                                                <div key={item.id} className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4 transition-shadow hover:shadow-sm dark:hover:shadow-none">
+                                                <div key={item.id} className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/70 p-4 shadow-sm shadow-slate-200/60 dark:shadow-none transition-all hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none">
                                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                                         <div>
                                                             <p className="font-semibold text-slate-900 dark:text-white">{item.title}</p>
@@ -506,7 +506,7 @@ export function DashboardPage() {
                                             { label: 'Travel events', value: data?.travel?.travel_event_count ?? 0 },
                                             { label: 'Longest route', value: `${data?.travel?.longest_route_minutes ?? 0}m` },
                                         ].map((s) => (
-                                            <div key={s.label} className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                                            <div key={s.label} className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/50 dark:shadow-none">
                                                 <p className="text-sm text-slate-500 dark:text-slate-400">{s.label}</p>
                                                 <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{s.value}</p>
                                             </div>
@@ -522,12 +522,12 @@ export function DashboardPage() {
                                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Operational insight</h3>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                                        <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/50 dark:shadow-none">
                                             <p className="text-sm text-slate-500 dark:text-slate-400">Workload</p>
                                             <p className="mt-2 text-2xl font-black capitalize text-slate-900 dark:text-white">{data?.workload?.level || 'light'}</p>
                                             <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">{data?.workload?.percentage ?? 0}% load score</p>
                                         </div>
-                                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                                        <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/50 dark:shadow-none">
                                             <p className="text-sm text-slate-500 dark:text-slate-400">Open items</p>
                                             <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{data?.workload?.total_items ?? 0}</p>
                                             <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">Meetings + pending tasks</p>
@@ -536,7 +536,7 @@ export function DashboardPage() {
                                     {data?.insights?.length ? (
                                         <div className="mt-3 space-y-2">
                                             {data.insights.map((insight, i) => (
-                                                <div key={`${insight.label}-${i}`} className="flex items-center justify-between rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 px-4 py-3">
+                                                <div key={`${insight.label}-${i}`} className="flex items-center justify-between rounded-xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 px-4 py-3 shadow-sm shadow-slate-200/40 dark:shadow-none">
                                                     <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{insight.label}</p>
                                                     {renderBadge(insight.value, insight.tone)}
                                                 </div>
@@ -556,7 +556,7 @@ export function DashboardPage() {
                             <div>
                                 <div className="mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="rounded-xl bg-slate-900 p-2.5 text-white"><Bot className="h-5 w-5" /></div>
+                                        <div className="rounded-xl bg-violet-600 p-2.5 text-white"><Bot className="h-5 w-5" /></div>
                                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Open an agent module</h3>
                                     </div>
                                     <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{currentStatuses.length} available</span>
@@ -568,7 +568,7 @@ export function DashboardPage() {
                                             <button
                                                 key={module.id}
                                                 onClick={() => navigate(module.href)}
-                                                className="group rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none hover:bg-white dark:hover:bg-slate-900"
+                                                className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/70 p-5 text-left shadow-sm shadow-slate-200/60 dark:shadow-none transition-all hover:-translate-y-0.5 hover:shadow-lg dark:hover:shadow-none hover:bg-white dark:hover:bg-slate-900"
                                             >
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className={cn('rounded-xl bg-gradient-to-br p-3 text-white shadow-md', module.accent)}>
@@ -599,7 +599,7 @@ export function DashboardPage() {
                                     </div>
                                     <div className="space-y-2">
                                         {currentStatuses.map((m) => (
-                                            <div key={m.id} className="flex items-center justify-between rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 px-4 py-3">
+                                            <div key={m.id} className="flex items-center justify-between rounded-xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 px-4 py-3 shadow-sm shadow-slate-200/40 dark:shadow-none">
                                                 <div>
                                                     <p className="font-semibold text-slate-900 dark:text-white text-sm">{m.title}</p>
                                                     <p className="text-xs text-slate-400 dark:text-slate-500">{m.subtitle}</p>
@@ -619,11 +619,11 @@ export function DashboardPage() {
                                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Coverage</h3>
                                     </div>
                                     <div className="space-y-3">
-                                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                                        <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/50 dark:shadow-none">
                                             <p className="text-sm text-slate-500 dark:text-slate-400">Available agents</p>
                                             <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">{currentStatuses.length}</p>
                                         </div>
-                                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-4">
+                                        <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm shadow-slate-200/50 dark:shadow-none">
                                             <p className="text-sm text-slate-500 dark:text-slate-400">Healthy agents</p>
                                             <p className="mt-2 text-3xl font-black text-slate-900 dark:text-white">
                                                 {currentStatuses.filter((m) => m.displayState === 'success').length}
@@ -638,14 +638,14 @@ export function DashboardPage() {
                                         <div className="rounded-xl bg-violet-100 p-2.5 text-violet-700"><ArrowRight className="h-5 w-5" /></div>
                                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Next action</h3>
                                     </div>
-                                    <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 p-5">
+                                    <div className="rounded-2xl bg-white/95 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm shadow-slate-200/50 dark:shadow-none">
                                         <p className="text-sm text-slate-500 dark:text-slate-400">Recommended focus</p>
                                         <p className="mt-2 text-lg font-bold text-slate-900 dark:text-white">
                                             {stats?.conflicts ? 'Resolve conflicts before planning' : todoCards.length ? 'Schedule your next pending task' : 'Review your planner for new work'}
                                         </p>
                                         <button
                                             onClick={() => navigate(stats?.conflicts ? '/planner' : '/tasks')}
-                                            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
+                                            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 transition-colors"
                                         >
                                             Open workflow
                                         </button>

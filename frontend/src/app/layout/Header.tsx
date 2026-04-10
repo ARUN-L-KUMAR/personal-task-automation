@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Bell, Search, Menu, Moon, Sun, Command as CommandIcon } from 'lucide-react';
 import { useThemeStore } from '../../store/useThemeStore';
 import { motion } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePageContextStore } from '../../store/usePageContextStore';
 
 const routeMeta: Array<{ path: string; title: string; subtitle: string }> = [
@@ -40,6 +40,7 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
     const { theme, toggleTheme } = useThemeStore();
     const { context, headerContext } = usePageContextStore();
     const location = useLocation();
+    const navigate = useNavigate();
 
     const meta = useMemo(() => getRouteMeta(location.pathname), [location.pathname]);
     const title = context?.pageLabel || meta.title;
@@ -115,6 +116,9 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            onClick={() => navigate('/settings')}
+                            aria-label="Open notifications settings"
+                            title="Notifications"
                             className="relative h-11 w-11 flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                         >
                             <Bell className="h-5 w-5" />

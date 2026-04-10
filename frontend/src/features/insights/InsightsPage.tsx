@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     BarChart3, TrendingUp, Clock, CalendarCheck, AlertCircle,
-    Loader2, RefreshCw, Activity,
+    Loader2, RefreshCw, Activity, ArrowRight,
 } from 'lucide-react';
 import {
     ResponsiveContainer, AreaChart, Area, BarChart, Bar,
@@ -12,21 +12,23 @@ import { Button } from '../../components/ui/Button';
 import { cn } from '../../utils/cn';
 import { insightsService, Metric } from './insights.service';
 import { usePageContextStore } from '../../store/usePageContextStore';
+import { useNavigate } from 'react-router-dom';
 
 // ── Stat card ─────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, sub, color }: {
     icon: React.ElementType; label: string; value: string | number; sub?: string; color: string;
 }) {
     return (
-        <Card className="p-5 border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-3 mb-3">
+        <Card className="group relative overflow-hidden p-5 border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/70 shadow-sm shadow-slate-200/50 dark:shadow-none transition-all hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-slate-100/70 dark:bg-slate-800/70" />
+            <div className="relative mb-3 flex items-center gap-3">
                 <div className={cn('h-9 w-9 rounded-xl flex items-center justify-center', color)}>
                     <Icon className="h-4.5 w-4.5" />
                 </div>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
             </div>
-            <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{value}</p>
-            {sub && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{sub}</p>}
+            <p className="relative text-3xl font-black tracking-tight text-slate-900 dark:text-white">{value}</p>
+            {sub && <p className="relative mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{sub}</p>}
         </Card>
     );
 }
@@ -34,14 +36,18 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
 // ── Chart wrapper ──────────────────────────────────────────────
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <Card className="p-6 border-slate-200 dark:border-slate-800">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">{title}</h3>
-            <div className="h-64">{children}</div>
+        <Card className="p-6 border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/70 shadow-sm shadow-slate-200/50 dark:shadow-none">
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold tracking-wide text-slate-900 dark:text-white">{title}</h3>
+                <span className="h-2 w-2 rounded-full bg-brand-500" />
+            </div>
+            <div className="h-64 rounded-xl bg-slate-50/70 dark:bg-slate-950/40 p-2">{children}</div>
         </Card>
     );
 }
 
 export function InsightsPage() {
+    const navigate = useNavigate();
     const [metrics, setMetrics] = useState<Metric[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -107,37 +113,53 @@ export function InsightsPage() {
     }));
 
     return (
-        <div className="space-y-4 pb-4">
+        <div className="space-y-6 pb-6">
             {/* Error */}
             {error && (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+                <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" /> {error}
                 </div>
             )}
 
+            {/* KPI row stays visible even when dataset is empty */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <StatCard icon={TrendingUp} label="Avg Score" value={avgScore} sub="out of 100" color="bg-brand-50 dark:bg-brand-900/20 text-brand-600" />
+                <StatCard icon={CalendarCheck} label="Tasks Done" value={totalTasks} sub={`in ${days} days`} color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600" />
+                <StatCard icon={BarChart3} label="Meetings" value={totalMeetings} sub="total attended" color="bg-violet-50 dark:bg-violet-900/20 text-violet-600" />
+                <StatCard icon={Clock} label="Travel" value={`${totalTravel}m`} sub="total minutes" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600" />
+            </div>
+
             {isLoading ? (
-                <div className="flex items-center justify-center py-24">
+                <div className="flex items-center justify-center rounded-2xl border border-slate-200/80 bg-white/80 py-24 dark:border-slate-800 dark:bg-slate-900/60">
                     <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
                 </div>
             ) : metrics.length === 0 ? (
-                <Card className="py-20 text-center">
-                    <Activity className="h-12 w-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">
-                        No productivity data recorded yet. Use the Planner to generate daily metrics.
-                    </p>
+                <Card className="overflow-hidden border-slate-200/80 bg-white/95 p-6 shadow-sm shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900/70 dark:shadow-none">
+                    <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-sky-50 p-6 dark:border-violet-900/40 dark:from-violet-900/20 dark:via-slate-900 dark:to-slate-900">
+                        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-700 dark:border-violet-700 dark:bg-slate-900/70 dark:text-violet-300">
+                            <Activity className="h-3.5 w-3.5" /> No trend data yet
+                        </div>
+                        <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Insights Ready, Waiting For Data</h3>
+                        <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
+                            No productivity records were found for the selected window. Generate a daily plan to start tracking trends here.
+                        </p>
+                        <div className="mt-5 flex flex-wrap gap-2">
+                            <Button size="sm" onClick={() => navigate('/planner')} className="bg-violet-600 text-white hover:bg-violet-700">
+                                Open Plan Day <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={load}>
+                                <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Refresh
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => navigate('/history')}>
+                                View History
+                            </Button>
+                        </div>
+                    </div>
                 </Card>
             ) : (
                 <>
-                    {/* KPI row */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard icon={TrendingUp} label="Avg Score" value={avgScore} sub="out of 100" color="bg-brand-50 dark:bg-brand-900/20 text-brand-600" />
-                        <StatCard icon={CalendarCheck} label="Tasks Done" value={totalTasks} sub={`in ${days} days`} color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600" />
-                        <StatCard icon={BarChart3} label="Meetings" value={totalMeetings} sub="total attended" color="bg-violet-50 dark:bg-violet-900/20 text-violet-600" />
-                        <StatCard icon={Clock} label="Travel" value={`${totalTravel}m`} sub="total minutes" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600" />
-                    </div>
-
                     {/* Charts */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                         <ChartCard title="Productivity Score Over Time">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={chartData}>
