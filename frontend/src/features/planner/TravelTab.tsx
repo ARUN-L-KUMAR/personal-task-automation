@@ -54,13 +54,13 @@ export function TravelTab({ travel }: Props) {
                 <div className="space-y-2">
                     {travel.routes.map((r, i) => (
                         <div key={i} className="rounded-xl border border-slate-200 p-4 bg-white hover:shadow-sm transition-all">
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="flex items-start sm:items-center gap-3 flex-wrap sm:flex-nowrap">
+                                <div className="flex items-center gap-2 flex-1 min-w-[220px] flex-wrap">
                                     <MapPin className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                    <span className="text-sm font-semibold text-slate-700 truncate">{r.from}</span>
+                                    <span className="text-sm font-semibold text-slate-700 break-words">{r.from}</span>
                                     <ArrowRight className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                                     <MapPin className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                                    <span className="text-sm font-semibold text-slate-700 truncate">{r.to}</span>
+                                    <span className="text-sm font-semibold text-slate-700 break-words">{r.to}</span>
                                 </div>
                                 <span className="flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full flex-shrink-0">
                                     <Clock className="h-3 w-3" /> {r.minutes}m

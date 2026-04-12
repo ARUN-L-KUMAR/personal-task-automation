@@ -112,16 +112,16 @@ export function InputPanel({ disabled }: Props) {
     return (
         <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-180px)] pr-1 scrollbar-thin">
             {/* ── Settings ── */}
-            <Card className="border-slate-200 dark:border-slate-800">
-                <CardHeader className="py-3 px-4">
-                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300 flex items-center gap-2">
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm">
+                <CardHeader className="py-4 px-4 border-b border-slate-100 dark:border-slate-800/80">
+                    <CardTitle className="text-xs font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300 flex items-center gap-2">
                         <Settings2 className="h-3.5 w-3.5" /> Plan Settings
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-0">
                     {/* ── Time Settings ── */}
-                    <div className="pb-3">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
+                    <div className="pb-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
                             <Clock className="h-3 w-3" /> Time Settings
                         </p>
                         <div className="grid grid-cols-2 gap-3">
@@ -165,14 +165,14 @@ export function InputPanel({ disabled }: Props) {
                     </div>
 
                     {/* ── Divider ── */}
-                    <div className="border-t border-dashed border-slate-200 dark:border-slate-700 my-1" />
+                    <div className="border-t border-dashed border-slate-200 dark:border-slate-700 my-2" />
 
                     {/* ── Productivity Strategy ── */}
                     <div className="pt-3">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-1.5">
                             <Tag className="h-3 w-3" /> Productivity Strategy
                         </p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                             {PREFERENCES.map((p) => (
                                 <div key={p.value} className="relative group">
                                     <button
@@ -180,13 +180,13 @@ export function InputPanel({ disabled }: Props) {
                                         disabled={disabled}
                                         onClick={() => updateSettings({ preference: p.value })}
                                         className={cn(
-                                            'w-full rounded-lg border px-2.5 py-2 text-center transition-all',
+                                            'w-full rounded-xl border px-3 py-3 text-center transition-all duration-200 shadow-[0_1px_0_rgba(15,23,42,0.02)]',
                                             settings.preference === p.value
-                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm shadow-blue-100 dark:shadow-none'
-                                                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                                                ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/30 dark:to-slate-900 text-blue-700 dark:text-blue-300 shadow-md shadow-blue-100 dark:shadow-none'
+                                                : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50/70 dark:hover:bg-slate-800/60'
                                         )}
                                     >
-                                        <span className="text-[11px] font-bold block">{p.label}</span>
+                                        <span className="text-[11px] font-black block">{p.label}</span>
                                         <span className="text-[9px] text-slate-400 dark:text-slate-500 block mt-0.5">{p.desc}</span>
                                     </button>
                                     {/* Tooltip */}
@@ -230,7 +230,22 @@ export function InputPanel({ disabled }: Props) {
                             <Clock className="h-3.5 w-3.5 text-blue-500" /> Meetings
                             <span className="ml-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-black px-1.5 py-0.5 rounded-full">{meetings.length}</span>
                         </CardTitle>
-                        {meetingsOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
+                        <div className="flex items-center gap-1">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={disabled}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    addMeeting({ id: uid(), title: '', startTime: '', endTime: '', location: '', priority: 'medium', isFlexible: false });
+                                }}
+                                className="h-6 px-2 text-[10px] font-bold"
+                            >
+                                <Plus className="h-3 w-3 mr-1" /> Add
+                            </Button>
+                            {meetingsOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
+                        </div>
                     </div>
                 </CardHeader>
                 {meetingsOpen && (
@@ -294,7 +309,22 @@ export function InputPanel({ disabled }: Props) {
                             <Tag className="h-3.5 w-3.5 text-emerald-500" /> Tasks
                             <span className="ml-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-black px-1.5 py-0.5 rounded-full">{tasks.length}</span>
                         </CardTitle>
-                        {tasksOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
+                        <div className="flex items-center gap-1">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={disabled}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    addTask({ id: uid(), title: '', deadline: '', estimatedDuration: 30, priority: 'medium', requiresTravel: false, flexibleDeadline: false, category: 'work' });
+                                }}
+                                className="h-6 px-2 text-[10px] font-bold"
+                            >
+                                <Plus className="h-3 w-3 mr-1" /> Add
+                            </Button>
+                            {tasksOpen ? <ChevronUp className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
+                        </div>
                     </div>
                 </CardHeader>
                 {tasksOpen && (

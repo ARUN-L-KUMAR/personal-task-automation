@@ -26,8 +26,8 @@ export function ConflictTab({ conflicts }: Props) {
 
     return (
         <div className="space-y-3">
-            <div className="overflow-hidden rounded-xl border border-slate-200">
-                <table className="w-full text-xs">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-xs min-w-[680px]">
                     <thead>
                         <tr className="bg-slate-50 text-left">
                             <th className="px-4 py-2.5 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Type</th>
@@ -47,7 +47,7 @@ export function ConflictTab({ conflicts }: Props) {
                                             {c.severity}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-600">
+                                    <td className="px-4 py-3 text-slate-600 align-top whitespace-normal break-words">
                                         <span className="font-medium">{c.eventA}</span>
                                         {c.eventB !== '-' && <> × <span className="font-medium">{c.eventB}</span></>}
                                         {c.overlapMinutes > 0 && <span className="text-red-500 ml-1">({c.overlapMinutes}m overlap)</span>}
@@ -55,7 +55,7 @@ export function ConflictTab({ conflicts }: Props) {
                                     <td className="px-4 py-3">
                                         <div className="flex items-start gap-1.5">
                                             <Lightbulb className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-                                            <span className="text-slate-600">{c.suggestion}</span>
+                                            <span className="text-slate-600 whitespace-normal break-words">{c.suggestion}</span>
                                         </div>
                                     </td>
                                 </tr>

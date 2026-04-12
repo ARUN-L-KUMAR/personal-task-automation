@@ -73,6 +73,7 @@ function AccountTab() {
     const { user } = useAuthStore();
     const { isGoogleConnected, isChecking, googleServiceStatus, connectedServices, refresh } = useGoogleStatus();
     const [isRevoking, setIsRevoking] = useState(false);
+    const [googleLogoFailed, setGoogleLogoFailed] = useState(false);
     const displayName = user?.name || 'User';
     const initials = user?.name
         ? user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -139,7 +140,16 @@ function AccountTab() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
                             <div className="flex items-center gap-4">
                                 <div className="h-12 w-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm flex-shrink-0">
-                                    <img src="https://www.gstatic.com/images/branding/product/2x/google_64dp.png" alt="Google" className="h-6 w-6" />
+                                    {!googleLogoFailed ? (
+                                        <img
+                                            src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png"
+                                            alt="Google"
+                                            className="h-5 w-auto"
+                                            onError={() => setGoogleLogoFailed(true)}
+                                        />
+                                    ) : (
+                                        <Globe className="h-5 w-5 text-blue-500" />
+                                    )}
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-slate-900 dark:text-white">Google Workspace</h4>
