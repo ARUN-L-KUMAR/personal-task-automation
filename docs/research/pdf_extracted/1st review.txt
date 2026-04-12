@@ -1,0 +1,253 @@
+
+
+===== PAGE 1 =====
+
+UNIVERSITY COLLEGE OF ENGINEERING KANCHEEPURAM 
+APRIL/MAY 2026 EXAMINATIONS
+COMPUTER SCIENCE AND ENGINEERING
+Agentic AI for Personal Task Planning and 
+Schedule Optimization
+BATCH MEMBERS:
+1.  ARUNKUMAR L (513422104704)
+2. MUKILAN S (513422104036)
+3. SUGANYA U(513422104042)
+4. AISHWARIYA D (513422104011) GUIDED BY:
+DR .V. KAVITHA
+PROFESSOR
+
+===== PAGE 2 =====
+
+INTRODUCTION
+❖ PROBLEM STATEMENT: Today, people manage many daily tasks such as 
+meetings, reminders, emails, and schedules using multiple apps. Managing everything 
+manually is time-consuming and error-prone. Existing systems do not intelligently 
+coordinate tasks or provide smart suggestions.
+❖ PROPOSED SOLUTION: This project proposes an AI-based multi-agent system
+designed to aggregate data from Google services (Calendar, Gmail, Contacts, Sheets, 
+Maps), reason over user context, and autonomously suggest actions and generate 
+intelligent drafts, with future support for execution.
+❖ KEY TECHNOLOGIES USED: Large Language Models (LLMs), Multi-Agent 
+Systems, Task Planning and Coordination and Intelligent Automation.
+
+===== PAGE 3 =====
+
+ABSTRACT
+1. Recent advancements in Large Language Models have made it possible for AI systems to 
+understand natural language and assist users in real-life tasks.
+2. This project focuses on building a cooperative multi-agent system where different 
+agents work together to automate personal tasks such as scheduling, reminders, and 
+planning activities.
+3. Each agent has a specific role, such as understanding user requests, planning tasks, 
+generating intelligent recommendations and explanations for personal task automation. 
+By working together, the system provides smarter and more reliable task automation.
+4. The proposed system aims to reduce human effort, improve productivity, and 
+demonstrate how agent-based AI can be applied to everyday personal task management.
+
+===== PAGE 4 =====
+
+AIM & OBJECTIVE 
+AIM :To design and develop an AI-powered cooperative multi-agent system for automating 
+personal daily tasks.
+OBJECTIVES : 
+❖ To build multiple agents that work together to handle tasks
+❖ To automate task analysis, planning, recommendation using cooperative AI agents.
+❖ To reduce manual task management for users
+❖ To improve task accuracy using agent collaboration
+
+===== PAGE 5 =====
+
+SCOPE
+❖ Can be used for personal task management such as scheduling and reminders
+❖ Suitable for students, working professionals, and individuals
+❖ Can be extended to email automation, calendar management, and reminders
+❖ Supports future improvements with advanced AI models
+❖ Acts as a foundation for intelligent personal assistants
+❖ IMPACT: The system reduces manual effort, improves task accuracy, and helps 
+users manage daily activities efficiently using AI assistance.
+
+===== PAGE 6 =====
+
+EXISTING SYSTEM
+❖ Users manually manage tasks using calendars and reminder apps.
+❖ Traditional task management apps are rule-based
+❖ Single AI systems handle tasks independently
+❖ No intelligent coordination between multiple actions
+❖ Limited automation and decision-making capability
+
+===== PAGE 7 =====
+
+EXISTING SYSTEM -DRAWBACKS
+❖ Lack of Intelligence: No smart understanding of user intent
+❖ Manual Effort: Users must enter and manage tasks manually
+❖ No Validation: Errors are not automatically detected
+❖ Poor Coordination: Tasks are not connected or optimized
+❖ Low Automation: Requires frequent user interaction
+
+===== PAGE 8 =====
+
+LITERATURE REVIEW
+S.NO TITLE | IEEE 
+TRANSACTION
+AUTHORS & 
+YEAR
+TECHNIQUE 
+USED DRAWBACKS
+1 LLM-Based Agent Systems 
+for Task Automation
+Jinlong Wang , 
+Yunting Wu -
+2025
+AI-driven task planning 
+and execution
+Mostly single-
+agent systems
+2 Multi-Agent Reinforcement 
+Learning for Task
+Offloading in Crowd-Edge 
+Computing
+Su Yao, Mu Wang, 
+Ju Ren - 2025
+Rule-based and AI-
+based automation
+Limited 
+adaptability
+
+===== PAGE 9 =====
+
+LITERATURE REVIEW
+S.NO AUTHORS & 
+YEAR
+TECHNIQUE 
+USED DRAWBACKS
+3 Multi-Agent Systems for 
+Complex Problem Solving
+Wooldridge, 2021 High coordination 
+and 
+communication 
+overhead
+4 AI-Based Task Scheduling Kumar et al., 
+2022
+Automated 
+scheduling 
+algorithms
+Limited reasoning 
+capability
+Agent 
+collaboration and 
+coordination 
+frameworks
+TITLE | IEEE 
+TRANSACTION
+
+===== PAGE 10 =====
+
+PROPOSED SYSTEM
+System Components:
+❖ Calendar Agent – Fetches and analyzes schedule data (Calendar / simulated)
+❖ Email Agent – Drafts email replies and follow-ups (Gmail – planned)
+❖ Contact Agent – Identifies missed calls and contacts (planned)
+❖ Task & Finance Agent – Manages income/expense data (Sheets – planned)
+❖ Navigation Agent – Provides directions and travel context (Maps – planned)
+❖ Conflict & Planning Agent – Optimizes schedules and actions
+❖ LLM Explanation Agent – Generates human-readable responses
+Working Principle:
+❖ Current implementation demonstrates the core planning pipeline using 
+simulated data.
+
+===== PAGE 11 =====
+
+PROPOSED SYSTEM ADVANTAGES
+❖ Improved task accuracy
+❖ Reduced manual effort
+❖ Better task coordination
+❖ Intelligent decision-making
+❖ Scalable and flexible design
+❖ User-friendly automation
+
+===== PAGE 12 =====
+
+SDLC PHASES
+The Entire SDLC process is divided into the following stages:
+❖ Requirement Collection and Analysis
+❖ Feasibility Study
+❖ System Design
+❖ Implementation Planning
+❖ Testing Strategy
+❖ Deployment Planning
+❖ Maintenance and Future Enhancements
+
+===== PAGE 13 =====
+
+ARCHITECTURAL DIAGRAM
+
+
+===== PAGE 14 =====
+
+METHODOLOGY
+1. Planner Agent: Breaks task 
+into restaurant selection, menu 
+planning, quantity calculation, 
+and payment subtasks.
+2. Execution Agent:
+Searches nearby restaurants, 
+selects menu items, places the 
+order, and processes payment.
+4. Blockchain Layer:
+Stores order details, 
+payment confirmation, 
+and validation logs 
+securely.
+5. Completion Module:
+Returns confirmed order 
+receipt and delivery 
+tracking to the user.
+❖ Problem Analysis & Scope Definition : Studied limitations of existing task management 
+systems and defined scope for personal task automation using AI agents.
+❖ System Architecture Design : Designed a multi-agent architecture where each agent 
+performs a specific task and collaborates to complete user requests.
+❖ Agent Role Identification : Defined roles for Planning Agent, Task Agent, Conflict 
+Detection Agent, and Travel Reminder Agent.
+❖ Backend Development : Developed backend using Python and FastAPI to handle user 
+requests and agent communication.
+❖ LLM Integration : Integrated LLM-based reasoning, with LangChain Planned to enable 
+agents to understand tasks and make intelligent decisions.
+❖ Agent Implementation : Implemented core agents and connected them into a cooperative 
+automation pipeline.
+❖ Testing : Tested API endpoints using sample meeting and tasks schedules.
+
+===== PAGE 15 =====
+
+APPLICATION EXAMPLE (POC)
+
+
+===== PAGE 16 =====
+
+PROPOSED WORK
+CODE BASES
+
+===== PAGE 17 =====
+
+PROPOSED WORK 
+CODE BASES
+
+===== PAGE 18 =====
+
+SAMPLE OUTPUT
+CLI UISwagger UI
+
+===== PAGE 19 =====
+
+REFERENCES
+1. Wooldridge, M., An Introduction to Multi-Agent Systems, 2nd Edition, Wiley, 
+2021.
+2. Russell, S., Norvig, P., Artificial Intelligence: A Modern Approach, 4th Edition, 
+Pearson Education, 2021.
+3. Brown, T. B., et al., “Language Models are Few-Shot Learners,” Advances in 
+Neural Information Processing Systems (NeurIPS), 2020.
+4. OpenAI, “GPT-4 Technical Report,” 2023.
+5. Zheng, C., et al., “Advanced Smart Contract Vulnerability Detection via LLM-
+Powered Multi-Agent Systems,” 2024.
+
+===== PAGE 20 =====
+
+THANK YOU

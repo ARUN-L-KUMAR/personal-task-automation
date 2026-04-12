@@ -1,0 +1,299 @@
+
+
+===== PAGE 1 =====
+
+UNIVERSITY COLLEGE OF ENGINEERING KANCHEEPURAM 
+APRIL/MAY 2026 EXAMINATIONS
+COMPUTER SCIENCE AND ENGINEERING
+Agentic AI for Personal Task Planning and 
+Schedule Optimization
+BATCH MEMBERS:
+1.  ARUNKUMAR L (513422104704)
+2. MUKILAN S (513422104036)
+3. SUGANYA U(513422104042)
+4. AISHWARIYA D (513422104011) GUIDED BY:
+DR .V. KAVITHA
+PROFESSOR
+
+===== PAGE 2 =====
+
+INTRODUCTION
+❖ PROBLEM STATEMENT: Today, people manage many daily tasks such as meetings, 
+reminders, emails, and schedules using multiple apps. Managing everything manually is 
+time-consuming and error-prone. Existing systems do not intelligently coordinate tasks or 
+provide smart suggestions.
+❖ PROPOSED SOLUTION: This project proposes an AI-based multi-agent system where 
+multiple intelligent agents work together to understand user tasks, plan activities, execute 
+actions, and verify results automatically.
+❖ KEY TECHNOLOGIES USED: Large Language Models (LLMs), Multi-Agent Systems, 
+Task Planning and Coordination and Intelligent Automation.
+
+===== PAGE 3 =====
+
+ABSTRACT
+1. Recent advancements in Large Language Models have made it possible for AI systems to 
+understand natural language and assist users in real-life tasks.
+2. This project focuses on building a cooperative multi-agent system where different 
+agents work together to automate personal tasks such as scheduling, reminders, and 
+planning activities.
+3. Each agent has a specific role, such as understanding user requests, planning tasks, 
+executing actions, and validating outputs. By working together, the system provides 
+smarter and more reliable task automation.
+4. The proposed system aims to reduce human effort, improve productivity, and 
+demonstrate how agent-based AI can be applied to everyday personal task management.
+
+===== PAGE 4 =====
+
+AIM & OBJECTIVE 
+AIM :To design and develop an AI-powered cooperative multi-agent system 
+for automating personal daily tasks.
+OBJECTIVES : 
+❖ To build multiple agents that work together to handle tasks
+❖ To automate task analysis, planning, validation and execution
+❖ To reduce manual task management for users
+❖ To improve task accuracy using agent collaboration
+
+===== PAGE 5 =====
+
+SCOPE
+❖ Can be used for personal task management such as scheduling and reminders
+❖ Suitable for students, working professionals, and individuals
+❖ Can be extended to email automation, calendar management, and reminders
+❖ Supports future improvements with advanced AI models
+❖ Acts as a foundation for intelligent personal assistants
+❖ IMPACT: The system reduces manual effort, improves task accuracy, and helps 
+usersmanage daily activities efficiently using AI assistance.
+
+===== PAGE 6 =====
+
+EXISTING SYSTEM
+❖ Users manually manage tasks using calendars and reminder apps.
+❖ Traditional task management apps are rule-based
+❖ Single AI systems handle tasks independently
+❖ No intelligent coordination between multiple actions
+❖ Limited automation and decision-making capability
+
+===== PAGE 7 =====
+
+EXISTING SYSTEM -DRAWBACKS
+❖ Lack of Intelligence: No smart understanding of user intent
+❖ Manual Effort: Users must enter and manage tasks manually
+❖ No Validation: Errors are not automatically detected
+❖ Poor Coordination: Tasks are not connected or optimized
+❖ Low Automation: Requires frequent user interaction
+
+===== PAGE 8 =====
+
+LITERATURE REVIEW
+S.NO TITLE AUTHORS & 
+YEAR
+TECHNIQUE 
+USED DRAWBACKS
+1 LLM-Based Agent Systems 
+for Task Automation
+JinlongWang , 
+YuntingWu
+2025
+AI-driven task planning 
+and execution
+Mostly single-
+agent systems
+2 Multi-Agent Reinforcement 
+Learning for Task Offloading 
+in Crowd-Edge Computing
+Su Yao, Mu 
+Wang, Ju Ren -
+2025
+Rule-based and AI-
+based automation
+Limited 
+adaptability
+
+===== PAGE 9 =====
+
+LITERATURE REVIEW
+S.NO TITLE AUTHORS & 
+YEAR
+TECHNIQUE 
+USED DRAWBACKS
+3 Multi-Agent Systems for 
+Complex Problem Solving
+Wooldridge, 2024 High coordination 
+and 
+communication 
+overhead
+4 AI-Based Task Scheduling Kumar et al., 
+2023
+Automated 
+scheduling 
+algorithms
+Limited reasoning 
+capability
+Agent 
+collaboration and 
+coordination 
+frameworks
+
+===== PAGE 10 =====
+
+PROPOSED SYSTEM
+System Components:
+❖ User Interaction Agent: Understands user requests
+❖ Planning Agent: Breaks tasks into steps
+❖ Execution Agent: Performs assigned actions
+❖ Validation Agent: Checks correctness of results
+❖ Coordinator Agent: Manages communication between agents
+Working Principle:
+❖ Agents communicate with each other, share information, validate outputs, and 
+complete tasks collaboratively.
+
+===== PAGE 11 =====
+
+PROPOSED SYSTEM ADVANTAGES
+❖ Improved task accuracy
+❖ Reduced manual effort
+❖ Better task coordination
+❖ Intelligent decision-making
+❖ Scalable and flexible design
+❖ User-friendly automation
+
+===== PAGE 12 =====
+
+ARCHITECTURAL DIAGRAM
+
+
+===== PAGE 13 =====
+
+MODULES
+❖ User Authentication Module
+Handles user registration, login, and Google OAuth authentication, ensuring secure   
+❖ Task & Project Management Module
+Allows users to create, update, prioritize, and organize tasks into projects for efficient
+❖ AI Chat Assistant Module
+Provides a natural language interface where users can interact with the system to generate
+access to the system
+productivity management 
+tasks and get productivity assistance
+
+===== PAGE 14 =====
+
+MODULES
+❖ Voice Assistant Module
+Enables hands-free interaction using voice commands, including a main voice    
+interface and a floating voice assistant widget.
+❖ Chat History Management Module
+Stores and manages conversation history between the user and AI assistant to
+maintain interaction context.
+❖ Backend & Database Module
+Implements system logic using FastAPI with PostgreSQL database for storing users, 
+tasks, projects, and chat sessions.
+
+===== PAGE 15 =====
+
+METHODOLOGY
+1. Planner Agent: Breaks task 
+into restaurant selection, menu 
+planning, quantity calculation, 
+and payment subtasks.
+2. Execution Agent:
+Searches nearby restaurants, 
+selects menu items, places the 
+order, and processes payment.
+4. Blockchain Layer:
+Stores order details, 
+payment confirmation, 
+and validation logs 
+securely.
+5. Completion Module:
+Returns confirmed order 
+receipt and delivery 
+tracking to the user.
+1. User Interaction & Request Input
+❑ Users interact with the system through chat, voice commands, or manual task input.
+❑ The system captures user requests and converts them into structured task information.
+2. Authentication & User Verification
+❑ The system verifies users through secure login or Google OAuth authentication.
+❑ User identity and session data are maintained for personalized task management.
+3. Task Processing & Organization
+❑ User requests are processed to create, update, or manage tasks and projects.
+❑ Tasks are stored with attributes such as priority, status, and deadlines.
+4. AI Assistance & Task Generation
+❑ The AI assistant analyzes user prompts using LLM-based reasoning.
+❑ It provides task suggestions, productivity guidance, and contextual responses.
+
+===== PAGE 16 =====
+
+METHODOLOGY
+1. Planner Agent: Breaks task 
+into restaurant selection, menu 
+planning, quantity calculation, 
+and payment subtasks.
+2. Execution Agent:
+Searches nearby restaurants, 
+selects menu items, places the 
+order, and processes payment.
+4. Blockchain Layer:
+Stores order details, 
+payment confirmation, 
+and validation logs 
+securely.
+5. Completion Module:
+Returns confirmed order 
+receipt and delivery 
+tracking to the user.
+5. Voice Command Processing 
+❑ Voice inputs are converted into text commands using speech recognition.
+❑ The system interprets commands to perform task creation or system actions.
+6. Data Storage and Management
+❑ All user data including tasks, projects, and chat sessions are stored in a PostgreSQL database.
+❑ Backend APIs ensure secure and efficient data operations.
+7. Response Generation & User Feedback
+❑ The system generates AI responses, task updates, or confirmations.
+❑ Results are returned to the user through the chat interface or voice assistant.
+
+===== PAGE 17 =====
+
+PROPOSED WORK 
+DASHBOARD OF G-ONE
+
+===== PAGE 18 =====
+
+PROPOSED WORK 
+PLAN A DAY BY G-ONE
+
+===== PAGE 19 =====
+
+PROPOSED WORK 
+EMAIL
+
+
+===== PAGE 20 =====
+
+PROPOSED WORK 
+CHATBOT
+
+===== PAGE 21 =====
+
+PROPOSED WORK 
+VOICE ASSISSTANT
+
+===== PAGE 22 =====
+
+APPLICATION EXAMPLE (POC) 
+
+
+===== PAGE 23 =====
+
+REFERENCES
+1. Wooldridge, M., An Introduction to Multi-Agent Systems, 2nd Edition, Wiley, 2021.
+2. Russell, S., Norvig, P., Artificial Intelligence: A Modern Approach, 4th Edition, 
+Pearson Education, 2021.
+3. Brown, T. B., et al., “Language Models are Few-Shot Learners,” Advances in 
+Neural Information Processing Systems (NeurIPS), 2020
+4. OpenAI, “GPT-4 Technical Report,” 2023.
+5. Zheng, C., et al., “Advanced Smart Contract Vulnerability Detection via LLM 
+Powered Multi-Agent Systems,” 2024
+
+===== PAGE 24 =====
+
+THANK YOU
