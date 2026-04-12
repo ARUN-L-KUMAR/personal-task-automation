@@ -35,8 +35,17 @@ function formatDateTime(value?: string): string {
 
 function toUnifiedPlanItem(item: any): UnifiedActivityItem {
     const date = item?.input?.settings?.date || item?.plan_date || 'N/A';
-    const meetingsCount = item?.input?.meetings?.length || 0;
-    const tasksCount = item?.input?.tasks?.length || 0;
+
+    // /api/ai-plans stores plan entries in optimized_schedule, often nested under optimized_schedule.
+    const rawSchedule = item?.optimized_schedule ?? item?.output?.schedule ?? [];
+    const scheduleEntries = Array.isArray(rawSchedule)
+        ? rawSchedule
+        : Array.isArray(rawSchedule?.optimized_schedule)
+            ? rawSchedule.optimized_schedule
+            : [];
+
+    const meetingsCount = scheduleEntries.filter((entry: any) => entry?.type === 'meeting').length;
+    const tasksCount = scheduleEntries.filter((entry: any) => entry?.type === 'task').length;
     const timestamp = item?.timestamp || item?.output?.generated_at || item?.created_at;
     const planId = item?.id ? String(item.id) : undefined;
 
