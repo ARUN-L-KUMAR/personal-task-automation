@@ -19,6 +19,19 @@ import { ChatMessageBubble } from './ChatMessageBubble';
 import api from '../../services/api';
 import { usePageContextStore } from '../../store/usePageContextStore';
 
+const GENERAL_SETTINGS_EVENT = 'g1-general-settings-updated';
+const AUTO_REFRESH_SETTING_KEY = 'g1_auto_refresh_google_data';
+const GOOGLE_CONTEXT_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+function normalizeAutoRefresh(value: unknown): boolean | null {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+        if (value === 'true') return true;
+        if (value === 'false') return false;
+    }
+    return null;
+}
+
 /* ── Group chat sessions by time period (ChatGPT-style) ── */
 function groupSessionsByTime(sessions: ChatSession[]): { label: string; sessions: ChatSession[] }[] {
     const now = new Date();
@@ -153,15 +166,40 @@ export function ChatbotPage() {
     const [isPushTalking, setIsPushTalking] = useState(false);
     const modelMenuRef = useRef<HTMLDivElement>(null);
     const sessionModelRef = useRef<HTMLDivElement>(null);
-    const initDoneRef = useRef(false);
+    const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(() => {
+        const stored = normalizeAutoRefresh(localStorage.getItem(AUTO_REFRESH_SETTING_KEY));
+        return stored ?? true;
+    });
 
     useEffect(() => {
-        if (initDoneRef.current) return;
-        initDoneRef.current = true;
-        fetchContextSnapshot(); fetchAvailableModels(); fetchChatSessions();
-        const iv = setInterval(fetchContextSnapshot, 60000);
-        return () => clearInterval(iv);
+        fetchContextSnapshot();
+        fetchAvailableModels();
+        fetchChatSessions();
     }, [fetchContextSnapshot, fetchAvailableModels, fetchChatSessions]);
+
+    useEffect(() => {
+        if (!autoRefreshEnabled) {
+            return;
+        }
+
+        const intervalId = setInterval(fetchContextSnapshot, GOOGLE_CONTEXT_REFRESH_INTERVAL_MS);
+        return () => clearInterval(intervalId);
+    }, [autoRefreshEnabled, fetchContextSnapshot]);
+
+    useEffect(() => {
+        const onGeneralSettingsUpdated = (event: Event) => {
+            const detail = (event as CustomEvent<{ auto_refresh?: boolean | string }>).detail;
+            const nextValue = normalizeAutoRefresh(detail?.auto_refresh);
+            if (nextValue !== null) {
+                setAutoRefreshEnabled(nextValue);
+            }
+        };
+
+        window.addEventListener(GENERAL_SETTINGS_EVENT, onGeneralSettingsUpdated as EventListener);
+        return () => {
+            window.removeEventListener(GENERAL_SETTINGS_EVENT, onGeneralSettingsUpdated as EventListener);
+        };
+    }, []);
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {

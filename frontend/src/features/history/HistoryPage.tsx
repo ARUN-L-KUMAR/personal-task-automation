@@ -9,6 +9,7 @@ import { ConfirmationDialog } from '../../components/ui/ConfirmationDialog';
 import { Activity, Bot, Calendar, Eye, MessageSquareText, RefreshCw, Trash2, Clock, ListChecks } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { usePageContextStore } from '../../store/usePageContextStore';
+import { formatDateTimeByPreferences, formatTimeByPreferences } from '../../utils/dateTimePreferences';
 
 type ActivityType = 'plan' | 'agent' | 'chat';
 
@@ -30,7 +31,7 @@ function formatDateTime(value?: string): string {
     if (!value) return 'N/A';
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return 'N/A';
-    return parsed.toLocaleString();
+    return formatDateTimeByPreferences(parsed, 'N/A');
 }
 
 function toUnifiedPlanItem(item: any): UnifiedActivityItem {
@@ -204,7 +205,7 @@ export function HistoryPage() {
                         <Activity className="h-3.5 w-3.5" /> Live updates every {Math.floor(POLL_MS / 1000)}s
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                        Last sync: {lastUpdatedAt ? lastUpdatedAt.toLocaleTimeString() : 'N/A'}
+                        Last sync: {lastUpdatedAt ? formatTimeByPreferences(lastUpdatedAt, 'N/A') : 'N/A'}
                     </div>
                 </CardContent>
                 <CardContent className="p-0">

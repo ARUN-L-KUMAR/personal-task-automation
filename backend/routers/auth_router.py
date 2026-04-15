@@ -25,8 +25,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 
 from utils.google_auth import (
-    get_auth_url, handle_auth_callback, is_authenticated, logout,
+    get_auth_url, is_authenticated, logout,
     _save_token_to_db, SCOPES, _get_client_id, _get_client_secret, get_redirect_uri, get_credentials,
+    handle_auth_callback_with_email_guard,
 )
 from database.connection import get_db
 from database.models import User
@@ -185,6 +186,7 @@ async def _handle_google_login_exchange(code: str, db: Session) -> tuple[str, st
         email = userinfo.get("email")
         name = userinfo.get("name", "")
         google_id = userinfo.get("sub", "")
+        picture = userinfo.get("picture", "")
 
         if not email:
             raise HTTPException(status_code=400, detail="Email not provided by Google")
@@ -197,8 +199,18 @@ async def _handle_google_login_exchange(code: str, db: Session) -> tuple[str, st
                 email=email,
                 password=hash_password("GOOGLE_OAUTH_" + google_id),
                 is_google_user=True,
+                google_id=google_id,
+                avatar_url=picture or None,
             )
             db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            user.name = name or user.name
+            user.is_google_user = True
+            user.google_id = google_id or user.google_id
+            if picture:
+                user.avatar_url = picture
             db.commit()
             db.refresh(user)
 
@@ -270,6 +282,21 @@ def google_auth_connect(current_user: User = Depends(get_current_user)):
     return RedirectResponse(url=url)
 
 
+@router.get("/google-connect-url")
+def google_auth_connect_url(current_user: User = Depends(get_current_user)):
+    """
+    Return Google OAuth2 authorization URL for an existing logged-in user.
+    Frontend should call this endpoint with JWT and then redirect the browser to auth_url.
+    """
+    url = get_auth_url(str(current_user.id))
+    if not url:
+        raise HTTPException(
+            status_code=500,
+            detail="credentials.json not found. Please set up Google Cloud OAuth2 credentials."
+        )
+    return {"auth_url": url}
+
+
 @router.get("/google/callback")
 async def google_callback(
     code: str = None, 
@@ -325,11 +352,28 @@ async def google_callback(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid state parameter: {e}")
 
-        success = handle_auth_callback(code, state, user, db)
+        success, reason_code, observed_google_email = handle_auth_callback_with_email_guard(code, state, user, db)
         if success:
             return RedirectResponse(url=_append_query(FRONTEND_SETTINGS_REDIRECT, {"auth": "success"}))
-        else:
-            raise HTTPException(status_code=500, detail="Failed to complete authentication. Check backend terminal for details.")
+
+        if reason_code in {"google_account_mismatch", "registered_email_mismatch", "google_email_already_registered"}:
+            return RedirectResponse(url=_append_query(
+                FRONTEND_SETTINGS_REDIRECT,
+                {
+                    "auth": "account_mismatch",
+                    "mismatch_type": reason_code,
+                    "registered_email": user.email,
+                    "google_email": observed_google_email or "",
+                },
+            ))
+
+        return RedirectResponse(url=_append_query(
+            FRONTEND_SETTINGS_REDIRECT,
+            {
+                "auth": "failed",
+                "reason": reason_code or "unknown",
+            },
+        ))
 
 
 @router.get("/status")
@@ -408,9 +452,12 @@ def auth_services_status(
 
         creds = get_credentials(user, db)
         if not creds:
+            # Keep account-level state as connected when token row exists; credentials
+            # can be temporarily unavailable during refresh/provider hiccups.
             return {
-                "authenticated": False,
-                "message": "Google credentials unavailable",
+                "authenticated": True,
+                "message": "Google account linked, but live service status is temporarily unavailable",
+                "credentials_unavailable": True,
                 "service_status": _empty_service_status(),
                 "connected_services": [],
             }

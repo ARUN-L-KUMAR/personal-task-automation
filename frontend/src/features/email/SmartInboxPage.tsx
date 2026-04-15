@@ -53,6 +53,9 @@ const FOLDERS: Folder[] = [
     { key: 'spam', label: 'Spam', icon: AlertCircle, query: 'in:spam', color: 'text-red-500' },
 ];
 
+const EMAIL_PAGE_SIZE = 50;
+const EMAIL_MAX_FETCH = 250;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatDate(raw: string): string {
     if (!raw) return '';
@@ -121,9 +124,10 @@ interface ComposeModalProps {
     onSent: () => void;
     defaultTo?: string;
     defaultSubject?: string;
+    defaultBody?: string;
 }
 
-function ComposeModal({ isOpen, onClose, onSent, defaultTo = '', defaultSubject = '' }: ComposeModalProps) {
+function ComposeModal({ isOpen, onClose, onSent, defaultTo = '', defaultSubject = '', defaultBody = '' }: ComposeModalProps) {
     const [to, setTo] = useState(defaultTo);
     const [subject, setSubject] = useState(defaultSubject);
     const [body, setBody] = useState('');
@@ -132,8 +136,8 @@ function ComposeModal({ isOpen, onClose, onSent, defaultTo = '', defaultSubject 
 
     // Reset when opened
     useEffect(() => {
-        if (isOpen) { setTo(defaultTo); setSubject(defaultSubject); setBody(''); setError(''); }
-    }, [isOpen, defaultTo, defaultSubject]);
+        if (isOpen) { setTo(defaultTo); setSubject(defaultSubject); setBody(defaultBody); setError(''); }
+    }, [isOpen, defaultTo, defaultSubject, defaultBody]);
 
     const handleSend = async () => {
         if (!to.trim()) { setError('Recipient email is required.'); return; }
@@ -233,23 +237,56 @@ function ComposeModal({ isOpen, onClose, onSent, defaultTo = '', defaultSubject 
 interface EmailDetailPanelProps {
     emailId: string;
     onClose: () => void;
-    onReply: (to: string, subject: string) => void;
+    onReply: (to: string, subject: string, body?: string) => void;
+    onToast: (type: 'success' | 'error', text: string) => void;
 }
 
-function EmailDetailPanel({ emailId, onClose, onReply }: EmailDetailPanelProps) {
+function EmailDetailPanel({ emailId, onClose, onReply, onToast }: EmailDetailPanelProps) {
     const [detail, setDetail] = useState<EmailDetail | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const [isDraftingAiReply, setIsDraftingAiReply] = useState(false);
 
     useEffect(() => {
-        setIsLoading(true);
-        setError('');
-        setDetail(null);
-        emailService.getEmail(emailId)
-            .then(res => setDetail(res.data.email))
-            .catch(err => setError(err?.message || 'Could not load email.'))
-            .finally(() => setIsLoading(false));
+        const loadEmailDetail = async () => {
+            setIsLoading(true);
+            setError('');
+            setDetail(null);
+            try {
+                const res = await emailService.getEmail(emailId);
+                setDetail(res.data.email);
+            } catch (err: any) {
+                setError(err?.message || 'Could not load email.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        void loadEmailDetail();
     }, [emailId]);
+
+    const handleAiReplyDraft = async () => {
+        if (!detail || isDraftingAiReply) return;
+
+        setIsDraftingAiReply(true);
+        try {
+            const response = await emailService.generateReplyDraft(detail.id);
+            const to = response?.data?.to || detail.from;
+            const subject = response?.data?.subject || `Re: ${detail.subject}`;
+            const draftBody = response?.data?.draft_body || '';
+
+            if (!draftBody.trim()) {
+                throw new Error('AI returned an empty draft. Please try again.');
+            }
+
+            onReply(to, subject, draftBody);
+            onToast('success', 'AI reply draft is ready.');
+        } catch (err: any) {
+            onToast('error', err?.message || 'Failed to generate AI reply draft.');
+        } finally {
+            setIsDraftingAiReply(false);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -263,6 +300,14 @@ function EmailDetailPanel({ emailId, onClose, onReply }: EmailDetailPanelProps) 
                 </button>
                 {detail && (
                     <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost" size="sm"
+                            onClick={handleAiReplyDraft}
+                            disabled={isDraftingAiReply}
+                            className="text-xs gap-1.5 h-8"
+                        >
+                            {isDraftingAiReply ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {isDraftingAiReply ? 'Drafting...' : 'AI Reply'}
+                        </Button>
                         <Button
                             variant="ghost" size="sm"
                             onClick={() => onReply(detail.from, `Re: ${detail.subject}`)}
@@ -298,6 +343,13 @@ function EmailDetailPanel({ emailId, onClose, onReply }: EmailDetailPanelProps) 
                     </div>
                 ) : detail ? (
                     <>
+                        {(() => {
+                            const visibleLabels = detail.labels.filter(
+                                (l) => ['INBOX', 'UNREAD', 'CATEGORY_PERSONAL'].indexOf(l) === -1
+                            );
+
+                            return (
+                                <>
                         {/* Email header */}
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 leading-tight">{detail.subject}</h2>
                         <div className="flex items-start gap-3 pb-5 border-b border-slate-100 dark:border-slate-800">
@@ -317,9 +369,9 @@ function EmailDetailPanel({ emailId, onClose, onReply }: EmailDetailPanelProps) 
                         </div>
 
                         {/* Labels */}
-                        {detail.labels.filter(l => !['INBOX', 'UNREAD', 'CATEGORY_PERSONAL'].includes(l)).length > 0 && (
+                        {visibleLabels.length > 0 && (
                             <div className="flex gap-1.5 flex-wrap mt-3">
-                                {detail.labels.filter(l => !['INBOX', 'UNREAD', 'CATEGORY_PERSONAL'].includes(l)).map(l => (
+                                {visibleLabels.map(l => (
                                     <span key={l} className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                                         {l.replace(/_/g, ' ')}
                                     </span>
@@ -335,6 +387,14 @@ function EmailDetailPanel({ emailId, onClose, onReply }: EmailDetailPanelProps) 
                         {/* Reply CTA */}
                         <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800 flex gap-2">
                             <Button
+                                variant="outline" size="sm"
+                                onClick={handleAiReplyDraft}
+                                disabled={isDraftingAiReply}
+                                className="dark:border-slate-700"
+                            >
+                                {isDraftingAiReply ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1.5" />} {isDraftingAiReply ? 'Drafting...' : 'AI Reply'}
+                            </Button>
+                            <Button
                                 size="sm"
                                 onClick={() => onReply(detail.from, `Re: ${detail.subject}`)}
                                 className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -349,6 +409,9 @@ function EmailDetailPanel({ emailId, onClose, onReply }: EmailDetailPanelProps) 
                                 <Forward className="h-4 w-4 mr-1.5" /> Forward
                             </Button>
                         </div>
+                                </>
+                            );
+                        })()}
                     </>
                 ) : null}
             </div>
@@ -361,6 +424,9 @@ export function SmartInboxPage() {
     const [emails, setEmails] = useState<Email[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [requestedCount, setRequestedCount] = useState(EMAIL_PAGE_SIZE);
+    const [lastFetchCount, setLastFetchCount] = useState(0);
 
     const [activeFolder, setActiveFolder] = useState<FolderKey>('inbox');
     const [searchQuery, setSearchQuery] = useState('');
@@ -370,7 +436,7 @@ export function SmartInboxPage() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
 
     const [composeOpen, setComposeOpen] = useState(false);
-    const [composeDefaults, setComposeDefaults] = useState({ to: '', subject: '' });
+    const [composeDefaults, setComposeDefaults] = useState({ to: '', subject: '', body: '' });
 
     const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
@@ -382,24 +448,27 @@ export function SmartInboxPage() {
     };
 
     // ── Fetch emails (uses Gmail query) ──
-    const fetchEmails = useCallback(async (folder: FolderKey, query = '') => {
-        setIsLoading(true);
+    const fetchEmails = useCallback(async (folder: FolderKey, query = '', maxResults = EMAIL_PAGE_SIZE, showPrimaryLoader = true) => {
+        if (showPrimaryLoader) setIsLoading(true);
         setError(null);
         setSelectedEmailId(null);
         try {
             const folder_obj = FOLDERS.find(f => f.key === folder)!;
             const gmailQuery = query.trim() ? query.trim() : folder_obj.query;
-            const response = await emailService.getInbox(20, gmailQuery);
-            setEmails(response.data.emails || []);
+            const response = await emailService.getInbox(maxResults, gmailQuery);
+            const fetchedEmails = response.data.emails || [];
+            setEmails(fetchedEmails);
+            setRequestedCount(maxResults);
+            setLastFetchCount(fetchedEmails.length);
         } catch (err: any) {
             setError(err?.message || 'Failed to load emails. Ensure Google account is connected.');
         } finally {
-            setIsLoading(false);
+            if (showPrimaryLoader) setIsLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchEmails(activeFolder);
+        fetchEmails(activeFolder, '', EMAIL_PAGE_SIZE);
     }, [activeFolder, fetchEmails]);
 
     // ── Register page context for voice assistant ──
@@ -421,12 +490,12 @@ export function SmartInboxPage() {
     // ── Search: Enter key triggers backend search ──
     const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && searchQuery.trim()) {
-            fetchEmails(activeFolder, searchQuery);
+            fetchEmails(activeFolder, searchQuery, EMAIL_PAGE_SIZE);
         }
         if (e.key === 'Escape') {
             setSearchQuery('');
             setLiveFilter('');
-            fetchEmails(activeFolder);
+            fetchEmails(activeFolder, '', EMAIL_PAGE_SIZE);
         }
     };
 
@@ -440,14 +509,34 @@ export function SmartInboxPage() {
         : emails;
 
     // ── Compose helpers ──
-    const openCompose = useCallback((to = '', subject = '') => {
-        setComposeDefaults({ to, subject });
+    const openCompose = useCallback((to = '', subject = '', body = '') => {
+        setComposeDefaults({ to, subject, body });
         setComposeOpen(true);
     }, []);
 
     const handleSent = () => {
         pushToast('success', 'Email sent successfully!');
-        if (activeFolder === 'sent') fetchEmails('sent');
+        if (activeFolder === 'sent') fetchEmails('sent', '', EMAIL_PAGE_SIZE);
+    };
+
+    const hasMoreAvailable =
+        !isLoading &&
+        !error &&
+        emails.length > 0 &&
+        requestedCount < EMAIL_MAX_FETCH &&
+        lastFetchCount >= requestedCount;
+
+    const canLoadMore = hasMoreAvailable && !isLoadingMore;
+
+    const handleLoadMore = async () => {
+        if (!canLoadMore) return;
+        const nextCount = Math.min(requestedCount + EMAIL_PAGE_SIZE, EMAIL_MAX_FETCH);
+        setIsLoadingMore(true);
+        try {
+            await fetchEmails(activeFolder, searchQuery || '', nextCount, false);
+        } finally {
+            setIsLoadingMore(false);
+        }
     };
 
     // ── Folder change ──
@@ -468,7 +557,7 @@ export function SmartInboxPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => fetchEmails(activeFolder, searchQuery || '')}
+                        onClick={() => fetchEmails(activeFolder, searchQuery || '', requestedCount)}
                         disabled={isLoading}
                         className="dark:border-slate-700 h-9"
                     >
@@ -546,7 +635,8 @@ export function SmartInboxPage() {
                         <EmailDetailPanel
                             emailId={selectedEmailId}
                             onClose={() => setSelectedEmailId(null)}
-                            onReply={(to, subject) => { setSelectedEmailId(null); openCompose(to, subject); }}
+                            onReply={(to, subject, body = '') => { setSelectedEmailId(null); openCompose(to, subject, body); }}
+                            onToast={pushToast}
                         />
                     ) : (
                         <>
@@ -568,7 +658,7 @@ export function SmartInboxPage() {
                                     />
                                     {searchQuery && (
                                         <button
-                                            onClick={() => { setSearchQuery(''); setLiveFilter(''); fetchEmails(activeFolder); }}
+                                            onClick={() => { setSearchQuery(''); setLiveFilter(''); fetchEmails(activeFolder, '', EMAIL_PAGE_SIZE); }}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                                         >
                                             <X className="h-3.5 w-3.5" />
@@ -631,7 +721,7 @@ export function SmartInboxPage() {
                                         <p className="text-sm text-slate-500 mt-1 max-w-xs">{error}</p>
                                         <Button
                                             size="sm"
-                                            onClick={() => fetchEmails(activeFolder)}
+                                            onClick={() => fetchEmails(activeFolder, searchQuery || '', requestedCount)}
                                             className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
                                         >
                                             <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Try Again
@@ -650,7 +740,7 @@ export function SmartInboxPage() {
                                         </p>
                                         {searchQuery && (
                                             <Button variant="outline" size="sm" className="mt-3 dark:border-slate-700"
-                                                onClick={() => { setSearchQuery(''); setLiveFilter(''); fetchEmails(activeFolder); }}>
+                                                onClick={() => { setSearchQuery(''); setLiveFilter(''); fetchEmails(activeFolder, '', EMAIL_PAGE_SIZE); }}>
                                                 Clear Search
                                             </Button>
                                         )}
@@ -717,17 +807,28 @@ export function SmartInboxPage() {
 
                             {/* ── Status bar ── */}
                             {!isLoading && !error && (
-                                <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between flex-shrink-0">
+                                <div className="pl-4 pr-28 md:pr-32 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between flex-shrink-0">
                                     <span className="text-[11px] text-slate-400 font-medium">
                                         {currentFolder.label} · {displayedEmails.length} of {emails.length} messages
                                         {liveFilter && ` · filtered by "${liveFilter}"`}
                                     </span>
-                                    <button
-                                        onClick={() => fetchEmails(activeFolder)}
-                                        className="text-[11px] text-blue-500 hover:text-blue-700 font-semibold transition-colors flex items-center gap-1"
-                                    >
-                                        <Clock className="h-3 w-3" /> Load more
-                                    </button>
+                                    {isLoadingMore ? (
+                                        <button
+                                            disabled
+                                            className="text-[11px] text-slate-400 font-semibold transition-colors flex items-center gap-1"
+                                        >
+                                            <Loader2 className="h-3 w-3 animate-spin" /> Loading...
+                                        </button>
+                                    ) : hasMoreAvailable ? (
+                                        <button
+                                            onClick={handleLoadMore}
+                                            className="text-[11px] text-blue-500 hover:text-blue-700 disabled:text-slate-400 font-semibold transition-colors flex items-center gap-1"
+                                        >
+                                            <Clock className="h-3 w-3" /> Load more
+                                        </button>
+                                    ) : (
+                                        <span className="text-[11px] text-slate-400 font-semibold">All loaded</span>
+                                    )}
                                 </div>
                             )}
                         </>
@@ -742,6 +843,7 @@ export function SmartInboxPage() {
                 onSent={handleSent}
                 defaultTo={composeDefaults.to}
                 defaultSubject={composeDefaults.subject}
+                defaultBody={composeDefaults.body}
             />
 
             {/* ── Toast notifications ── */}

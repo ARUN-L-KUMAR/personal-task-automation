@@ -26,6 +26,7 @@ import {
 } from '../../services/dashboard.service';
 import { AgentStatusStrip } from './AgentStatusStrip';
 import { DashboardSkeleton } from './DashboardSkeleton';
+import { formatDateByPreferences, formatTimeByPreferences } from '../../utils/dateTimePreferences';
 
 /* ── animation variants ── */
 const containerVariants = {
@@ -105,13 +106,13 @@ const statusClasses: Record<string, string> = {
 
 /* ── helpers ── */
 function formatDateChip(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+    return formatDateByPreferences(date, 'N/A');
 }
 function formatTimeLabel(value?: string): string {
     if (!value) return 'Anytime';
     const parsed = new Date(value);
     if (!Number.isNaN(parsed.getTime())) {
-        return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }).format(parsed);
+        return formatTimeByPreferences(parsed, 'Anytime');
     }
     if (/^\d{2}:\d{2}/.test(value)) return value.slice(0, 5);
     return value;
@@ -120,7 +121,7 @@ function formatCompletionTime(value?: string): string {
     if (!value) return 'Completed today';
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return 'Completed today';
-    return `Done ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(parsed)}`;
+    return `Done ${formatTimeByPreferences(parsed, '')}`.trim();
 }
 function formatDuration(minutes?: number, start?: string, end?: string): string | undefined {
     if (minutes && minutes > 0) {

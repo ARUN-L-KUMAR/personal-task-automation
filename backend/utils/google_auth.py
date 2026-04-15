@@ -9,8 +9,10 @@ SCALABLE: Stores tokens per-user in database instead of single token.json file.
 
 import os
 import traceback
+import json
 from pathlib import Path
 from datetime import datetime
+from urllib.request import Request as UrlRequest, urlopen
 from sqlalchemy.orm import Session
 
 # Fix: Google sometimes returns different scope strings than requested.
@@ -24,6 +26,9 @@ from database.models import User, GoogleToken
 
 # All scopes needed for the 7 Google services
 SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -223,6 +228,90 @@ def _save_token_to_db(user: User, creds: Credentials, db: Session):
         db.add(token_row)
 
     db.commit()
+
+
+def handle_auth_callback_with_email_guard(code: str, state: str, user: User, db: Session) -> tuple[bool, str | None, str | None]:
+    """
+        Handle OAuth callback with account-lock rules:
+
+        - Normal users (email/password): first Google connect can be any account.
+            On first successful connect we lock to that Google account id (sub).
+        - After lock exists, reconnects must use the same Google account id.
+        - Google-sign-in users must still match their registered account on first lock.
+
+    Returns:
+      (True, None, matched_email) on success
+      (False, reason_code, observed_google_email_or_none) on failure
+    """
+
+    def _fetch_identity(access_token: str) -> tuple[str | None, str | None]:
+        if not access_token:
+            return None, None
+        try:
+            request = UrlRequest(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            with urlopen(request, timeout=20) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+                email = (payload.get("email") or "").strip().lower() or None
+                sub = (payload.get("sub") or "").strip() or None
+                return email, sub
+        except Exception as identity_error:
+            print(f"Failed to fetch Google identity: {identity_error}")
+            return None, None
+
+    try:
+        flow = _build_oauth_flow(state)
+        if not flow:
+            return False, "oauth_flow_unavailable", None
+
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+
+        observed_email, observed_sub = _fetch_identity(creds.token)
+        if not observed_email or not observed_sub:
+            return False, "google_userinfo_unavailable", None
+
+        # Existing lock: always enforce same Google account id.
+        if user.google_id:
+            if observed_sub != user.google_id:
+                return False, "google_account_mismatch", observed_email
+        else:
+            # Legacy behavior: user may already be connected but lock (google_id) was not persisted.
+            existing_token_row = db.query(GoogleToken).filter(GoogleToken.user_id == user.id).first()
+            if existing_token_row:
+                existing_creds = get_credentials(user, db)
+                existing_email, existing_sub = _fetch_identity(existing_creds.token) if existing_creds and existing_creds.token else (None, None)
+                if not existing_sub:
+                    return False, "existing_google_identity_unavailable", observed_email
+                if observed_sub != existing_sub:
+                    return False, "google_account_mismatch", observed_email
+
+                # Persist lock for future reconnect checks.
+                user.google_id = existing_sub
+            else:
+                # First-time connect must not hijack an email already registered to another user.
+                existing_owner = db.query(User).filter(User.email.ilike(observed_email)).first()
+                if existing_owner and str(existing_owner.id) != str(user.id):
+                    return False, "google_email_already_registered", observed_email
+
+                # First-time connect behavior differs by account type.
+                # Google-sign-in users should still match their own registered email.
+                if bool(user.is_google_user):
+                    expected_email = (user.email or "").strip().lower()
+                    if observed_email != expected_email:
+                        return False, "registered_email_mismatch", observed_email
+
+                # Lock account to the first connected Google identity.
+                user.google_id = observed_sub
+
+        _save_token_to_db(user, creds, db)
+        return True, None, observed_email
+    except Exception as e:
+        print(f"Auth callback (email guard) error: {e}")
+        traceback.print_exc()
+        return False, "callback_failed", None
 
 
 # Global client cache

@@ -2,6 +2,7 @@ import React from 'react';
 import { cn } from '../../utils/cn';
 import { Clock } from 'lucide-react';
 import { TimelineEntry } from '../../services/dashboard.service';
+import { formatTimeByPreferences } from '../../utils/dateTimePreferences';
 
 const typeStyles: Record<string, { border: string; bg: string; dot: string; label: string }> = {
     meeting: { border: 'border-l-blue-500', bg: 'bg-blue-50/40', dot: 'bg-blue-500', label: 'Meeting' },
@@ -12,11 +13,7 @@ const typeStyles: Record<string, { border: string; bg: string; dot: string; labe
 
 function formatTime(iso?: string): string {
     if (!iso) return '';
-    try {
-        return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-    } catch {
-        return '';
-    }
+    return formatTimeByPreferences(iso, '');
 }
 
 interface TimelineBlockProps {

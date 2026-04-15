@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, Search, Menu, Moon, Sun, Command as CommandIcon } from 'lucide-react';
 import { useThemeStore } from '../../store/useThemeStore';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePageContextStore } from '../../store/usePageContextStore';
+import { useGeneralPreferencesStore } from '../../store/useGeneralPreferencesStore';
+import { formatDateByPreferences } from '../../utils/dateTimePreferences';
 
 const routeMeta: Array<{ path: string; title: string; subtitle: string }> = [
     { path: '/dashboard', title: 'Dashboard', subtitle: 'Overview and daily execution' },
@@ -39,8 +41,13 @@ interface HeaderProps {
 export function Header({ onOpenMobileMenu }: HeaderProps) {
     const { theme, toggleTheme } = useThemeStore();
     const { context, headerContext } = usePageContextStore();
+    const language = useGeneralPreferencesStore((state) => state.language);
+    const timezone = useGeneralPreferencesStore((state) => state.timezone);
+    const timeFormat = useGeneralPreferencesStore((state) => state.timeFormat);
+    const dateFormat = useGeneralPreferencesStore((state) => state.dateFormat);
     const location = useLocation();
     const navigate = useNavigate();
+    const [now, setNow] = useState(() => new Date());
 
     const meta = useMemo(() => getRouteMeta(location.pathname), [location.pathname]);
     const title = context?.pageLabel || meta.title;
@@ -49,6 +56,39 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
     const showSearch = !headerContext?.hideSearch;
     const hasHeaderSummary = Boolean(headerContext?.summary);
     const hasHeaderActions = Boolean(headerContext?.actions);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setNow(new Date());
+        }, 1000);
+
+        return () => window.clearInterval(timer);
+    }, []);
+
+    const locale = useMemo(() => {
+        if (language === 'ta') return 'ta-IN';
+        if (language === 'hi') return 'hi-IN';
+        return 'en-US';
+    }, [language]);
+
+    const nowDateText = useMemo(() => {
+        return formatDateByPreferences(now, '--', {
+            language,
+            timezone,
+            timeFormat,
+            dateFormat,
+        });
+    }, [now, language, timezone, timeFormat, dateFormat]);
+
+    const nowTimeText = useMemo(() => {
+        return new Intl.DateTimeFormat(locale, {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: timeFormat === '12h',
+        }).format(now);
+    }, [locale, timezone, timeFormat, now]);
 
     return (
         <header className="px-6 md:px-10 py-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60 sticky top-0 z-30 transition-all duration-300">
@@ -102,6 +142,18 @@ export function Header({ onOpenMobileMenu }: HeaderProps) {
                             {headerContext?.actions}
                         </div>
                     )}
+
+                    <div
+                        className="hidden lg:flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-700/70 bg-slate-100/70 dark:bg-slate-800/60 px-3.5 py-2 leading-tight text-right"
+                        title={`Timezone: ${timezone}`}
+                    >
+                        <span className="text-sm font-black tabular-nums text-slate-900 dark:text-white">
+                            {nowTimeText}
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            {nowDateText}
+                        </span>
+                    </div>
 
                     <div className="flex items-center space-x-2">
                         <motion.button
