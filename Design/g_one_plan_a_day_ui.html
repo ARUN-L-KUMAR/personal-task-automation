@@ -1,0 +1,445 @@
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-tertiary)}
+
+.shell{display:grid;grid-template-columns:220px 1fr 200px;min-height:600px;background:var(--color-background-tertiary);border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);overflow:hidden}
+
+/* LEFT SIDEBAR */
+.sidebar{background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column}
+.sidebar-header{padding:14px 14px 10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.sidebar-date{font-size:11px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px}
+.sidebar-day{font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.mini-cal{padding:12px 14px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.mini-cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mini-cal-title{font-size:12px;font-weight:500;color:var(--color-text-secondary)}
+.mini-cal-nav{display:flex;gap:4px}
+.cal-btn{background:none;border:none;cursor:pointer;color:var(--color-text-tertiary);padding:2px 5px;border-radius:4px;font-size:12px;transition:background .15s}
+.cal-btn:hover{background:var(--color-background-secondary)}
+.mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center}
+.mini-grid-label{font-size:9px;color:var(--color-text-tertiary);padding:2px 0;font-weight:500}
+.mini-day{font-size:10px;color:var(--color-text-secondary);padding:3px 2px;border-radius:4px;cursor:pointer;transition:background .15s}
+.mini-day:hover{background:var(--color-background-secondary)}
+.mini-day.today{background:#1a4bff;color:#fff;font-weight:600;border-radius:50%}
+.mini-day.other{color:var(--color-text-tertiary)}
+.mini-day.has-event{position:relative}
+.mini-day.has-event::after{content:'';width:3px;height:3px;background:#1a4bff;border-radius:50%;position:absolute;bottom:0;left:50%;transform:translateX(-50%)}
+
+.focus-section{padding:12px 14px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.section-label{font-size:10px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.focus-input{width:100%;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:7px 9px;font-size:12px;color:var(--color-text-primary);outline:none;font-family:var(--font-sans)}
+.focus-input:focus{border-color:#1a4bff}
+
+.energy-section{padding:12px 14px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.energy-row{display:flex;gap:5px;margin-top:2px}
+.energy-btn{flex:1;padding:5px 4px;border-radius:6px;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:10px;font-weight:500;cursor:pointer;color:var(--color-text-secondary);transition:all .15s;text-align:center}
+.energy-btn.active-high{background:#EAF3DE;border-color:#639922;color:#27500A}
+.energy-btn.active-mid{background:#FAEEDA;border-color:#BA7517;color:#633806}
+.energy-btn.active-low{background:#FCEBEB;border-color:#E24B4A;color:#791F1F}
+
+.task-sidebar{padding:12px 14px;flex:1;overflow:auto}
+.task-add-row{display:flex;gap:6px;margin-bottom:10px}
+.task-add-input{flex:1;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 8px;font-size:11.5px;color:var(--color-text-primary);outline:none;font-family:var(--font-sans)}
+.task-add-btn{background:#1a4bff;color:#fff;border:none;border-radius:var(--border-radius-md);padding:6px 10px;font-size:11px;cursor:pointer;font-weight:500;white-space:nowrap}
+.task-item{display:flex;align-items:flex-start;gap:7px;margin-bottom:7px;padding:6px 8px;border-radius:var(--border-radius-md);cursor:pointer;transition:background .15s}
+.task-item:hover{background:var(--color-background-secondary)}
+.task-cb{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--color-border-secondary);flex-shrink:0;margin-top:1px;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.task-cb.done{background:#1a4bff;border-color:#1a4bff}
+.task-label{font-size:12px;color:var(--color-text-primary);line-height:1.4}
+.task-label.done{text-decoration:line-through;color:var(--color-text-tertiary)}
+.task-cat{font-size:10px;color:var(--color-text-tertiary);margin-top:1px}
+
+/* MAIN TIMELINE */
+.main{display:flex;flex-direction:column}
+.main-toolbar{padding:12px 16px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:10px;background:var(--color-background-primary)}
+.toolbar-title{font-size:14px;font-weight:500;color:var(--color-text-primary);flex:1}
+.toolbar-btn{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:5px 10px;font-size:12px;color:var(--color-text-secondary);cursor:pointer;transition:all .15s;font-family:var(--font-sans)}
+.toolbar-btn:hover{border-color:var(--color-border-secondary);color:var(--color-text-primary)}
+.toolbar-btn.active{background:#1a4bff;color:#fff;border-color:#1a4bff}
+.add-block-btn{background:#1a4bff;color:#fff;border:none;border-radius:var(--border-radius-md);padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:var(--font-sans)}
+
+.timeline{flex:1;padding:12px 16px;overflow:auto;position:relative}
+.time-slot{display:grid;grid-template-columns:44px 1fr;gap:8px;margin-bottom:2px;min-height:52px;align-items:start}
+.time-label{font-size:10px;color:var(--color-text-tertiary);padding-top:4px;text-align:right;padding-right:4px;white-space:nowrap}
+.time-track{border-left:0.5px solid var(--color-border-tertiary);padding:2px 0 2px 8px;min-height:50px;position:relative}
+.time-track.current-hour{border-left:2px solid #1a4bff}
+
+.event-block{border-radius:var(--border-radius-md);padding:7px 10px;margin-bottom:3px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.event-block::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:2px 0 0 2px}
+.event-block:hover{filter:brightness(.97)}
+
+.eb-work{background:#E6F1FB;border:0.5px solid #85B7EB}
+.eb-work::before{background:#1a4bff}
+.eb-focus{background:#EAF3DE;border:0.5px solid #97C459}
+.eb-focus::before{background:#639922}
+.eb-break{background:#F1EFE8;border:0.5px solid #D3D1C7}
+.eb-break::before{background:#888780}
+.eb-personal{background:#EEEDFE;border:0.5px solid #AFA9EC}
+.eb-personal::before{background:#534AB7}
+.eb-meeting{background:#FAEEDA;border:0.5px solid #EF9F27}
+.eb-meeting::before{background:#BA7517}
+
+.eb-title{font-size:12px;font-weight:500;margin-bottom:1px}
+.eb-work .eb-title{color:#0C447C}
+.eb-focus .eb-title{color:#27500A}
+.eb-break .eb-title{color:#444441}
+.eb-personal .eb-title{color:#3C3489}
+.eb-meeting .eb-title{color:#633806}
+.eb-meta{font-size:10.5px;display:flex;align-items:center;gap:8px}
+.eb-work .eb-meta{color:#185FA5}
+.eb-focus .eb-meta{color:#3B6D11}
+.eb-break .eb-meta{color:#5F5E5A}
+.eb-personal .eb-meta{color:#534AB7}
+.eb-meeting .eb-meta{color:#854F0B}
+.eb-chip{background:rgba(255,255,255,.55);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:500}
+.current-time-line{position:relative;display:flex;align-items:center;gap:6px;margin:2px 0 4px}
+.ctl-dot{width:8px;height:8px;background:#E24B4A;border-radius:50%;flex-shrink:0}
+.ctl-line{flex:1;height:1px;background:#E24B4A;opacity:.5}
+.ctl-label{font-size:9px;color:#A32D2D;font-weight:600;white-space:nowrap}
+
+/* RIGHT PANEL */
+.right-panel{background:var(--color-background-primary);border-left:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;overflow:hidden}
+.rp-header{padding:12px 12px 10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.rp-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.rp-sub{font-size:11px;color:var(--color-text-tertiary);margin-top:1px}
+
+.ai-chat{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:8px;overflow:auto}
+.ai-msg{background:#E6F1FB;border-radius:0 var(--border-radius-md) var(--border-radius-md) var(--border-radius-md);padding:8px 10px;max-width:90%}
+.ai-msg p{font-size:11.5px;color:#0C447C;line-height:1.55}
+.ai-msg strong{color:#042C53}
+.user-msg{background:var(--color-background-secondary);border-radius:var(--border-radius-md) var(--border-radius-md) 0 var(--border-radius-md);padding:8px 10px;max-width:90%;align-self:flex-end}
+.user-msg p{font-size:11.5px;color:var(--color-text-secondary);line-height:1.55}
+.ai-suggestion{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 10px;cursor:pointer;transition:all .15s}
+.ai-suggestion:hover{border-color:#1a4bff;background:#E6F1FB}
+.ai-suggestion p{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.ai-suggestion:hover p{color:#0C447C}
+
+.rp-input-row{padding:10px 12px;border-top:0.5px solid var(--color-border-tertiary);display:flex;gap:6px}
+.rp-input{flex:1;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 9px;font-size:11.5px;color:var(--color-text-primary);outline:none;font-family:var(--font-sans)}
+.rp-send{background:#1a4bff;color:#fff;border:none;border-radius:var(--border-radius-md);padding:6px 10px;font-size:11px;cursor:pointer;font-family:var(--font-sans);font-weight:500}
+
+.stats-row{padding:10px 12px;border-top:0.5px solid var(--color-border-tertiary);display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-mini{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:7px 8px}
+.stat-mini-val{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.stat-mini-label{font-size:9.5px;color:var(--color-text-tertiary);margin-top:1px}
+
+.progress-section{padding:10px 12px;border-top:0.5px solid var(--color-border-tertiary)}
+.prog-bar-bg{background:var(--color-background-secondary);border-radius:100px;height:5px;margin-top:6px;overflow:hidden}
+.prog-bar-fill{height:100%;border-radius:100px;background:#1a4bff;transition:width .4s ease}
+.prog-label{display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);margin-top:4px}
+</style>
+
+<h2 class="sr-only">G-ONE plan a day UI mockup showing sidebar, timeline, and AI assistant panel</h2>
+
+<div class="shell">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-date">Wednesday, 7 May 2026</div>
+      <div class="sidebar-day">Plan your day</div>
+    </div>
+
+    <div class="mini-cal">
+      <div class="mini-cal-header">
+        <span class="mini-cal-title">May 2026</span>
+        <div class="mini-cal-nav">
+          <button class="cal-btn">‹</button>
+          <button class="cal-btn">›</button>
+        </div>
+      </div>
+      <div class="mini-grid">
+        <div class="mini-grid-label">M</div><div class="mini-grid-label">T</div><div class="mini-grid-label">W</div><div class="mini-grid-label">T</div><div class="mini-grid-label">F</div><div class="mini-grid-label">S</div><div class="mini-grid-label">S</div>
+        <div class="mini-day other">27</div><div class="mini-day other">28</div><div class="mini-day other">29</div><div class="mini-day other">30</div><div class="mini-day other">1</div><div class="mini-day other">2</div><div class="mini-day other">3</div>
+        <div class="mini-day">4</div><div class="mini-day">5</div><div class="mini-day">6</div><div class="mini-day today">7</div><div class="mini-day has-event">8</div><div class="mini-day">9</div><div class="mini-day">10</div>
+        <div class="mini-day has-event">11</div><div class="mini-day">12</div><div class="mini-day">13</div><div class="mini-day">14</div><div class="mini-day has-event">15</div><div class="mini-day">16</div><div class="mini-day">17</div>
+        <div class="mini-day">18</div><div class="mini-day">19</div><div class="mini-day">20</div><div class="mini-day">21</div><div class="mini-day">22</div><div class="mini-day">23</div><div class="mini-day">24</div>
+      </div>
+    </div>
+
+    <div class="focus-section">
+      <div class="section-label">Today's main goal</div>
+      <input class="focus-input" value="Finish Q2 board deck" />
+    </div>
+
+    <div class="energy-section">
+      <div class="section-label">Energy level</div>
+      <div class="energy-row">
+        <button class="energy-btn active-high" onclick="setEnergy(this,'active-high')">High</button>
+        <button class="energy-btn" onclick="setEnergy(this,'active-mid')">Medium</button>
+        <button class="energy-btn" onclick="setEnergy(this,'active-low')">Low</button>
+      </div>
+    </div>
+
+    <div class="task-sidebar">
+      <div class="section-label">Unscheduled tasks</div>
+      <div class="task-add-row">
+        <input class="task-add-input" placeholder="Add task…" id="newTask" onkeydown="if(event.key==='Enter')addTask()"/>
+        <button class="task-add-btn" onclick="addTask()">+ Add</button>
+      </div>
+      <div id="taskList">
+        <div class="task-item" onclick="toggleTask(this)">
+          <div class="task-cb done"><svg width="8" height="6" viewBox="0 0 8 6"><path d="M1 3l2 2L7 1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div><div class="task-label done">Review competitor analysis</div><div class="task-cat">Research</div></div>
+        </div>
+        <div class="task-item" onclick="toggleTask(this)">
+          <div class="task-cb"></div>
+          <div><div class="task-label">Write executive summary</div><div class="task-cat">Writing</div></div>
+        </div>
+        <div class="task-item" onclick="toggleTask(this)">
+          <div class="task-cb"></div>
+          <div><div class="task-label">Reply to investor email</div><div class="task-cat">Comms</div></div>
+        </div>
+        <div class="task-item" onclick="toggleTask(this)">
+          <div class="task-cb"></div>
+          <div><div class="task-label">Update project tracker</div><div class="task-cat">Admin</div></div>
+        </div>
+        <div class="task-item" onclick="toggleTask(this)">
+          <div class="task-cb"></div>
+          <div><div class="task-label">Gym session</div><div class="task-cat">Personal</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN TIMELINE -->
+  <div class="main">
+    <div class="main-toolbar">
+      <span class="toolbar-title">Today's schedule</span>
+      <button class="toolbar-btn active">Timeline</button>
+      <button class="toolbar-btn">Blocks</button>
+      <button class="add-block-btn">
+        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Add block
+      </button>
+    </div>
+
+    <div class="timeline">
+
+      <div class="time-slot">
+        <div class="time-label">7 AM</div>
+        <div class="time-track">
+          <div class="event-block eb-personal">
+            <div class="eb-title">Morning routine + exercise</div>
+            <div class="eb-meta"><span class="eb-chip">7:00–8:00</span><span>Personal · 1h</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">8 AM</div>
+        <div class="time-track">
+          <div class="event-block eb-work">
+            <div class="eb-title">Inbox triage — G-ONE sorted</div>
+            <div class="eb-meta"><span class="eb-chip">8:00–8:30</span><span>3 replies drafted</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">9 AM</div>
+        <div class="time-track">
+          <div class="event-block eb-focus">
+            <div class="eb-title">Deep work — Q2 board deck</div>
+            <div class="eb-meta"><span class="eb-chip">9:00–11:00</span><span>Focus block · 2h · No interruptions</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">11 AM</div>
+        <div class="time-track">
+          <div class="event-block eb-meeting">
+            <div class="eb-title">Team standup</div>
+            <div class="eb-meta"><span class="eb-chip">11:00–11:30</span><span>4 attendees · Google Meet</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">12 PM</div>
+        <div class="time-track">
+          <div class="event-block eb-break">
+            <div class="eb-title">Lunch break</div>
+            <div class="eb-meta"><span class="eb-chip">12:00–1:00</span><span>Rest · 1h</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">1 PM</div>
+        <div class="time-track">
+          <!-- CURRENT TIME -->
+          <div class="current-time-line">
+            <div class="ctl-dot"></div>
+            <div class="ctl-line"></div>
+            <div class="ctl-label" id="nowLabel">Now · 1:12 PM</div>
+          </div>
+          <div class="event-block eb-work">
+            <div class="eb-title">Write executive summary</div>
+            <div class="eb-meta"><span class="eb-chip">1:00–2:30</span><span>Writing · 1.5h</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">3 PM</div>
+        <div class="time-track">
+          <div class="event-block eb-meeting">
+            <div class="eb-title">1:1 with Priya — strategy review</div>
+            <div class="eb-meta"><span class="eb-chip">3:00–3:45</span><span>🚶 15 min travel added</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">4 PM</div>
+        <div class="time-track">
+          <div class="event-block eb-focus">
+            <div class="eb-title">Review & finalise deck</div>
+            <div class="eb-meta"><span class="eb-chip">4:00–5:30</span><span>Focus · 1.5h</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-slot">
+        <div class="time-label">6 PM</div>
+        <div class="time-track">
+          <div class="event-block eb-break">
+            <div class="eb-title">Wind down — no screens</div>
+            <div class="eb-meta"><span class="eb-chip">6:00–7:00</span><span>Personal · 1h</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL — AI + Stats -->
+  <div class="right-panel">
+    <div class="rp-header">
+      <div class="rp-title">G-ONE assistant</div>
+      <div class="rp-sub">Ask to adjust your plan</div>
+    </div>
+
+    <div class="ai-chat" id="chat">
+      <div class="ai-msg">
+        <p>Good morning! Your <strong>energy is high</strong> today — I've front-loaded deep work at 9 AM when focus peaks. You have 3 unscheduled tasks left. Want me to slot them in?</p>
+      </div>
+      <div class="ai-suggestion" onclick="sendQ('Schedule my unscheduled tasks for today')">
+        <p>Schedule my remaining tasks automatically</p>
+      </div>
+      <div class="ai-suggestion" onclick="sendQ('Add a 15 min buffer before every meeting today')">
+        <p>Add 15 min prep before each meeting</p>
+      </div>
+      <div class="ai-suggestion" onclick="sendQ('What is my most important task right now?')">
+        <p>What should I focus on right now?</p>
+      </div>
+      <div class="user-msg">
+        <p>Move my gym session to 6 AM tomorrow</p>
+      </div>
+      <div class="ai-msg">
+        <p>Done! Moved <strong>Gym session</strong> to tomorrow 6:00–7:00 AM. I've also blocked tomorrow morning's inbox check at 7:15 AM.</p>
+      </div>
+    </div>
+
+    <div class="rp-input-row">
+      <input class="rp-input" id="chatInput" placeholder="Ask G-ONE…" onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="rp-send" onclick="sendChat()">Send</button>
+    </div>
+
+    <div class="progress-section">
+      <div class="section-label">Day progress</div>
+      <div class="prog-bar-bg"><div class="prog-bar-fill" id="dayProg" style="width:38%"></div></div>
+      <div class="prog-label"><span>Started 7 AM</span><span id="progPct">38%</span></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:#27500A">5.5h</div>
+        <div class="stat-mini-label">Focus time</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:#633806">2</div>
+        <div class="stat-mini-label">Meetings</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val">4</div>
+        <div class="stat-mini-label">Tasks left</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:#0C447C">2h</div>
+        <div class="stat-mini-label">Free slots</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function setEnergy(btn,cls){
+  document.querySelectorAll('.energy-btn').forEach(b=>{b.className='energy-btn'});
+  btn.classList.add(cls);
+}
+function toggleTask(item){
+  const cb=item.querySelector('.task-cb');
+  const lbl=item.querySelector('.task-label');
+  const isDone=cb.classList.contains('done');
+  if(isDone){cb.classList.remove('done');cb.innerHTML='';lbl.classList.remove('done')}
+  else{cb.classList.add('done');cb.innerHTML='<svg width="8" height="6" viewBox="0 0 8 6"><path d="M1 3l2 2L7 1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';lbl.classList.add('done')}
+}
+function addTask(){
+  const inp=document.getElementById('newTask');
+  const val=inp.value.trim();
+  if(!val)return;
+  const list=document.getElementById('taskList');
+  const div=document.createElement('div');
+  div.className='task-item';
+  div.onclick=function(){toggleTask(this)};
+  div.innerHTML=`<div class="task-cb"></div><div><div class="task-label">${val}</div><div class="task-cat">Task</div></div>`;
+  list.appendChild(div);
+  inp.value='';
+}
+function sendQ(q){
+  const inp=document.getElementById('chatInput');
+  inp.value=q;
+  sendChat();
+}
+function sendChat(){
+  const inp=document.getElementById('chatInput');
+  const val=inp.value.trim();
+  if(!val)return;
+  const chat=document.getElementById('chat');
+  const um=document.createElement('div');
+  um.className='user-msg';
+  um.innerHTML=`<p>${val}</p>`;
+  chat.appendChild(um);
+  inp.value='';
+  setTimeout(()=>{
+    const replies=["Got it! I'll handle that now and update your schedule.","Done! I've adjusted your plan accordingly.","Sure — I've made that change and notified relevant attendees.","Noted! I'll block that time for you right away."];
+    const am=document.createElement('div');
+    am.className='ai-msg';
+    am.innerHTML=`<p>${replies[Math.floor(Math.random()*replies.length)]}</p>`;
+    chat.appendChild(am);
+    chat.scrollTop=chat.scrollHeight;
+  },600);
+  chat.scrollTop=chat.scrollHeight;
+}
+function updateTime(){
+  const now=new Date();
+  const h=now.getHours(),m=now.getMinutes();
+  const ampm=h>=12?'PM':'AM';
+  const h12=h%12||12;
+  const mStr=m<10?'0'+m:m;
+  const el=document.getElementById('nowLabel');
+  if(el)el.textContent=`Now · ${h12}:${mStr} ${ampm}`;
+  const start=7*60,end=20*60,total=end-start,current=h*60+m-start;
+  const pct=Math.min(100,Math.max(0,Math.round(current/total*100)));
+  const bar=document.getElementById('dayProg');
+  if(bar)bar.style.width=pct+'%';
+  const pt=document.getElementById('progPct');
+  if(pt)pt.textContent=pct+'%';
+}
+updateTime();
+setInterval(updateTime,30000);
+</script>

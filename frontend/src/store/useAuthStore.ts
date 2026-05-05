@@ -9,6 +9,7 @@ import {
     LoginPayload,
     RegisterPayload,
     UserProfile,
+    RegistrationResponse,
 } from '../services/auth.service';
 
 interface AuthState {
@@ -16,14 +17,16 @@ interface AuthState {
     isAuthenticated: boolean;
     isLoading: boolean;
     error: string | null;
+    unverifiedEmail: string | null;
 
     login: (payload: LoginPayload) => Promise<void>;
-    register: (payload: RegisterPayload) => Promise<void>;
+    register: (payload: RegisterPayload) => Promise<RegistrationResponse>;
     googleLogin: (code: string) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
     clearError: () => void;
     setUser: (user: UserProfile | null) => void;
+    setUnverifiedEmail: (email: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -31,25 +34,61 @@ export const useAuthStore = create<AuthState>((set) => ({
     isAuthenticated: !!getToken(),
     isLoading: false,
     error: null,
+    unverifiedEmail: null,
 
     login: async (payload) => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, unverifiedEmail: null });
         try {
             const data = await loginUser(payload);
             set({ user: data.user, isAuthenticated: true, isLoading: false });
         } catch (err: any) {
-            set({ isLoading: false, error: err.message || 'Login failed' });
+            const detail = err.details?.detail || err.response?.data?.detail;
+            let errorMessage = 'Login failed';
+            
+            if (typeof err.message === 'string') {
+                errorMessage = err.message;
+            } else if (err.message?.message) {
+                errorMessage = err.message.message;
+            }
+            
+            if (detail && typeof detail === 'object') {
+                errorMessage = detail.message || errorMessage;
+                if (detail.error === 'unverified_email') {
+                    set({ unverifiedEmail: payload.email });
+                }
+            } else if (typeof detail === 'string') {
+                errorMessage = detail;
+            }
+
+            set({ isLoading: false, error: errorMessage });
             throw err;
         }
     },
 
     register: async (payload) => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, unverifiedEmail: null });
         try {
             const data = await registerUser(payload);
-            set({ user: data.user, isAuthenticated: true, isLoading: false });
+            if (data.status === 'verification_required') {
+                set({ unverifiedEmail: data.email, isLoading: false });
+            } else {
+                set({ isLoading: false });
+            }
+            return data;
         } catch (err: any) {
-            set({ isLoading: false, error: err.message || 'Registration failed' });
+            const detail = err.details?.detail || err.response?.data?.detail;
+            let errorMessage = 'Registration failed';
+            
+            if (typeof err.message === 'string') {
+                errorMessage = err.message;
+            } else if (err.message?.message) {
+                errorMessage = err.message.message;
+            }
+            
+            if (typeof detail === 'string') errorMessage = detail;
+            else if (detail?.message) errorMessage = detail.message;
+
+            set({ isLoading: false, error: errorMessage });
             throw err;
         }
     },
@@ -95,4 +134,6 @@ export const useAuthStore = create<AuthState>((set) => ({
         user,
         isAuthenticated: user ? true : state.isAuthenticated,
     })),
+    
+    setUnverifiedEmail: (email) => set({ unverifiedEmail: email }),
 }));

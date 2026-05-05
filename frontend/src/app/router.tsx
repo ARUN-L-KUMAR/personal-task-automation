@@ -3,6 +3,8 @@ import { AppLayout } from './layout/AppLayout';
 import { AuthGuard } from './layout/AuthGuard';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
+import { VerifyEmailPage } from '../features/auth/VerifyEmailPage';
+import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { LandingPage } from '../features/landing/LandingPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { PlannerPage } from '../features/planner/PlannerPage';
@@ -32,6 +34,8 @@ const router = createBrowserRouter([
     { path: '/', element: <LandingPage /> },
     { path: '/login', element: <LoginPage /> },
     { path: '/register', element: <RegisterPage /> },
+    { path: '/verify-email', element: <VerifyEmailPage /> },
+    { path: '/forgot-password', element: <ForgotPasswordPage /> },
     { path: '/privacy', element: <PrivacyPage /> },
     { path: '/terms', element: <TermsPage /> },
 

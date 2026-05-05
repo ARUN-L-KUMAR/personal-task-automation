@@ -64,6 +64,7 @@ class UserResponse(BaseModel):
     avatar_url: Optional[str] = None
     last_login: Optional[datetime] = None
     is_active: bool = True
+    is_email_verified: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -75,6 +76,25 @@ class AuthResponse(BaseModel):
     user: UserResponse
     access_token: str
     token_type: str = "bearer"
+
+
+class VerifyRegistrationRequest(BaseModel):
+    email: EmailStr
+    verification_code: str = Field(..., min_length=4, max_length=12)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    verification_code: str = Field(..., min_length=4, max_length=12)
+    new_password: str = Field(..., min_length=6, max_length=128)
 
 
 # ────────── Project Schemas ──────────

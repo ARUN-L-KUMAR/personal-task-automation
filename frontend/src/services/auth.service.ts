@@ -60,6 +60,25 @@ export interface GoogleConnectUrlResponse {
     auth_url: string;
 }
 
+export interface VerifyRegistrationPayload {
+    email: string;
+    verification_code: string;
+}
+
+export interface ResetPasswordPayload {
+    email: string;
+    verification_code: string;
+    new_password: string;
+}
+
+export interface RegistrationResponse {
+    status: string;
+    email: string;
+    expires_in_seconds?: number;
+    delivery?: string;
+    verification_code?: string;
+}
+
 // --- Token helpers ---
 
 const TOKEN_KEY = 'g-one_token';
@@ -77,11 +96,32 @@ export const loginUser = async (payload: LoginPayload): Promise<AuthResponse> =>
     return data;
 };
 
-export const registerUser = async (payload: RegisterPayload): Promise<AuthResponse> => {
+export const registerUser = async (payload: RegisterPayload): Promise<RegistrationResponse> => {
     const response = await api.post('/api/db-auth/register', payload);
+    // Returns verification_required status
+    return response.data;
+};
+
+export const verifyRegistrationEmail = async (payload: VerifyRegistrationPayload): Promise<AuthResponse> => {
+    const response = await api.post('/api/db-auth/verify-registration-email', payload);
     const data: AuthResponse = response.data;
     setToken(data.access_token);
     return data;
+};
+
+export const resendVerification = async (email: string): Promise<VerificationSendResponse> => {
+    const response = await api.post('/api/db-auth/resend-verification', { email });
+    return response.data;
+};
+
+export const forgotPassword = async (email: string): Promise<VerificationSendResponse> => {
+    const response = await api.post('/api/db-auth/forgot-password', { email });
+    return response.data;
+};
+
+export const resetPassword = async (payload: ResetPasswordPayload): Promise<{ status: string; message: string }> => {
+    const response = await api.post('/api/db-auth/reset-password', payload);
+    return response.data;
 };
 
 export const getMe = async (): Promise<UserProfile> => {

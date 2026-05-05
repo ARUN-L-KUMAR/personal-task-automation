@@ -31,6 +31,10 @@ from database.schemas import (
     GoogleLoginRequest,
     AuthResponse,
     UserResponse,
+    VerifyRegistrationRequest,
+    ResendVerificationRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from services import hash_password, verify_password, create_access_token
 from middleware import get_current_user
@@ -48,6 +52,8 @@ MAX_AVATAR_BYTES = 2 * 1024 * 1024
 VERIFICATION_CODE_TTL_MINUTES = 10
 EMAIL_VERIFICATION_ACTION = "email_update"
 PASSWORD_VERIFICATION_ACTION = "password_update"
+REGISTRATION_VERIFICATION_ACTION = "registration_verify"
+PASSWORD_RESET_ACTION = "password_reset"
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -227,7 +233,7 @@ async def _fetch_google_connected_email(current_user: User, db: Session) -> str 
         return None
 
 
-@router.post("/register", response_model=AuthResponse, status_code=201)
+@router.post("/register", status_code=201)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     """Register a new user with email + password."""
     # Check if email already exists
@@ -242,17 +248,27 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         name=payload.name,
         email=payload.email,
         password=hash_password(payload.password),
+        is_email_verified=False,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
-
-    return AuthResponse(
-        user=UserResponse.model_validate(user),
-        access_token=token,
+    code = _issue_verification_code(str(user.id), REGISTRATION_VERIFICATION_ACTION, user.email)
+    delivered = _send_verification_email(
+        to_email=user.email,
+        subject="Welcome to G-ONE! Verify your email",
+        body=(
+            f"Hello {user.name},\n\n"
+            f"Your registration verification code is: {code}\n\n"
+            f"It expires in {VERIFICATION_CODE_TTL_MINUTES} minutes."
+        ),
     )
+
+    response = _verification_send_response(code, delivered)
+    response["status"] = "verification_required"
+    response["email"] = user.email
+    return response
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -260,10 +276,22 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate with email + password, receive JWT."""
     user = db.query(User).filter(User.email == payload.email).first()
 
-    if not user or not verify_password(payload.password, user.password):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail={"error": "user_not_found", "message": "No user found. Register by clicking the signup button."}
+        )
+
+    if not verify_password(payload.password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "invalid_credentials", "message": "Invalid email or password"}
+        )
+
+    if not user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "unverified_email", "message": "This email is not verified yet. Please check your inbox or resend verification."}
         )
 
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
@@ -370,6 +398,7 @@ async def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db
             is_google_user=True,
             google_id=google_id,
             avatar_url=picture or None,
+            is_email_verified=True,
         )
         db.add(user)
         db.commit()
@@ -610,3 +639,98 @@ def verify_and_update_password(
     db.commit()
 
     return {"status": "success", "message": "Password updated successfully"}
+
+
+@router.post("/verify-registration-email", response_model=AuthResponse)
+def verify_registration_email(payload: VerifyRegistrationRequest, db: Session = Depends(get_db)):
+    """Verify registration code and login the user."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if user.is_email_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is already verified")
+
+    _consume_verification_code(
+        str(user.id),
+        REGISTRATION_VERIFICATION_ACTION,
+        payload.verification_code.strip(),
+        user.email,
+    )
+
+    user.is_email_verified = True
+    db.commit()
+    db.refresh(user)
+
+    token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+    return AuthResponse(
+        user=UserResponse.model_validate(user),
+        access_token=token,
+    )
+
+
+@router.post("/resend-verification")
+def resend_verification(payload: ResendVerificationRequest, db: Session = Depends(get_db)):
+    """Resend registration verification code."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if user.is_email_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is already verified")
+
+    code = _issue_verification_code(str(user.id), REGISTRATION_VERIFICATION_ACTION, user.email)
+    delivered = _send_verification_email(
+        to_email=user.email,
+        subject="Your new verification code",
+        body=(
+            f"Hello {user.name},\n\n"
+            f"Your new verification code is: {code}\n\n"
+            f"It expires in {VERIFICATION_CODE_TTL_MINUTES} minutes."
+        ),
+    )
+
+    return _verification_send_response(code, delivered)
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Send a password reset code to the user."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No user found with this email")
+
+    code = _issue_verification_code(str(user.id), PASSWORD_RESET_ACTION, user.email)
+    delivered = _send_verification_email(
+        to_email=user.email,
+        subject="Password Reset Request",
+        body=(
+            f"Hello {user.name},\n\n"
+            f"You requested a password reset. Your verification code is: {code}\n\n"
+            f"If you did not request this, please ignore this email.\n"
+            f"It expires in {VERIFICATION_CODE_TTL_MINUTES} minutes."
+        ),
+    )
+
+    return _verification_send_response(code, delivered)
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Verify reset code and update password."""
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    _consume_verification_code(
+        str(user.id),
+        PASSWORD_RESET_ACTION,
+        payload.verification_code.strip(),
+        user.email,
+    )
+
+    user.password = hash_password(payload.new_password)
+    db.commit()
+
+    return {"status": "success", "message": "Password reset successfully"}
+

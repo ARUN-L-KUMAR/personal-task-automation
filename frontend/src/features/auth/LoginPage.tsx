@@ -7,7 +7,7 @@ import { cn } from '../../utils/cn';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 
 export function LoginPage() {
-    const { login, isLoading, error, clearError } = useAuthStore();
+    const { login, isLoading, error, clearError, unverifiedEmail } = useAuthStore();
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -47,8 +47,24 @@ export function LoginPage() {
                     </div>
 
                     {error && (
-                        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 font-medium">
-                            {error}
+                        <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 font-medium flex flex-col gap-2">
+                            <span>{error}</span>
+                            {unverifiedEmail && (
+                                <Link 
+                                    to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`} 
+                                    className="inline-flex items-center text-blue-600 hover:text-blue-700 font-bold"
+                                >
+                                    Verify email <ArrowRight className="h-3 w-3 ml-1" />
+                                </Link>
+                            )}
+                            {error.includes('No user found') && (
+                                <Link 
+                                    to="/register" 
+                                    className="inline-flex items-center text-blue-600 hover:text-blue-700 font-bold"
+                                >
+                                    Sign up now <ArrowRight className="h-3 w-3 ml-1" />
+                                </Link>
+                            )}
                         </div>
                     )}
 
@@ -68,9 +84,14 @@ export function LoginPage() {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
-                                Password
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    Password
+                                </label>
+                                <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                                    Forgot password?
+                                </Link>
+                            </div>
                             <div className="relative">
                                 <input
                                     type={showPassword ? 'text' : 'password'}

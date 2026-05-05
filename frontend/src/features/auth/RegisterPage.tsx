@@ -28,8 +28,12 @@ export function RegisterPage() {
             return;
         }
         try {
-            await register({ name, email, password });
-            navigate('/dashboard');
+            const response = await register({ name, email, password });
+            if (response?.status === 'verification_required') {
+                navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+            } else {
+                navigate('/dashboard');
+            }
         } catch {
             // error is set in store
         }

@@ -71,6 +71,7 @@ class User(Base):
     avatar_url = Column(Text, nullable=True)             # profile image
     last_login = Column(DateTime, nullable=True)         # last login time
     is_active = Column(Boolean, default=True, nullable=False)  # account active
+    is_email_verified = Column(Boolean, default=False, nullable=False)  # email verified status
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(

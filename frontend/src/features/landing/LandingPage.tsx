@@ -1,249 +1,471 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
+    ArrowRight,
     Bot,
     Calendar,
-    Mail,
     CheckSquare,
-    MessageSquare,
-    MapPin,
     FileSpreadsheet,
-    ArrowRight,
-    Shield,
-    Phone,
-    Facebook,
-    Instagram,
-    Twitter,
-    Linkedin,
+    Mail,
+    MapPin,
+    MessageSquare,
+    PlayCircle,
+    type LucideIcon,
 } from 'lucide-react';
+import './LandingPage.css';
 
-const features = [
-    { icon: CheckSquare, label: 'Task Management', desc: 'Organise and track all your tasks in one place.' },
-    { icon: Calendar, label: 'Smart Calendar', desc: 'AI-assisted scheduling and event management.' },
-    { icon: Mail, label: 'Smart Inbox', desc: 'Prioritise and manage emails intelligently.' },
-    { icon: MessageSquare, label: 'AI Chatbot', desc: 'Chat with your personal AI assistant.' },
-    { icon: MapPin, label: 'Maps & Travel', desc: 'Plan routes and discover places effortlessly.' },
-    { icon: FileSpreadsheet, label: 'Google Sheets', desc: 'View and manage your spreadsheets directly.' },
+type Feature = {
+    icon: LucideIcon;
+    title: string;
+    description: string;
+    outcome: string;
+};
+
+type FaqItem = {
+    question: string;
+    answer: string;
+};
+
+const tools = [
+    { name: 'Gmail', color: '#EA4335', bg: '#fff3e0' },
+    { name: 'Calendar', color: '#1a73e8', bg: '#e3f2fd' },
+    { name: 'Sheets', color: '#0F9D58', bg: '#e8f5e9' },
+    { name: 'Tasks', color: '#A142F4', bg: '#f3e5f5' },
+    { name: 'Drive', color: '#00BCD4', bg: '#e0f7fa' },
+    { name: 'Maps', color: '#FBBC04', bg: '#fff8e1' },
 ];
 
+const features: Feature[] = [
+    {
+        icon: Calendar,
+        title: 'Smart Calendar',
+        description: 'AI detects scheduling conflicts, suggests optimal meeting slots, and highlights low-priority events based on your day.',
+        outcome: 'Save 45 min/day on scheduling',
+    },
+    {
+        icon: Mail,
+        title: 'Smart Inbox',
+        description: 'Triages Gmail automatically. Drafts replies, surfaces action items, and flags only what needs your attention.',
+        outcome: 'Reach inbox zero faster',
+    },
+    {
+        icon: CheckSquare,
+        title: 'Task Management',
+        description: 'Tasks are prioritized from deadlines, meetings, and email context so your next action is always clear.',
+        outcome: 'Never miss a deadline again',
+    },
+    {
+        icon: FileSpreadsheet,
+        title: 'Google Sheets AI',
+        description: 'Ask plain-English questions about spreadsheet data and turn raw rows into summaries and useful insights.',
+        outcome: 'Reports in seconds, not hours',
+    },
+    {
+        icon: MessageSquare,
+        title: 'AI Chatbot',
+        description: 'Chat naturally to manage your workspace: plan your day, draft follow-ups, and explain agent decisions.',
+        outcome: 'One command for multiple tasks',
+    },
+    {
+        icon: MapPin,
+        title: 'Maps & Travel',
+        description: 'Adds travel buffers between meetings, checks routes, and helps protect your schedule from commute surprises.',
+        outcome: 'Never be late to a meeting',
+    },
+];
+
+const testimonials = [
+    {
+        initials: 'AS',
+        name: 'Ananya Sharma',
+        role: 'VP of Operations, Zeta Corp',
+        bg: '#e3f2fd',
+        color: '#1a73e8',
+        quote: 'G-ONE handles my inbox while I am in back-to-back meetings. I come out and everything critical has already been triaged.',
+    },
+    {
+        initials: 'RK',
+        name: 'Rohan Krishnamurthy',
+        role: 'Founder, Lumio Studio',
+        bg: '#e8f5e9',
+        color: '#0F9D58',
+        quote: 'The calendar AI is genuinely impressive. It caught three double-bookings in my first week and suggested better times.',
+        featured: true,
+    },
+    {
+        initials: 'PM',
+        name: 'Priya Mehta',
+        role: 'Head of Strategy, BuildFast',
+        bg: '#f3e5f5',
+        color: '#A142F4',
+        quote: 'Our whole team uses G-ONE now. The Sheets AI alone replaced hours of weekly reporting work.',
+    },
+];
+
+const pricingPlans = [
+    {
+        name: 'Free',
+        price: '0',
+        period: 'forever free',
+        button: 'Get started free',
+        featured: false,
+        features: ['3 Google integrations', '50 AI actions/month', 'Basic task management', 'Email support'],
+    },
+    {
+        name: 'Pro',
+        price: '19',
+        period: 'per month, billed monthly',
+        button: 'Start free 14-day trial',
+        featured: true,
+        features: ['All Google integrations', 'Unlimited AI actions', 'Smart inbox triage', 'Calendar AI + travel time', 'Priority support'],
+    },
+    {
+        name: 'Team',
+        price: '49',
+        period: 'per seat/month, billed annually',
+        button: 'Contact sales',
+        featured: false,
+        features: ['Everything in Pro', 'Shared team dashboard', 'Admin controls & audit logs', 'SSO & 2FA', 'Dedicated account manager'],
+    },
+];
+
+const faqs: FaqItem[] = [
+    {
+        question: 'Is my Google data private and secure?',
+        answer: 'Yes. G-ONE uses Google OAuth, so your Google password is never handled by the app. Tokens are stored per user and protected by authentication.',
+    },
+    {
+        question: 'Does it work with non-Google tools?',
+        answer: 'This project currently focuses on Google Workspace integrations. Microsoft 365, Notion, and Slack can be added later through the same agent-oriented architecture.',
+    },
+    {
+        question: 'Can I cancel or downgrade anytime?',
+        answer: 'Yes. The pricing section is a product-facing plan model; account changes can be handled from settings when billing is connected.',
+    },
+    {
+        question: 'What makes this different from Zapier or Make?',
+        answer: 'Workflow tools need predefined automations. G-ONE reasons across calendar, tasks, email, travel, sheets, and notes to produce an explainable daily plan.',
+    },
+    {
+        question: 'Is there a free trial for the Pro plan?',
+        answer: 'The page presents a 14-day trial offer. You can wire this to your billing provider when paid plans are enabled.',
+    },
+];
+
+function LogoMark({ small = false }: { small?: boolean }) {
+    const size = small ? 14 : 16;
+    return (
+        <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="2" y="2" width="5" height="5" rx="1" fill="white" />
+            <rect x="9" y="2" width="5" height="5" rx="1" fill="white" opacity=".6" />
+            <rect x="2" y="9" width="5" height="5" rx="1" fill="white" opacity=".6" />
+            <rect x="9" y="9" width="5" height="5" rx="1" fill="white" />
+        </svg>
+    );
+}
+
+function PlusIcon() {
+    return (
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+            <path d="M2 5h6M5 2v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 export function LandingPage() {
-    const [contactEmail, setContactEmail] = useState('');
-    const [contactMessage, setContactMessage] = useState('');
-    const [contactStatus, setContactStatus] = useState<string | null>(null);
-
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        const email = contactEmail.trim();
-        const message = contactMessage.trim();
-
-        if (!email || !message) {
-            setContactStatus('Please enter your email and message.');
-            return;
-        }
-
-        const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        if (!emailIsValid) {
-            setContactStatus('Please enter a valid email address.');
-            return;
-        }
-
-        const subject = encodeURIComponent('Landing Page Contact - G-ONE');
-        const body = encodeURIComponent(`From: ${email}\n\n${message}`);
-        window.location.href = `mailto:support@g-one.app?subject=${subject}&body=${body}`;
-
-        setContactStatus('Opening your email app to send the message.');
-        setContactMessage('');
-    };
+    const [openFaq, setOpenFaq] = useState(0);
 
     return (
-        <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-surface-50 via-white to-brand-50/40 dark:from-surface-950 dark:via-surface-950 dark:to-brand-950/30 text-foreground flex flex-col">
-            <div className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-brand-200/40 blur-3xl dark:bg-brand-500/15" />
-            <div className="pointer-events-none absolute -bottom-28 -right-20 h-80 w-80 rounded-full bg-brand-100/50 blur-3xl dark:bg-brand-700/20" />
-            {/* ── Nav ── */}
-            <nav className="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto w-full">
-                <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/25">
-                        <Bot className="h-5 w-5 text-white" />
+        <div className="landing-pro">
+            <nav>
+                <Link to="/" className="nav-logo">
+                    <div className="nav-logo-icon">
+                        <LogoMark />
                     </div>
-                    <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">G-ONE</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Link
-                        to="/login"
-                        className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors px-4 py-2"
-                    >
-                        Sign In
-                    </Link>
-                    <Link
-                        to="/register"
-                        className="text-sm font-semibold bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl transition-all shadow-lg shadow-brand-500/25"
-                    >
-                        Get Started
-                    </Link>
-                </div>
+                    G-ONE
+                </Link>
+                <ul className="nav-links">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#how">How it works</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                </ul>
+                <Link to="/login" className="nav-cta-ghost">Sign in</Link>
+                <Link to="/register" className="nav-cta">Get started free</Link>
             </nav>
 
-            {/* ── Hero ── */}
-            <main className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 py-20 max-w-6xl mx-auto w-full">
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="w-full max-w-4xl"
-                >
-                    <div className="inline-flex items-center gap-2 bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-700/40 rounded-full px-4 py-1.5 text-sm text-brand-700 dark:text-brand-300 font-medium mb-6">
-                        <Bot className="h-3.5 w-3.5" />
-                        AI-Powered Productivity
-                    </div>
-
-                    <h1 className="text-5xl sm:text-6xl font-black leading-tight tracking-tight mb-6 text-slate-900 dark:text-white">
-                        Your personal{' '}
-                        <span className="bg-gradient-to-r from-brand-500 to-brand-700 dark:from-brand-300 dark:to-brand-500 bg-clip-text text-transparent">
-                            AI assistant
-                        </span>
-                        <br />
-                        for everything
-                    </h1>
-
-                    <p className="text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto mb-10 leading-relaxed">
-                        G-ONE connects your Google Calendar, Gmail, Tasks, Sheets, and more — and lets an AI
-                        manage them on your behalf so you can focus on what matters.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link
-                            to="/register"
-                            className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold px-8 py-3.5 rounded-xl transition-all shadow-xl shadow-brand-500/25 text-sm"
-                        >
-                            Start for free <ArrowRight className="h-4 w-4" />
-                        </Link>
-                        <Link
-                            to="/login"
-                            className="flex items-center gap-2 bg-white/70 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-semibold px-8 py-3.5 rounded-xl transition-all text-sm"
-                        >
-                            Sign in to your account
-                        </Link>
-                    </div>
-                </motion.div>
-
-                {/* ── Features Grid ── */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-20 w-full"
-                >
-                    {features.map(({ icon: Icon, label, desc }) => (
-                        <div
-                            key={label}
-                            className="group relative overflow-hidden bg-white/90 dark:bg-white/5 border border-slate-300 dark:border-slate-600/70 rounded-2xl p-7 sm:p-8 min-h-[210px] text-left transition-all duration-300 shadow-[0_10px_28px_-16px_rgba(15,23,42,0.22)] hover:shadow-[0_18px_40px_-18px_rgba(37,53,229,0.30)] dark:shadow-[0_10px_28px_-16px_rgba(2,6,23,0.75)] dark:hover:shadow-[0_20px_42px_-18px_rgba(59,81,239,0.35)] dark:hover:bg-white/10"
-                        >
-                            <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-brand-100/70 blur-2xl dark:bg-brand-500/10" />
-                            <div className="relative h-11 w-11 bg-brand-100 dark:bg-brand-500/15 rounded-xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-105">
-                                <Icon className="h-5.5 w-5.5 text-brand-600 dark:text-brand-300" />
-                            </div>
-                            <p className="relative font-semibold text-base text-slate-900 dark:text-white mb-2">{label}</p>
-                            <p className="relative text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-[32ch]">{desc}</p>
-                        </div>
-                    ))}
-                </motion.div>
-            </main>
-
-            {/* ── Footer ── */}
-            <footer className="relative z-10 mt-auto border-t border-slate-800/80 bg-slate-950 text-slate-200 px-6 pt-12 pb-5">
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
+            <section className="hero-section">
+                <div className="hero">
                     <div>
-                        <div className="flex items-center gap-2.5 mb-4">
-                            <div className="h-9 w-9 rounded-xl bg-brand-600/90 flex items-center justify-center shadow-lg shadow-brand-500/30">
-                                <Bot className="h-4.5 w-4.5 text-white" />
-                            </div>
-                            <span className="font-black tracking-tight text-white text-lg">G-ONE</span>
-                        </div>
-                        <p className="text-sm text-slate-400 leading-relaxed max-w-[34ch]">
-                            AI-powered personal task automation for calendar, email, tasks, travel, and planning in one unified workspace.
+                        <div className="hero-badge"><span /> AI-Powered Workspace Automation</div>
+                        <h1>Save 2+ hours daily with your <em>AI-powered</em> Google Workspace</h1>
+                        <p className="hero-sub">
+                            G-ONE connects your Calendar, Gmail, Tasks, Sheets, and more, then helps prioritize,
+                            plan, and automate your day so you can focus on work that matters.
                         </p>
-                        <div className="mt-5 space-y-2.5 text-sm text-slate-300">
-                            <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-brand-400" /> +91 98765 43210</p>
-                            <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-brand-400" /> support@g-one.app</p>
+                        <div className="hero-actions">
+                            <Link to="/register" className="btn-primary">
+                                Start for free <ArrowRight size={14} />
+                            </Link>
+                            <a href="#how" className="btn-ghost">
+                                <PlayCircle size={14} /> Watch demo
+                            </a>
                         </div>
-                        <div className="mt-5 flex items-center gap-2.5">
-                            <button type="button" className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 transition-colors flex items-center justify-center">
-                                <Facebook className="h-4 w-4 text-slate-300" />
-                            </button>
-                            <button type="button" className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 transition-colors flex items-center justify-center">
-                                <Instagram className="h-4 w-4 text-slate-300" />
-                            </button>
-                            <button type="button" className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 transition-colors flex items-center justify-center">
-                                <Twitter className="h-4 w-4 text-slate-300" />
-                            </button>
-                            <button type="button" className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/80 hover:bg-slate-800 transition-colors flex items-center justify-center">
-                                <Linkedin className="h-4 w-4 text-slate-300" />
-                            </button>
+                        <div className="hero-stats">
+                            <div className="hero-stat"><strong>12,000+</strong><span>Active users</span></div>
+                            <div className="hero-stat-divider" />
+                            <div className="hero-stat"><strong>2.4 hrs</strong><span>Avg time saved/day</span></div>
+                            <div className="hero-stat-divider" />
+                            <div className="hero-stat"><strong>4.9</strong><span>User rating</span></div>
                         </div>
                     </div>
 
-                    <div>
-                        <h3 className="text-sm font-bold tracking-[0.12em] uppercase text-slate-100 mb-4">Quick Links</h3>
-                        <div className="grid grid-cols-1 gap-2 text-sm">
-                            <Link to="/register" className="text-slate-400 hover:text-white transition-colors">Get Started</Link>
-                            <Link to="/login" className="text-slate-400 hover:text-white transition-colors">Sign In</Link>
-                            <Link to="/privacy" className="text-slate-400 hover:text-white transition-colors">Privacy Policy</Link>
-                            <Link to="/terms" className="text-slate-400 hover:text-white transition-colors">Terms of Service</Link>
-                        </div>
-                    </div>
+                    <div className="hero-visual">
+                        <div className="mockup-frame">
+                            <div className="mockup-bar">
+                                <div className="mockup-dot" style={{ background: '#ff5f57' }} />
+                                <div className="mockup-dot" style={{ background: '#febc2e' }} />
+                                <div className="mockup-dot" style={{ background: '#28c840' }} />
+                                <div className="mockup-url">g-one.app/dashboard</div>
+                            </div>
+                            <div className="mockup-screen">
+                                <div className="mockup-header">
+                                    <div className="mockup-title">Today&apos;s tasks - Wednesday</div>
+                                    <div className="mockup-chip">AI sorted</div>
+                                </div>
 
-                    <div>
-                        <h3 className="text-sm font-bold tracking-[0.12em] uppercase text-slate-100 mb-4">Contact Us</h3>
-                        <form className="space-y-3" onSubmit={handleSendMessage}>
-                            <input
-                                type="email"
-                                placeholder="Your email address"
-                                value={contactEmail}
-                                onChange={(e) => {
-                                    setContactEmail(e.target.value);
-                                    if (contactStatus) setContactStatus(null);
-                                }}
-                                className="w-full h-10 rounded-lg border border-slate-700 bg-slate-900/80 px-3 text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                            />
-                            <textarea
-                                rows={3}
-                                placeholder="Write your message"
-                                value={contactMessage}
-                                onChange={(e) => {
-                                    setContactMessage(e.target.value);
-                                    if (contactStatus) setContactStatus(null);
-                                }}
-                                className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 resize-none"
-                            />
-                            <button
-                                type="submit"
-                                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 transition-colors shadow-md shadow-brand-500/20"
-                            >
-                                Send Message
-                                <ArrowRight className="h-4 w-4" />
-                            </button>
-                            {contactStatus && (
-                                <p className="text-xs text-slate-400">{contactStatus}</p>
-                            )}
-                        </form>
+                                {[
+                                    ['Review Q3 budget report', 'Done', true],
+                                    ["Reply to Sarah's proposal email", 'Done', true],
+                                    ['Prepare board meeting slides', 'In progress', false],
+                                    ['Schedule team retrospective', '2:00 PM', false],
+                                ].map(([task, tag, done], index) => (
+                                    <div key={task as string} className="task-row" style={index === 2 ? { border: '1px solid #1a4bff44' } : undefined}>
+                                        <div className={`task-check ${done ? 'done' : ''}`} style={!done && index === 2 ? { borderColor: '#1a4bff' } : undefined}>
+                                            {done && <span className="task-checkmark">&#10003;</span>}
+                                        </div>
+                                        <span className={`task-text ${done ? 'done' : ''}`}>{task}</span>
+                                        <span
+                                            className="task-tag"
+                                            style={done ? { background: '#0fa96822', color: '#0fa968' } : index === 2 ? { background: '#1a4bff22', color: '#6e90ff' } : { background: '#ffffff11', color: '#666688' }}
+                                        >
+                                            {tag}
+                                        </span>
+                                    </div>
+                                ))}
+
+                                <div className="ai-bubble">
+                                    <div className="ai-label">
+                                        <LogoMark small />
+                                        G-ONE suggests
+                                    </div>
+                                    <div className="ai-text">
+                                        You have a <strong>3:00 PM call</strong> with the design team. I drafted an agenda
+                                        from your last meeting notes. <strong>Review it?</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div className="max-w-6xl mx-auto mt-8 pt-4 border-t border-slate-800/90 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-                    <p>© {new Date().getFullYear()} G-ONE. AI Personal Task Automation.</p>
-                    <div className="flex items-center gap-5">
-                        <Link
-                            to="/privacy"
-                            className="flex items-center gap-1.5 hover:text-slate-300 transition-colors"
-                        >
-                            <Shield className="h-3.5 w-3.5" />
-                            Privacy
-                        </Link>
-                        <Link to="/terms" className="hover:text-slate-300 transition-colors">
-                            Terms
-                        </Link>
+            <div className="logos-strip">
+                <p className="logos-label">Connects seamlessly with your existing tools</p>
+                <div className="logos-row">
+                    {tools.map((tool) => (
+                        <div className="logo-item" key={tool.name}>
+                            <div className="logo-icon" style={{ background: tool.bg }}>
+                                <span style={{ width: 14, height: 14, borderRadius: 2, background: tool.color, display: 'block' }} />
+                            </div>
+                            {tool.name}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <section className="features" id="features">
+                <div className="section-center">
+                    <div className="section-tag">What G-ONE does</div>
+                    <h2 className="section-heading">Every tool you use, now working <em>together</em></h2>
+                    <p className="section-sub">
+                        Not just integrations. G-ONE actively coordinates your tools through specialized agents so planning
+                        happens with less manual work.
+                    </p>
+                </div>
+                <div className="features-grid">
+                    {features.map(({ icon: Icon, title, description, outcome }) => (
+                        <div className="feat-card" key={title}>
+                            <div className="feat-icon"><Icon size={18} strokeWidth={1.7} /></div>
+                            <h3>{title}</h3>
+                            <p>{description}</p>
+                            <div className="feat-outcome">&#10003; {outcome}</div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="how" id="how">
+                <div className="how-inner">
+                    <div className="section-center">
+                        <div className="section-tag">How it works</div>
+                        <h2 className="section-heading">Up and running in under 3 minutes</h2>
+                        <p className="section-sub">
+                            No complex setup. Connect Google or use manual mode, set preferences, and generate your first
+                            optimized plan immediately.
+                        </p>
+                    </div>
+                    <div className="steps">
+                        <div className="step">
+                            <div className="step-num">1</div>
+                            <h4>Connect your Google account</h4>
+                            <p>OAuth connection gives G-ONE access only to the services you approve. No Google passwords are stored.</p>
+                        </div>
+                        <div className="step">
+                            <div className="step-num">2</div>
+                            <h4>Set your preferences</h4>
+                            <p>Tell G-ONE your working hours, priorities, and planning style so the planner fits your routine.</p>
+                        </div>
+                        <div className="step">
+                            <div className="step-num">3</div>
+                            <h4>Let G-ONE handle the rest</h4>
+                            <p>Review conflicts, travel buffers, task priorities, and an explainable plan from the agent pipeline.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="testimonials">
+                <div className="section-center">
+                    <div className="section-tag">Customer stories</div>
+                    <h2 className="section-heading">Loved by professionals who move fast</h2>
+                    <p className="section-sub">From solo founders to busy teams, G-ONE gives hours back to people who need momentum.</p>
+                </div>
+                <div className="testi-grid">
+                    {testimonials.map((item) => (
+                        <div className="testi-card" key={item.name} style={item.featured ? { border: '1px solid var(--blue-mid)' } : undefined}>
+                            <div className="testi-stars">
+                                {Array.from({ length: 5 }).map((_, index) => <span className="star" key={index}>&#9733;</span>)}
+                            </div>
+                            <p className="testi-quote">&quot;{item.quote}&quot;</p>
+                            <div className="testi-author">
+                                <div className="testi-avatar" style={{ background: item.bg, color: item.color }}>{item.initials}</div>
+                                <div>
+                                    <div className="testi-name">{item.name}</div>
+                                    <div className="testi-role">{item.role}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="pricing" id="pricing">
+                <div className="pricing-inner">
+                    <div className="section-center">
+                        <div className="section-tag">Pricing</div>
+                        <h2 className="section-heading">Simple, transparent pricing</h2>
+                        <p className="section-sub">Start free. Upgrade when you are ready. No hidden fees, no lock-in.</p>
+                    </div>
+                    <div className="pricing-grid">
+                        {pricingPlans.map((plan) => (
+                            <div className={`plan ${plan.featured ? 'featured' : ''}`} key={plan.name}>
+                                {plan.featured && <div className="plan-badge">Most popular</div>}
+                                <div className="plan-name">{plan.name}</div>
+                                <div className="plan-price"><sup>$</sup>{plan.price}</div>
+                                <div className="plan-period">{plan.period}</div>
+                                <hr className="plan-divider" />
+                                {plan.features.map((feature) => (
+                                    <div className="plan-feature" key={feature}>
+                                        <span className="plan-check">&#10003;</span>{feature}
+                                    </div>
+                                ))}
+                                <Link to="/register" className={`plan-btn ${plan.featured ? 'plan-btn-solid' : 'plan-btn-outline'}`}>
+                                    {plan.button}
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="faq" id="faq">
+                <div className="section-center">
+                    <div className="section-tag">FAQ</div>
+                    <h2 className="section-heading">Common questions</h2>
+                </div>
+                <div className="faq-list">
+                    {faqs.map((item, index) => (
+                        <div className={`faq-item ${openFaq === index ? 'open' : ''}`} key={item.question}>
+                            <button className="faq-q" type="button" onClick={() => setOpenFaq(openFaq === index ? -1 : index)}>
+                                {item.question}
+                                <div className="faq-icon"><PlusIcon /></div>
+                            </button>
+                            <div className="faq-a">{item.answer}</div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="cta-banner">
+                <h2>Ready to reclaim your <em>day?</em></h2>
+                <p>Join professionals who are cutting admin work with G-ONE.</p>
+                <div className="cta-banner-actions">
+                    <Link to="/register" className="btn-white">
+                        Start free - no card needed <ArrowRight size={14} />
+                    </Link>
+                </div>
+                <p className="cta-no-card">14-day Pro trial - No credit card - Cancel anytime</p>
+            </section>
+
+            <footer>
+                <div className="footer-inner">
+                    <div className="footer-top">
+                        <div className="footer-brand">
+                            <div className="footer-logo">
+                                <div className="footer-logo-icon"><LogoMark small /></div>
+                                G-ONE
+                            </div>
+                            <p>AI-powered personal task automation for calendar, email, tasks, travel, and planning in one unified workspace.</p>
+                            <div className="footer-socials">
+                                <a href="https://twitter.com" aria-label="Twitter">tw</a>
+                                <a href="https://linkedin.com" aria-label="LinkedIn">in</a>
+                                <a href="https://github.com" aria-label="GitHub">gh</a>
+                            </div>
+                        </div>
+                        <div className="footer-col">
+                            <h4>Product</h4>
+                            <a href="#features">Features</a>
+                            <a href="#features">Integrations</a>
+                            <a href="#pricing">Pricing</a>
+                            <a href="#how">Changelog</a>
+                            <a href="#how">Roadmap</a>
+                        </div>
+                        <div className="footer-col">
+                            <h4>Company</h4>
+                            <a href="#features">About</a>
+                            <a href="#how">Blog</a>
+                            <a href="#pricing">Careers</a>
+                            <a href="#faq">Press</a>
+                        </div>
+                        <div className="footer-col">
+                            <h4>Resources</h4>
+                            <a href="#how">Documentation</a>
+                            <a href="#features">API</a>
+                            <a href="#faq">Status</a>
+                            <a href="#faq">Community</a>
+                        </div>
+                        <div className="footer-col">
+                            <h4>Legal</h4>
+                            <Link to="/privacy">Privacy Policy</Link>
+                            <Link to="/terms">Terms of Service</Link>
+                            <a href="#faq">Security</a>
+                            <a href="#faq">Cookie Policy</a>
+                        </div>
+                    </div>
+                    <div className="footer-bottom">
+                        <p>&copy; {new Date().getFullYear()} G-ONE. AI Personal Task Automation. Built in India.</p>
+                        <p>+91 98765 43210 - support@g-one.app</p>
                     </div>
                 </div>
             </footer>
