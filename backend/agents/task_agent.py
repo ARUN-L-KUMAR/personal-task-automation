@@ -21,7 +21,7 @@ class TaskAgent:
             prompt_content = f.read()
 
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text.
 {{
@@ -34,7 +34,8 @@ CRITICAL: Return ONLY a valid JSON object. No additional text.
     "priority_order": ["array"],
     "workload_assessment": "light/moderate/heavy",
     "recommendations": ["array"]
-}}"""),
+}}
+"""),
             ("human", """Analyze these tasks:
 {tasks}
 

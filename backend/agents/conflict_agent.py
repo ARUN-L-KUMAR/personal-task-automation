@@ -13,7 +13,7 @@ class ConflictAgent:
             prompt_content = f.read()
         
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text, explanations, or formatting.
 The response must be parseable JSON that matches this exact structure:
@@ -29,7 +29,8 @@ The response must be parseable JSON that matches this exact structure:
     ],
     "conflict_count": 0,
     "summary": "string"
-}}"""),
+}}
+"""),
             ("human", """Analyze potential conflicts between these meetings and tasks:
 
 Meetings:

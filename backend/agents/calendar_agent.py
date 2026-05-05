@@ -21,7 +21,7 @@ class CalendarAgent:
             prompt_content = f.read()
 
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text.
 {{
@@ -32,7 +32,8 @@ CRITICAL: Return ONLY a valid JSON object. No additional text.
     "locations": ["array"],
     "insights": ["array"],
     "attendees_summary": "string"
-}}"""),
+}}
+"""),
             ("human", """Analyze these calendar events:
 {events}
 

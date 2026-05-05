@@ -21,7 +21,7 @@ class ContactsAgent:
             prompt_content = f.read()
 
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text.
 {{
@@ -30,7 +30,8 @@ CRITICAL: Return ONLY a valid JSON object. No additional text.
     "vip_contacts": ["array"],
     "missing_info": ["array"],
     "suggestions": ["array"]
-}}"""),
+}}
+"""),
             ("human", """Contacts:
 {contacts}
 

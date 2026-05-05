@@ -21,18 +21,19 @@ class TravelAgent:
             prompt_content = f.read()
 
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text.
-{{{{
+{{
     "summary": "string",
     "total_travel_time": "string",
-    "travel_plan": [{{{{}}}}],
-    "routes": [{{{{}}}}],
+    "travel_plan": [{{}}],
+    "routes": [{{}}],
     "departure_times": ["array"],
     "optimization_tips": ["array"],
     "warnings": ["array"]
-}}}}"""),
+}}
+"""),
             ("human", """Analyze travel requirements for these meetings:
 {meetings}
 

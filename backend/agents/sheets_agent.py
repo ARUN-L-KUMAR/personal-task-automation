@@ -21,7 +21,7 @@ class SheetsAgent:
             prompt_content = f.read()
 
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text.
 {{
@@ -30,7 +30,8 @@ CRITICAL: Return ONLY a valid JSON object. No additional text.
     "patterns": ["array"],
     "recommendations": ["array"],
     "action_items": ["array"]
-}}"""),
+}}
+"""),
             ("human", """Analyze this spreadsheet data:
 
 Headers: {headers}

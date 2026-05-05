@@ -13,7 +13,7 @@ class PlanningAgent:
             prompt_content = f.read()
         
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text, explanations, or formatting.
 The response must be parseable JSON that matches this exact structure:
@@ -30,7 +30,8 @@ The response must be parseable JSON that matches this exact structure:
     "time_management_tips": ["array", "of", "strings"],
     "focus_areas": ["array", "of", "strings"],
     "summary": "string"
-}}"""),
+}}
+"""),
             ("human", """Create an optimized daily plan based on this information:
 
 Calendar Analysis:

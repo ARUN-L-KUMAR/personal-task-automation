@@ -85,7 +85,8 @@ function PageVoiceBubble({ msg }: { msg: VoiceMessage }) {
                         : msg.error
                             ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-tl-sm'
                             : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm rounded-tl-sm'
-                )}>n                    {isUser ? msg.content : <PageVoiceMarkdown text={msg.content} />}
+                )}>
+                    {isUser ? msg.content : <PageVoiceMarkdown text={msg.content} />}
                 </div>
                 <div className={cn('flex items-center gap-2 px-1', isUser ? 'justify-end' : 'justify-start')}>
                     <span className="text-[10px] text-slate-400">

@@ -21,7 +21,7 @@ class NotesAgent:
             prompt_content = f.read()
 
         self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""{prompt_content}
+            ("system", prompt_content + """
 
 CRITICAL: Return ONLY a valid JSON object. No additional text.
 {{
@@ -30,7 +30,8 @@ CRITICAL: Return ONLY a valid JSON object. No additional text.
     "follow_up_reminders": ["array"],
     "key_notes": ["array"],
     "recommendations": ["array"]
-}}"""),
+}}
+"""),
             ("human", """Generate useful notes based on:
 
 Events:
