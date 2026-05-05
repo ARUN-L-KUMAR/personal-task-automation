@@ -24,15 +24,15 @@ class EmailAgent:
             ("system", f"""{prompt_content}
 
 CRITICAL: Return ONLY a valid JSON object. No additional text.
-{{
+{{{{
     "summary": "string",
     "total_emails": 0,
     "unread_count": 0,
     "urgent_emails": ["array"],
     "action_items": ["array"],
-    "categories": {{}},
+    "categories": {{{{}}}},
     "recommendations": ["array"]
-}}"""),
+}}}}"""),
             ("human", """Analyze these emails:
 {emails}
 
