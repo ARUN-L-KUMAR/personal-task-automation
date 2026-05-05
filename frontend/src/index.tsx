@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import './store/useLayoutDensityStore';
+import './store/useGeneralPreferencesStore';
+import './store/bootstrapGeneralPreferences';
 import { Router } from './app/router';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 

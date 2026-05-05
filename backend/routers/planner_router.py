@@ -204,6 +204,32 @@ def get_last_output(
 # ── Helper ──
 
 def _plan_to_dict(plan) -> dict:
+    """Convert AIPlan database model to frontend-friendly dict with schedule array."""
+    # Extract the schedule from the stored optimized_schedule
+    schedule = []
+    if plan.optimized_schedule:
+        if isinstance(plan.optimized_schedule, dict):
+            # If stored as { "optimized_schedule": [...], "conflict_resolutions": [...] }
+            if "optimized_schedule" in plan.optimized_schedule:
+                schedule = plan.optimized_schedule.get("optimized_schedule", [])
+            # If stored directly as a list
+            elif isinstance(plan.optimized_schedule, list):
+                schedule = plan.optimized_schedule
+        elif isinstance(plan.optimized_schedule, list):
+            schedule = plan.optimized_schedule
+    
+    # Convert schedule entries to include needed fields for frontend
+    formatted_schedule = []
+    for entry in schedule:
+        if isinstance(entry, dict):
+            formatted_schedule.append({
+                "title": entry.get("activity") or entry.get("title", ""),
+                "type": entry.get("type", "task").lower(),
+                "time": entry.get("time_block", entry.get("time", "")),
+                "priority": entry.get("priority", "medium"),
+                "endTime": entry.get("endTime", ""),
+            })
+    
     return {
         "id": str(plan.id),
         "input": {
@@ -212,12 +238,15 @@ def _plan_to_dict(plan) -> dict:
             "tasks": [],
         },
         "output": {
+            "schedule": formatted_schedule,
+            "conflicts": plan.conflicts or [],
+            "travel": plan.travel_plan or {"routes": [], "totalMinutes": 0},
             "generated_at": plan.created_at.isoformat() if plan.created_at else None,
             "conflict_analysis": plan.conflicts or "No conflicts detected.",
             "travel_reminders": plan.travel_plan or "No travel needed.",
             "ai_explanation": plan.optimization_mode or "Optimization complete.",
             "rule_based_plan": plan.optimized_schedule or "No plan generated yet.",
-            "productivity_score": plan.productivity_score,
+            "productivity_score": plan.productivity_score or 0,
             "overload_risk": plan.overload_risk,
             "model_used": plan.model_used,
         },

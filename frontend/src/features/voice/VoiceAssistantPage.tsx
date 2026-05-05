@@ -10,6 +10,7 @@ import {
     VOICE_LANGUAGES,
     type VoiceMessage,
 } from '../../hooks/useVoice';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // Lightweight inline markdown formatter
 function fmtInline(text: string): React.ReactNode {
@@ -132,6 +133,7 @@ export function VoiceAssistantPage() {
         fetchVoiceSessions, loadVoiceSession, startNewSession, deleteVoiceSession,
         endRef,
     } = useVoice();
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
     // ── Canvas waveform ──
     const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -252,6 +254,32 @@ export function VoiceAssistantPage() {
     const hasConversation = messages.some(m => m.id !== 'voice-welcome');
     const currentLang = VOICE_LANGUAGES.find(l => l.code === language);
 
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: 'Speak naturally to manage your life.',
+            actions: hasConversation ? (
+                <>
+                    <button
+                        onClick={exportTranscript}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-violet-400 hover:text-violet-600 transition-colors"
+                    >
+                        {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied ? 'Copied!' : 'Export'}
+                    </button>
+                    <button
+                        onClick={startNewSession}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-violet-400 hover:text-violet-600 transition-colors"
+                    >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        New Session
+                    </button>
+                </>
+            ) : undefined,
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, copied, exportTranscript, hasConversation, setHeaderContext, startNewSession]);
+
     const statusLabel = isListening ? 'Listening... Speak now' : isSpeaking ? 'Speaking reply...' : isProcessing ? 'Thinking...' : 'Ready';
 
     const micBtnClass = cn(
@@ -278,37 +306,13 @@ export function VoiceAssistantPage() {
     }, [endHoldToTalk, isPushTalking]);
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 py-8 px-4">
-
-            {/* ── Page header ── */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Voice Assistant</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Speak naturally to manage your life.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {hasConversation && (
-                        <button
-                            onClick={exportTranscript}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-violet-400 hover:text-violet-600 transition-colors"
-                        >
-                            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                            {copied ? 'Copied!' : 'Export'}
-                        </button>
-                    )}
-                    {hasConversation && (
-                        <button onClick={startNewSession} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:border-violet-400 hover:text-violet-600 transition-colors">
-                            <RefreshCw className="h-3.5 w-3.5" />New Session
-                        </button>
-                    )}
-                </div>
-            </div>
+        <div className="h-[calc(100vh-120px)] flex flex-col overflow-hidden">
 
             {/* ── Main 2-column grid ── */}
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-3 gap-0 flex-1 min-h-0 border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 
                 {/* ── Main column (col-span-2) ── */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-2 space-y-3 min-h-0 overflow-y-auto custom-scrollbar p-4">
 
                     {/* Browser compat warning */}
                     {!isSTTSupported && (
@@ -473,7 +477,7 @@ export function VoiceAssistantPage() {
                 </div>
 
                 {/* ── Sidebar (col-span-1) ── */}
-                <div className="space-y-4">
+                <div className="space-y-3 min-h-0 overflow-y-auto custom-scrollbar p-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
 
                     {/* History */}
                     <SidePanel title="Voice Sessions" icon={Clock}>

@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Calendar, History, Settings, Bot,
-    Mail, CheckSquare, Users, Map, FileSpreadsheet,
+    Mail, CheckSquare, Map,
     MessageSquare, Mic, ChevronLeft, ChevronRight, X,
-    Wifi, WifiOff, Sparkles, Zap, StickyNote, BarChart3,
+    Wifi, WifiOff, Zap, BarChart3, LayoutGrid,
     LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,13 +38,13 @@ const navSections = [
     {
         title: 'Google Services',
         items: [
-            { name: 'Calendar', href: '/calendar', icon: Calendar },
+             { name: 'Email', href: '/email', icon: Mail },
             { name: 'Tasks', href: '/tasks', icon: CheckSquare },
-            { name: 'Email', href: '/email', icon: Mail },
-            { name: 'Contacts', href: '/contacts', icon: Users },
+            { name: 'Calendar', href: '/calendar', icon: Calendar },
+            
+           
             { name: 'Maps', href: '/maps', icon: Map },
-            { name: 'Sheets', href: '/sheets', icon: FileSpreadsheet },
-            { name: 'Notes', href: '/notes', icon: StickyNote },
+            { name: 'ALL', href: '/all', icon: LayoutGrid }
         ]
     },
     {
@@ -59,6 +59,15 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: Sideba
     const { user, isAuthenticated, logout } = useAuthStore();
     const { isGoogleConnected, isChecking } = useGoogleStatus();
     const navigate = useNavigate();
+    const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+    const avatarSrc = !avatarLoadFailed && user?.avatar_url
+        ? user.avatar_url
+        : null;
+
+    useEffect(() => {
+        setAvatarLoadFailed(false);
+    }, [user?.avatar_url]);
 
     // Build initials from user name
     const initials = user?.name
@@ -156,13 +165,22 @@ export function Sidebar({ isCollapsed, onToggleCollapse, onCloseMobile }: Sideba
                     <div className={cn("flex items-center relative z-10", isCollapsed ? "justify-center" : "gap-4")}>
                         <div className="relative flex-shrink-0">
                             <div className={cn(
-                                "rounded-xl flex items-center justify-center font-black",
+                                "rounded-xl flex items-center justify-center font-black overflow-hidden",
                                 isCollapsed ? "h-8 w-8 text-[10px]" : "h-10 w-10 text-xs",
                                 isGoogleConnected
                                     ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/40"
                                     : "bg-slate-200 dark:bg-slate-700 text-slate-500"
                             )}>
-                                {initials}
+                                {avatarSrc ? (
+                                    <img
+                                        src={avatarSrc}
+                                        alt="Profile avatar"
+                                        className="h-full w-full object-cover"
+                                        onError={() => setAvatarLoadFailed(true)}
+                                    />
+                                ) : (
+                                    initials
+                                )}
                             </div>
                             <div className={cn(
                                 "absolute rounded-full border-[2px]",

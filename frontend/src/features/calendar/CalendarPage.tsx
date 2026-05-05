@@ -11,6 +11,8 @@ import { Badge } from '../../components/ui/Badge';
 import { calendarService } from '../../services/calendar.service';
 import { cn } from '../../utils/cn';
 import { usePageContextStore } from '../../store/usePageContextStore';
+import { useGeneralPreferencesStore } from '../../store/useGeneralPreferencesStore';
+import { formatDateByPreferences, formatTimeByPreferences } from '../../utils/dateTimePreferences';
 import {
     format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
     addDays, addMonths, subMonths, isSameMonth, isSameDay,
@@ -62,7 +64,15 @@ function isAllDay(e: CalEvent) {
 }
 function formatTime(dt: Date | null): string {
     if (!dt) return '';
-    return format(dt, 'h:mm a');
+    return formatTimeByPreferences(dt, '');
+}
+
+function orderedWeekdayLabels(weekStartsOn: 0 | 1, tiny = false): string[] {
+    const short = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const tinyLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const base = tiny ? tinyLabels : short;
+    if (weekStartsOn === 0) return base;
+    return [...base.slice(1), base[0]];
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -300,22 +310,22 @@ function EventPopup({ event, onClose }: { event: CalEvent; onClose: () => void }
 
 // ─── Mini month grid for sidebar ─────────────────────────────────────────────
 function MiniMonthGrid({
-    viewDate, selectedDate, events, onSelectDate,
+    viewDate, selectedDate, events, onSelectDate, weekStartsOn,
 }: {
-    viewDate: Date; selectedDate: Date; events: CalEvent[]; onSelectDate: (d: Date) => void;
+    viewDate: Date; selectedDate: Date; events: CalEvent[]; onSelectDate: (d: Date) => void; weekStartsOn: 0 | 1;
 }) {
     const [miniMonth, setMiniMonth] = useState(startOfMonth(viewDate));
 
     useEffect(() => setMiniMonth(startOfMonth(viewDate)), [viewDate]);
 
     const days = useMemo(() => {
-        const start = startOfWeek(miniMonth, { weekStartsOn: 1 });
-        const end = endOfWeek(endOfMonth(miniMonth), { weekStartsOn: 1 });
+        const start = startOfWeek(miniMonth, { weekStartsOn });
+        const end = endOfWeek(endOfMonth(miniMonth), { weekStartsOn });
         const arr: Date[] = [];
         let cur = start;
         while (cur <= end) { arr.push(cur); cur = addDays(cur, 1); }
         return arr;
-    }, [miniMonth]);
+    }, [miniMonth, weekStartsOn]);
 
     const hasEvent = (d: Date) => events.some(e => {
         const s = eventStart(e);
@@ -334,7 +344,7 @@ function MiniMonthGrid({
                 </button>
             </div>
             <div className="grid grid-cols-7 gap-0">
-                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                {orderedWeekdayLabels(weekStartsOn, true).map((d, i) => (
                     <div key={i} className="text-center text-[10px] font-bold text-slate-400 pb-1">{d}</div>
                 ))}
                 {days.map((day, idx) => (
@@ -370,7 +380,7 @@ function DayAgenda({ date, events, onEventClick }: { date: Date; events: CalEven
     return (
         <div className="space-y-1.5">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                {isToday(date) ? "Today's schedule" : format(date, 'MMM d')}
+                {isToday(date) ? "Today's schedule" : formatDateByPreferences(date, 'N/A')}
             </p>
             {dayEvts.length === 0 ? (
                 <p className="text-xs text-slate-400 italic">No events</p>
@@ -399,12 +409,12 @@ function DayAgenda({ date, events, onEventClick }: { date: Date; events: CalEven
 }
 
 // ─── Month View ───────────────────────────────────────────────────────────────
-function MonthView({ currentDate, events, onSelectDate, onEventClick }: {
+function MonthView({ currentDate, events, onSelectDate, onEventClick, weekStartsOn }: {
     currentDate: Date; events: CalEvent[];
-    onSelectDate: (d: Date) => void; onEventClick: (e: CalEvent) => void;
+    onSelectDate: (d: Date) => void; onEventClick: (e: CalEvent) => void; weekStartsOn: 0 | 1;
 }) {
-    const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
-    const end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
+    const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn });
+    const end = endOfWeek(endOfMonth(currentDate), { weekStartsOn });
 
     const days: Date[] = [];
     let cur = start;
@@ -417,7 +427,7 @@ function MonthView({ currentDate, events, onSelectDate, onEventClick }: {
         <div className="flex flex-col h-full">
             {/* Day headers */}
             <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-800">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                {orderedWeekdayLabels(weekStartsOn).map(d => (
                     <div key={d} className="py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
                         {d}
                     </div>
@@ -471,11 +481,12 @@ function MonthView({ currentDate, events, onSelectDate, onEventClick }: {
 }
 
 // ─── Week View ────────────────────────────────────────────────────────────────
-function WeekView({ currentDate, events, onEventClick }: {
-    currentDate: Date; events: CalEvent[]; onEventClick: (e: CalEvent) => void;
+function WeekView({ currentDate, events, onEventClick, weekStartsOn }: {
+    currentDate: Date; events: CalEvent[]; onEventClick: (e: CalEvent) => void; weekStartsOn: 0 | 1;
 }) {
-    const weekStart = startW(currentDate, { weekStartsOn: 1 });
+    const weekStart = startW(currentDate, { weekStartsOn });
     const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    const weekdayLabels = orderedWeekdayLabels(weekStartsOn);
 
     return (
         <div className="flex flex-col h-full">
@@ -485,7 +496,7 @@ function WeekView({ currentDate, events, onEventClick }: {
                         'py-3 text-center',
                         isToday(d) && 'bg-blue-50 dark:bg-blue-900/20'
                     )}>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">{format(d, 'EEE')}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">{weekdayLabels[i]}</p>
                         <div className={cn(
                             'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold mx-auto mt-0.5',
                             isToday(d) ? 'bg-blue-600 text-white' : 'text-slate-700 dark:text-slate-300'
@@ -551,7 +562,7 @@ function DayView({ currentDate, events, onEventClick }: {
                         <CalendarIcon className="h-8 w-8 text-slate-300" />
                     </div>
                     <h4 className="font-bold text-slate-700 dark:text-slate-300">No events</h4>
-                    <p className="text-sm text-slate-400 mt-1">No events on {format(currentDate, 'MMMM d, yyyy')}.</p>
+                    <p className="text-sm text-slate-400 mt-1">No events on {formatDateByPreferences(currentDate, 'N/A')}.</p>
                 </div>
             ) : (
                 <div className="relative">
@@ -564,7 +575,7 @@ function DayView({ currentDate, events, onEventClick }: {
                             <div key={h} className="flex gap-3 border-b border-slate-50 dark:border-slate-800/60 min-h-[60px]">
                                 <div className="w-14 flex-shrink-0 pt-1 text-right pr-3">
                                     <span className="text-[10px] font-medium text-slate-400">
-                                        {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
+                                        {formatTimeByPreferences(addHours(startOfDay(currentDate), h), '')}
                                     </span>
                                 </div>
                                 <div className="flex-1 py-1 space-y-1">
@@ -610,6 +621,7 @@ export function CalendarPage() {
     const [selectedEvent, setSelectedEvent] = useState<CalEvent | null>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const [createDefaultDate, setCreateDefaultDate] = useState<Date | undefined>();
+    const weekStartsOn = useGeneralPreferencesStore((state) => (state.startOfWeek === 'sunday' ? 0 : 1));
 
     const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
 
@@ -620,11 +632,11 @@ export function CalendarPage() {
         try {
             let rangeStart: Date, rangeEnd: Date;
             if (viewMode === 'month') {
-                rangeStart = startOfDay(startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 }));
-                rangeEnd = endOfDay(endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 }));
+                rangeStart = startOfDay(startOfWeek(startOfMonth(currentDate), { weekStartsOn }));
+                rangeEnd = endOfDay(endOfWeek(endOfMonth(currentDate), { weekStartsOn }));
             } else if (viewMode === 'week') {
-                rangeStart = startOfDay(startW(currentDate, { weekStartsOn: 1 }));
-                rangeEnd = endOfDay(endW(currentDate, { weekStartsOn: 1 }));
+                rangeStart = startOfDay(startW(currentDate, { weekStartsOn }));
+                rangeEnd = endOfDay(endW(currentDate, { weekStartsOn }));
             } else {
                 rangeStart = startOfDay(currentDate);
                 rangeEnd = endOfDay(currentDate);
@@ -636,12 +648,12 @@ export function CalendarPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [currentDate, viewMode]);
+    }, [currentDate, viewMode, weekStartsOn]);
 
     useEffect(() => { fetchRange(); }, [fetchRange]);
 
     // ── Register page context for voice assistant ──
-    const { setPageContext, clearPageContext } = usePageContextStore();
+    const { setPageContext, clearPageContext, setHeaderContext, clearHeaderContext } = usePageContextStore();
     useEffect(() => {
         const lines: string[] = [`Calendar ${viewMode} view. Showing ${events.length} events.`];
         events.slice(0, 10).forEach(e => {
@@ -670,12 +682,12 @@ export function CalendarPage() {
     const title = useMemo(() => {
         if (viewMode === 'month') return format(currentDate, 'MMMM yyyy');
         if (viewMode === 'week') {
-            const ws = startW(currentDate, { weekStartsOn: 1 });
-            const we = endW(currentDate, { weekStartsOn: 1 });
-            return `${format(ws, 'MMM d')} – ${format(we, 'MMM d, yyyy')}`;
+            const ws = startW(currentDate, { weekStartsOn });
+            const we = endW(currentDate, { weekStartsOn });
+            return `${formatDateByPreferences(ws, 'N/A')} – ${formatDateByPreferences(we, 'N/A')}`;
         }
-        return format(currentDate, 'EEEE, MMMM d, yyyy');
-    }, [currentDate, viewMode]);
+        return formatDateByPreferences(currentDate, 'N/A');
+    }, [currentDate, viewMode, weekStartsOn]);
 
     const handleDaySelect = (d: Date) => {
         setCurrentDate(d);
@@ -689,23 +701,12 @@ export function CalendarPage() {
 
     const todayEvents = events.filter(e => { const s = eventStart(e); return s && isToday(s); });
 
-    return (
-        <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
-            {/* ── Header ── */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 flex-shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-                        Calendar
-                        <Badge variant="secondary" className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-none text-[11px]">
-                            <CalendarDays className="h-3 w-3 mr-1" /> Google
-                        </Badge>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        {events.length} event{events.length !== 1 ? 's' : ''} · {title}
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {/* View mode toggle */}
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: `${events.length} event${events.length !== 1 ? 's' : ''} · ${title}`,
+            actions: (
+                <>
                     <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                         {([['month', Grid3X3], ['week', CalendarRange], ['day', LayoutList]] as [ViewMode, React.ElementType][]).map(([mode, Icon]) => (
                             <button
@@ -725,7 +726,6 @@ export function CalendarPage() {
                         ))}
                     </div>
 
-                    {/* Navigation */}
                     <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                         <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
                             <ChevronLeft className="h-4 w-4" />
@@ -745,26 +745,32 @@ export function CalendarPage() {
                     <Button variant="outline" size="sm" onClick={fetchRange} disabled={isLoading} className="h-9 dark:border-slate-700">
                         <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
                     </Button>
-                </div>
-            </header>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, events.length, fetchRange, isLoading, setHeaderContext, title, viewMode]);
 
+    return (
+        <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
             {/* ── Main ── */}
-            <div className="flex flex-1 gap-4 overflow-hidden min-h-0">
+            <div className="flex flex-1 gap-0 overflow-hidden min-h-0 border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 
                 {/* ── Sidebar ── */}
-                <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 gap-3">
+                <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 gap-0 border-r border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40">
                     {/* Mini month nav */}
-                    <Card className="p-3 border-slate-200 dark:border-slate-800">
+                    <Card className="p-3 border-0 border-b border-slate-200 dark:border-slate-800 rounded-none shadow-none">
                         <MiniMonthGrid
                             viewDate={currentDate}
                             selectedDate={currentDate}
                             events={events}
                             onSelectDate={handleDaySelect}
+                            weekStartsOn={weekStartsOn}
                         />
                     </Card>
 
                     {/* Today agenda */}
-                    <Card className="p-3 border-slate-200 dark:border-slate-800 flex-1 overflow-y-auto custom-scrollbar">
+                    <Card className="p-3 border-0 border-b border-slate-200 dark:border-slate-800 rounded-none shadow-none flex-1 overflow-y-auto custom-scrollbar">
                         <DayAgenda
                             date={new Date()}
                             events={events}
@@ -773,7 +779,7 @@ export function CalendarPage() {
                     </Card>
 
                     {/* Stats */}
-                    <Card className="p-3 border-slate-200 dark:border-slate-800">
+                    <Card className="p-3 border-0 rounded-none shadow-none">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Stats</p>
                         <div className="space-y-1.5 text-xs">
                             <div className="flex justify-between">
@@ -789,7 +795,7 @@ export function CalendarPage() {
                 </aside>
 
                 {/* ── Calendar Panel ── */}
-                <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+                <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
                     {isLoading ? (
                         <div className="flex-1 flex items-center justify-center">
                             <div className="flex flex-col items-center gap-3">
@@ -816,6 +822,7 @@ export function CalendarPage() {
                                     events={events}
                                     onSelectDate={handleDaySelect}
                                     onEventClick={setSelectedEvent}
+                                    weekStartsOn={weekStartsOn}
                                 />
                             )}
                             {viewMode === 'week' && (
@@ -823,6 +830,7 @@ export function CalendarPage() {
                                     currentDate={currentDate}
                                     events={events}
                                     onEventClick={setSelectedEvent}
+                                    weekStartsOn={weekStartsOn}
                                 />
                             )}
                             {viewMode === 'day' && (

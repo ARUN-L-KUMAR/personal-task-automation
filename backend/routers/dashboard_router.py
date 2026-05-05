@@ -82,6 +82,51 @@ def _get_db_stats(db: Session, user: User) -> dict:
     }
 
 
+def _priority_tone(priority: TaskPriority | None) -> str:
+    if priority == TaskPriority.HIGH:
+        return "danger"
+    if priority == TaskPriority.MEDIUM:
+        return "warning"
+    if priority == TaskPriority.LOW:
+        return "neutral"
+    return "info"
+
+
+def _get_done_today_items(db: Session, user: User) -> list[dict]:
+    """Return persisted tasks completed today for the kanban Done column."""
+    now = datetime.utcnow()
+    start_of_day = datetime.combine(now.date(), datetime.min.time())
+
+    done_tasks = (
+        db.query(Task, Project.title)
+        .join(Project, Task.project_id == Project.id)
+        .filter(
+            Project.user_id == user.id,
+            Task.status == TaskStatus.DONE,
+            Task.updated_at.isnot(None),
+            Task.updated_at >= start_of_day,
+        )
+        .order_by(Task.updated_at.desc())
+        .limit(6)
+        .all()
+    )
+
+    items = []
+    for task, project_title in done_tasks:
+        items.append({
+            "id": str(task.id),
+            "title": task.title,
+            "time": task.updated_at.isoformat() if task.updated_at else "",
+            "duration_minutes": task.estimated_duration or 0,
+            "kind": "task",
+            "badge": project_title or "Completed",
+            "badge_tone": "success",
+            "secondary_badge": (task.priority.value.title() if task.priority else ""),
+            "secondary_badge_tone": _priority_tone(task.priority),
+        })
+    return items
+
+
 def _detect_conflicts(events: list) -> list:
     """Detect scheduling conflicts between events."""
     conflicts = []
@@ -257,6 +302,7 @@ async def get_dashboard_summary(
                 "travel_events": 0,
             },
             "timeline": [],
+            "done_today": [],
             "conflicts": [],
             "travel": {"total_minutes": 0, "travel_event_count": 0, "longest_route_minutes": 0, "optimization_tip": ""},
             "workload": {"level": "light", "percentage": 0, "total_items": 0},
@@ -325,6 +371,7 @@ async def get_dashboard_summary(
 
         # AI Insights
         insights = _generate_insights(events, pending_tasks, conflicts, travel, workload, productivity_score)
+        done_today = _get_done_today_items(db, current_user)
 
         return {
             "authenticated": True,
@@ -343,6 +390,7 @@ async def get_dashboard_summary(
                 "travel_events": travel["travel_event_count"],
             },
             "timeline": timeline,
+            "done_today": done_today,
             "conflicts": conflicts,
             "travel": travel,
             "workload": workload,

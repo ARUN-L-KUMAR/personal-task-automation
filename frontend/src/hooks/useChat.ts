@@ -59,6 +59,19 @@ export interface ChatSession {
 
 const HISTORY_STORAGE_KEY = 'g1_chat_history';
 const MAX_SESSIONS = 50;
+const GENERAL_SETTINGS_EVENT = 'g1-general-settings-updated';
+const AI_CONTEXT_WINDOW_KEY = 'g1_ai_context_window';
+const DEFAULT_CONTEXT_WINDOW = 10;
+
+function normalizeContextWindow(value: unknown): number | null {
+    const parsed = typeof value === 'number'
+        ? value
+        : Number(value);
+    if (!Number.isFinite(parsed)) return null;
+    const normalized = Math.trunc(parsed);
+    if (normalized <= 0) return null;
+    return Math.min(50, normalized);
+}
 
 /** Check if user is logged in (JWT token exists) */
 function isLoggedIn(): boolean {
@@ -110,6 +123,11 @@ export function useChat() {
     const [contextLoading, setContextLoading] = useState(false);
     const contextFetchInFlightRef = useRef(false);
     const contextCooldownUntilRef = useRef(0);
+    const [contextWindowSize, setContextWindowSize] = useState<number>(() => {
+        if (typeof window === 'undefined') return DEFAULT_CONTEXT_WINDOW;
+        const fromStorage = normalizeContextWindow(localStorage.getItem(AI_CONTEXT_WINDOW_KEY));
+        return fromStorage ?? DEFAULT_CONTEXT_WINDOW;
+    });
     const endRef = useRef<HTMLDivElement>(null);
 
     /* ── Session / History state ── */
@@ -122,6 +140,32 @@ export function useChat() {
 
     // Keep ref in sync with state
     useEffect(() => { activeSessionIdRef.current = activeSessionId; }, [activeSessionId]);
+
+    // Load context window preference and keep it synced with Settings page updates.
+    useEffect(() => {
+        let cancelled = false;
+
+        api.get('/api/settings').then(({ data }) => {
+            const nextValue = normalizeContextWindow(data?.preferences?.general?.ai_context_window);
+            if (nextValue === null || cancelled) return;
+            setContextWindowSize(nextValue);
+            localStorage.setItem(AI_CONTEXT_WINDOW_KEY, String(nextValue));
+        }).catch(() => {});
+
+        const onGeneralSettingsUpdated = (event: Event) => {
+            const detail = (event as CustomEvent<{ ai_context_window?: string | number }>).detail;
+            const nextValue = normalizeContextWindow(detail?.ai_context_window);
+            if (nextValue !== null) {
+                setContextWindowSize(nextValue);
+            }
+        };
+
+        window.addEventListener(GENERAL_SETTINGS_EVENT, onGeneralSettingsUpdated as EventListener);
+        return () => {
+            cancelled = true;
+            window.removeEventListener(GENERAL_SETTINGS_EVENT, onGeneralSettingsUpdated as EventListener);
+        };
+    }, []);
 
     const scrollToBottom = () =>
         endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -344,10 +388,10 @@ export function useChat() {
         setMessages(prev => [...prev, userMsg]);
         setIsLoading(true);
 
-        // Build history (exclude welcome, last 10)
+        // Build history (exclude welcome, bounded by user-configured context window)
         const history = messages
             .filter(m => m.id !== 'welcome')
-            .slice(-10)
+            .slice(-contextWindowSize)
             .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
 
         try {
@@ -422,12 +466,19 @@ export function useChat() {
             setIsLoading(false);
             setTimeout(scrollToBottom, 50);
         }
-    }, [input, isLoading, messages, selectedModel, persistCurrentChat]);
+    }, [input, isLoading, messages, selectedModel, persistCurrentChat, contextWindowSize]);
 
-    const clearChat = () => {
+    const clearChat = useCallback(() => {
         setActiveSessionId(null);
-        setMessages([WELCOME]);
-    };
+        setMessages([
+            {
+                id: 'welcome',
+                role: 'assistant',
+                content: "👋 Hi! I'm **G-One**, your AI personal assistant.\n\nI can help with your **calendar**, **tasks**, **emails**, **maps**, and more. What would you like to know?",
+                timestamp: new Date(),
+            },
+        ]);
+    }, []);
 
     return {
         messages, input, setInput, isLoading,

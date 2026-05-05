@@ -27,12 +27,11 @@ export function ChartCard({ distribution }: ChartCardProps) {
 
     return (
         <div>
-            {/* Numeric Breakdown */}
             <div className="grid grid-cols-3 gap-3 mb-4">
                 {data.map((d, i) => (
-                    <div key={`stat-${d.name}`} className="text-center">
-                        <p className="text-2xl font-bold" style={{ color: COLORS[i] }}>{d.value}</p>
-                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{d.name}</p>
+                    <div key={`stat-${d.name}`} className="text-center rounded-xl bg-slate-50/60 p-3">
+                        <p className="text-2xl font-black" style={{ color: COLORS[i] }}>{d.value}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{d.name}</p>
                     </div>
                 ))}
             </div>
@@ -55,16 +54,17 @@ export function ChartCard({ distribution }: ChartCardProps) {
                         </Pie>
                         <Tooltip
                             contentStyle={{
-                                borderRadius: '10px',
+                                borderRadius: '12px',
                                 border: 'none',
-                                boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
+                                boxShadow: '0 8px 24px rgb(0 0 0 / 0.1)',
                                 fontSize: '12px',
+                                backdropFilter: 'blur(8px)',
                             }}
                         />
                     </PieChart>
                 </ResponsiveContainer>
             </div>
-            <div className="flex justify-center gap-4 mt-2">
+            <div className="flex justify-center gap-4 mt-3">
                 {data.map((d, i) => (
                     <div key={d.name} className="flex items-center gap-1.5">
                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[i] }} />

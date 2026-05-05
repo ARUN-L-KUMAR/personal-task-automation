@@ -24,7 +24,7 @@ def _get_service(user: User, db: Session):
     return build("gmail", "v1", credentials=creds)
 
 
-def get_inbox(user: User, db: Session, max_results: int = 15, query: str = ""):
+def get_inbox(user: User, db: Session, max_results: int = 50, query: str = ""):
     """
     Fetch recent inbox emails for the specified user.
     
@@ -103,7 +103,7 @@ def get_message(user: User, db: Session, msg_id: str):
         "to": headers.get("To", ""),
         "subject": headers.get("Subject", "No Subject"),
         "date": headers.get("Date", ""),
-        "body": body[:2000],  # Limit body length
+        "body": body[:5000],  # Limit body length
         "snippet": msg.get("snippet", ""),
         "labels": msg.get("labelIds", []),
     }

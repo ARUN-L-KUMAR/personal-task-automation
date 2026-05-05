@@ -24,6 +24,8 @@ services:
         sync: false
       - key: GOOGLE_MAPS_API_KEY
         sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
       - key: AI_MODEL_NAME
         value: deepseek/deepseek-r1
       - key: AI_TEMPERATURE

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
     Users,
     Search,
@@ -20,6 +20,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { contactsService } from '../../services/contacts.service';
 import { cn } from '../../utils/cn';
+import { usePageContextStore } from '../../store/usePageContextStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Contact {
@@ -212,9 +213,10 @@ export function ContactsPage() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [filterLetter, setFilterLetter] = useState<string>('All');
+    const { setHeaderContext, clearHeaderContext } = usePageContextStore();
 
     // ── Fetch all contacts ──
-    const fetchContacts = async () => {
+    const fetchContacts = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         setSearchQuery('');
@@ -227,7 +229,7 @@ export function ContactsPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     // ── Search contacts ──
     const handleSearch = async () => {
@@ -247,7 +249,7 @@ export function ContactsPage() {
 
     useEffect(() => {
         fetchContacts();
-    }, []);
+    }, [fetchContacts]);
 
     // Allow pressing Enter to search
     const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -271,29 +273,19 @@ export function ContactsPage() {
 
     const isbusy = isLoading || isSearching;
 
-    // ── Render ──
-    return (
-        <div className="flex flex-col space-y-6 h-full">
-            {/* ── Header ── */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-                        Contacts
-                        <Badge variant="secondary" className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-none text-xs">
-                            <Users className="h-3 w-3 mr-1" />
-                            Google People
-                        </Badge>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
-                        Manage and browse your Google Contacts.
-                        {contacts.length > 0 && !isLoading && (
-                            <span className="ml-2 font-semibold text-slate-700 dark:text-slate-300">{contacts.length} contacts</span>
-                        )}
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {/* View toggle */}
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: (
+                <>
+                    Manage and browse your Google Contacts.
+                    {contacts.length > 0 && !isLoading && (
+                        <span className="ml-2 font-semibold text-slate-700 dark:text-slate-300">{contacts.length} contacts</span>
+                    )}
+                </>
+            ),
+            actions: (
+                <>
                     <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                         <button
                             onClick={() => setViewMode('grid')}
@@ -325,9 +317,15 @@ export function ContactsPage() {
                         <RefreshCw className={cn('h-4 w-4 mr-2', isbusy && 'animate-spin')} />
                         Refresh
                     </Button>
-                </div>
-            </header>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [clearHeaderContext, contacts.length, fetchContacts, isLoading, isbusy, setHeaderContext, viewMode]);
 
+    // ── Render ──
+    return (
+        <div className="flex flex-col space-y-6 h-full">
             {/* ── Search Bar ── */}
             <div className="flex gap-2">
                 <div className="relative flex-1 group">

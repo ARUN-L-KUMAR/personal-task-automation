@@ -6,66 +6,66 @@ interface LoadingSkeletonProps {
 
 function Shimmer({ className }: LoadingSkeletonProps) {
     return (
-        <div className={`animate-pulse rounded-lg bg-slate-200/60 dark:bg-slate-700/40 ${className || ''}`} />
+        <div className={`animate-pulse rounded-xl bg-gradient-to-r from-slate-200/60 via-slate-100/60 to-slate-200/60 dark:from-slate-800/70 dark:via-slate-700/70 dark:to-slate-800/70 ${className || ''}`} />
     );
 }
 
 export function DashboardSkeleton() {
     return (
-        <div className="space-y-6 pb-12">
-            {/* Greeting skeleton */}
-            <div>
-                <Shimmer className="h-8 w-72 mb-2" />
-                <Shimmer className="h-4 w-48" />
-            </div>
-
-            {/* Agent status strip */}
-            <div className="flex gap-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                    <Shimmer key={i} className="h-7 w-20 rounded-full" />
-                ))}
-            </div>
-
-            {/* KPI Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="rounded-xl border border-slate-100 p-5 space-y-3">
-                        <div className="flex justify-between">
-                            <Shimmer className="h-9 w-9 rounded-lg" />
-                            <Shimmer className="h-4 w-16 rounded-full" />
+        <div className="px-4 py-4 pb-10 md:px-6 lg:px-8">
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/60 dark:shadow-none">
+                <div className="border-b border-slate-200 dark:border-slate-800 px-5 py-4 md:px-7">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-center gap-4">
+                            <Shimmer className="h-11 w-11 rounded-2xl" />
+                            <Shimmer className="h-8 w-72 rounded-xl" />
                         </div>
-                        <Shimmer className="h-8 w-16" />
-                        <Shimmer className="h-3 w-24" />
+                        <div className="flex gap-3">
+                            <Shimmer className="h-10 w-24 rounded-xl" />
+                            <Shimmer className="h-10 w-32 rounded-xl" />
+                        </div>
                     </div>
-                ))}
-            </div>
+                </div>
 
-            {/* Main grid */}
-            <div className="grid grid-cols-12 gap-6">
-                <div className="col-span-12 lg:col-span-8 space-y-6">
-                    <div className="rounded-xl border border-slate-100 p-6 space-y-3">
-                        <Shimmer className="h-5 w-48 mb-4" />
+                <div className="space-y-4 p-4 md:p-6">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                         {Array.from({ length: 4 }).map((_, i) => (
-                            <Shimmer key={i} className="h-14 w-full rounded-lg" />
+                            <div key={i} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-5">
+                                <div className="mb-6 flex items-center justify-between">
+                                    <Shimmer className="h-11 w-11 rounded-2xl" />
+                                    <Shimmer className="h-6 w-20 rounded-full" />
+                                </div>
+                                <Shimmer className="mb-3 h-10 w-20 rounded-xl" />
+                                <Shimmer className="h-4 w-32 rounded-xl" />
+                            </div>
                         ))}
                     </div>
-                    <Shimmer className="h-28 w-full rounded-xl" />
-                </div>
-                <div className="col-span-12 lg:col-span-4 space-y-6">
-                    <div className="rounded-xl border border-slate-100 p-6">
-                        <Shimmer className="h-5 w-36 mb-4" />
-                        <Shimmer className="h-[180px] w-full rounded-lg" />
+
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-5">
+                                <div className="mb-5 flex items-center justify-between">
+                                    <Shimmer className="h-7 w-28 rounded-xl" />
+                                    <Shimmer className="h-6 w-10 rounded-full" />
+                                </div>
+                                <div className="space-y-3">
+                                    {Array.from({ length: i === 2 ? 1 : 3 }).map((__, cardIndex) => (
+                                        <Shimmer key={cardIndex} className="h-24 rounded-2xl" />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                    <div className="rounded-xl border border-slate-100 p-6 space-y-3">
-                        <Shimmer className="h-5 w-32 mb-2" />
-                        <Shimmer className="h-12 w-full" />
-                        <Shimmer className="h-12 w-full" />
+
+                    <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4">
+                        <div className="flex flex-wrap gap-2">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <Shimmer key={i} className="h-8 w-24 rounded-full" />
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
-
-            {/* Insight panel */}
-            <Shimmer className="h-36 w-full rounded-xl" />
         </div>
     );
 }

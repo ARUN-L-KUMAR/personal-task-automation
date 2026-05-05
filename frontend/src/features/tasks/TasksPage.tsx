@@ -144,23 +144,23 @@ function CreateTaskModal({ isOpen, onClose, onCreated, taskLists, currentListId,
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Title *</label>
                         <input autoFocus type="text" placeholder="What needs to be done?" value={title} onChange={e => setTitle(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all" />
                     </div>
                     <div>
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Notes</label>
                         <textarea rows={3} placeholder="Optional description…" value={notes} onChange={e => setNotes(e.target.value)}
-                            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none" />
+                            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all resize-none" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Due Date</label>
                             <input type="date" value={due} onChange={e => setDue(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all" />
                         </div>
                         <div>
                             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">List</label>
                             <select value={listId} onChange={e => setListId(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all">
                                 {taskLists.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
                             </select>
                         </div>
@@ -169,7 +169,7 @@ function CreateTaskModal({ isOpen, onClose, onCreated, taskLists, currentListId,
                 </div>
                 <div className="flex justify-end gap-2 px-5 pb-5">
                     <Button variant="ghost" size="sm" onClick={onClose} disabled={isLoading}>Cancel</Button>
-                    <Button size="sm" onClick={handleCreate} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[110px]">
+                    <Button size="sm" onClick={handleCreate} disabled={isLoading} className="bg-violet-600 hover:bg-violet-700 text-white min-w-[110px]">
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
                         {isLoading ? 'Creating…' : 'Create Task'}
                     </Button>
@@ -453,7 +453,7 @@ export function TasksPage() {
     useEffect(() => { if (tab === 'notes') fetchNotes(); }, [tab, fetchNotes]);
 
     // ── Register page context for voice assistant ──
-    const { setPageContext, clearPageContext } = usePageContextStore();
+    const { setPageContext, clearPageContext, setHeaderContext, clearHeaderContext } = usePageContextStore();
     useEffect(() => {
         const lines: string[] = [];
         if (tab === 'all-tasks') {
@@ -537,85 +537,78 @@ export function TasksPage() {
         !searchQuery || n.title.toLowerCase().includes(searchQuery.toLowerCase()) || n.content?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    return (
-        <div className="space-y-6 pb-12">
-            {/* ── Header ── */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Tasks & Notes</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
-                        {pendingCount} Google · {dbTasks.length} Database · {notes.length} notes
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { fetchTasks(); fetchDbTasks(); if (tab === 'notes') fetchNotes(); }}
+    useEffect(() => {
+        setHeaderContext({
+            hideSearch: true,
+            summary: `${pendingCount} Google · ${dbTasks.length} Database`,
+            actions: (
+                <>
+                    <Button variant="outline" size="sm" onClick={() => { fetchTasks(); fetchDbTasks(); }}
                         className="h-9 dark:border-slate-700">
-                        <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isLoadingTasks || isLoadingDbTasks || isLoadingNotes) && 'animate-spin')} />
+                        <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isLoadingTasks || isLoadingDbTasks) && 'animate-spin')} />
                         Refresh
                     </Button>
-                    {tab !== 'notes' ? (
-                        <Button size="sm" onClick={() => setCreateTaskOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white h-9">
-                            <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Task
-                        </Button>
-                    ) : (
-                        <Button size="sm" onClick={() => setCreateNoteOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-white h-9">
-                            <Plus className="h-3.5 w-3.5 mr-1.5" /> New Note
-                        </Button>
-                    )}
+                    <Button size="sm" onClick={() => setCreateTaskOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white h-9">
+                        <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Task
+                    </Button>
+                </>
+            ),
+        });
+        return () => clearHeaderContext();
+    }, [
+        clearHeaderContext,
+        dbTasks.length,
+        fetchDbTasks,
+        fetchTasks,
+        isLoadingDbTasks,
+        isLoadingTasks,
+        pendingCount,
+        setHeaderContext,
+    ]);
+
+    return (
+        <div className="h-[calc(100vh-120px)] flex flex-col overflow-hidden">
+            <div className="flex flex-col flex-1 min-h-0 border-y border-slate-200 dark:border-slate-800 bg-gradient-to-b from-slate-50/60 to-white dark:from-slate-950 dark:to-slate-900">
+                {/* ── Tab bar ── */}
+                <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200/80 dark:border-slate-800 bg-white/85 dark:bg-slate-900/80 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+                    <div className="flex items-center gap-1.5 bg-violet-50 dark:bg-violet-900/20 rounded-2xl p-1.5 w-fit overflow-x-auto border border-violet-100 dark:border-violet-900/40">
+                        <button
+                            onClick={() => setTab('all-tasks')}
+                            className={cn(
+                                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
+                                tab === 'all-tasks'
+                                    ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-sm ring-1 ring-violet-200/70 dark:ring-violet-800/60'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300'
+                            )}>
+                            <List className="h-4 w-4" /> All Tasks
+                            {(tasks.length + dbTasks.length) > 0 && (
+                                <span className="text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 font-bold px-1.5 py-0.5 rounded-full">{tasks.length + dbTasks.length}</span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setTab('tasks')}
+                            className={cn(
+                                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
+                                tab === 'tasks'
+                                    ? 'bg-white dark:bg-slate-900 text-violet-700 dark:text-violet-300 shadow-sm ring-1 ring-violet-200/70 dark:ring-violet-800/60'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300'
+                            )}>
+                            <ClipboardList className="h-4 w-4" /> Google
+                            {pendingCount > 0 && (
+                                <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>
+                            )}
+                        </button>
+                    </div>
                 </div>
-            </header>
 
-            {/* ── Tab bar ── */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit overflow-x-auto">
-                <button
-                    onClick={() => setTab('all-tasks')}
-                    className={cn(
-                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
-                        tab === 'all-tasks'
-                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                    )}>
-                    <List className="h-4 w-4" /> All Tasks
-                    {(tasks.length + dbTasks.length) > 0 && (
-                        <span className="text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 font-bold px-1.5 py-0.5 rounded-full">{tasks.length + dbTasks.length}</span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setTab('tasks')}
-                    className={cn(
-                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap',
-                        tab === 'tasks'
-                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                    )}>
-                    <ClipboardList className="h-4 w-4" /> Google
-                    {pendingCount > 0 && (
-                        <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setTab('notes')}
-                    className={cn(
-                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-                        tab === 'notes'
-                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                    )}>
-                    <StickyNote className="h-4 w-4" /> Notes
-                    {notes.length > 0 && (
-                        <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded-full">{notes.length}</span>
-                    )}
-                </button>
-            </div>
+                {/* ── Main Layout ── */}
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-0 flex-1 min-h-0">
 
-            {/* ── Main Layout ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-
-                {/* ── Sidebar ── */}
-                <aside className="xl:col-span-1 space-y-4">
+                    {/* ── Sidebar ── */}
+                    <aside className="xl:col-span-1 space-y-3 p-4 min-h-0 overflow-y-auto custom-scrollbar border-b xl:border-b-0 xl:border-r border-slate-200 dark:border-slate-800 bg-slate-50/85 dark:bg-slate-900/45">
                     {/* Task Lists */}
                     {tab === 'tasks' && (
-                        <Card className="p-4 border-slate-200 dark:border-slate-800">
+                        <Card className="p-4 border-slate-200 dark:border-slate-800 shadow-sm bg-white/95 dark:bg-slate-900/80 rounded-2xl">
                             <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Task Lists</h3>
                             <div className="space-y-1">
                                 {taskLists.length === 0 ? (
@@ -638,7 +631,7 @@ export function TasksPage() {
                                             'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                                             currentListId === list.id
                                                 ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                : 'text-slate-600 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-900/20'
                                         )}>
                                         <div className="flex items-center gap-2.5">
                                             <List className="h-3.5 w-3.5" /> {list.title}
@@ -651,7 +644,7 @@ export function TasksPage() {
 
                     {/* Filters */}
                     {tab === 'tasks' && (
-                        <Card className="p-4 border-slate-200 dark:border-slate-800">
+                        <Card className="p-4 border-slate-200 dark:border-slate-800 shadow-sm bg-white/95 dark:bg-slate-900/80 rounded-2xl">
                             <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                 <Filter className="h-3 w-3" /> Filter
                             </h3>
@@ -663,8 +656,8 @@ export function TasksPage() {
                                         className={cn(
                                             'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium capitalize transition-all',
                                             filterMode === f
-                                                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                ? 'bg-violet-600 text-white dark:bg-violet-500 dark:text-white'
+                                                : 'text-slate-600 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-900/20'
                                         )}>
                                         {f}
                                         <span className="text-[10px] font-bold">
@@ -677,33 +670,33 @@ export function TasksPage() {
                     )}
 
                     {/* AI Planner Card */}
-                    <Card className="p-4 border-slate-200 dark:border-slate-800 bg-slate-900 dark:bg-slate-800 text-white">
+                    <Card className="p-4 border-violet-200/60 dark:border-violet-800/60 bg-gradient-to-br from-violet-700 to-indigo-700 dark:from-violet-800 dark:to-indigo-900 text-white shadow-lg shadow-violet-500/20 rounded-2xl">
                         <div className="flex items-center gap-2.5 mb-3">
-                            <div className="bg-amber-400/20 p-1.5 rounded-lg">
-                                <Star className="h-4 w-4 text-amber-400" />
+                            <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur">
+                                <Star className="h-4 w-4 text-amber-200" />
                             </div>
                             <h3 className="font-bold text-sm">AI Planner</h3>
                         </div>
-                        <p className="text-xs text-slate-400 leading-relaxed mb-3">
+                        <p className="text-xs text-violet-100/90 leading-relaxed mb-3">
                             Let AI analyze your tasks and calendar to build the optimal daily schedule.
                         </p>
                         <Button variant="outline" size="sm" onClick={() => navigate('/planner')}
-                            className="w-full text-xs text-white border-white/20 hover:bg-white/10 h-8">
+                            className="w-full text-xs text-white border-white/30 hover:bg-white/15 h-8 bg-white/5">
                             Open Planner <ExternalLink className="h-3 w-3 ml-1.5" />
                         </Button>
                     </Card>
                 </aside>
 
-                {/* ── Main Panel ── */}
-                <div className="xl:col-span-3">
+                    {/* ── Main Panel ── */}
+                    <div className="xl:col-span-3 p-4 min-h-0 overflow-y-auto custom-scrollbar bg-transparent">
                     {/* Search bar */}
-                    <div className="mb-4 relative">
+                    <div className="mb-3 relative">
                         <input
                             type="text"
-                            placeholder={tab === 'tasks' ? 'Search tasks…' : 'Search notes…'}
+                            placeholder="Search tasks…"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                            className="w-full pl-4 pr-10 py-2.5 bg-white/95 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all shadow-sm"
                         />
                         {searchQuery && (
                             <button onClick={() => setSearchQuery('')}
@@ -715,8 +708,8 @@ export function TasksPage() {
 
                     {/* All Tasks Tab (Unified View) */}
                     {tab === 'all-tasks' && (
-                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
-                            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden rounded-2xl shadow-sm bg-white/95 dark:bg-slate-900/90">
+                            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-violet-50/80 to-transparent dark:from-violet-900/20 dark:to-transparent">
                                 <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                                     <List className="h-4 w-4 text-purple-500" />
                                     All Tasks (Google + Database)
@@ -830,7 +823,7 @@ export function TasksPage() {
 
                     {/* Tasks Tab */}
                     {tab === 'tasks' && (
-                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
+                        <Card className="border-slate-200 dark:border-slate-800 overflow-hidden rounded-2xl shadow-sm bg-white/95 dark:bg-slate-900/90">
                             <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
                                 <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                                     <CheckSquare className="h-4 w-4 text-blue-500" />
@@ -884,51 +877,7 @@ export function TasksPage() {
                         </Card>
                     )}
 
-                    {/* Notes Tab */}
-                    {tab === 'notes' && (
-                        <div>
-                            {isLoadingNotes ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {[1, 2, 3, 4, 5, 6].map(i => (
-                                        <div key={i} className="h-40 bg-slate-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
-                                    ))}
-                                </div>
-                            ) : notesError ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-center">
-                                    <AlertCircle className="h-10 w-10 text-red-300 mb-3" />
-                                    <p className="font-bold text-slate-700 dark:text-slate-300">Failed to load notes</p>
-                                    <p className="text-sm text-slate-400 mt-1 max-w-xs">{notesError}</p>
-                                    <Button size="sm" onClick={fetchNotes} className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
-                                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
-                                    </Button>
-                                </div>
-                            ) : filteredNotes.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-center">
-                                    <div className="h-16 w-16 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center mb-4">
-                                        <FileText className="h-8 w-8 text-amber-300" />
-                                    </div>
-                                    <h4 className="font-bold text-slate-700 dark:text-slate-300">
-                                        {searchQuery ? 'No notes match your search' : 'No notes yet'}
-                                    </h4>
-                                    <p className="text-sm text-slate-400 mt-1">
-                                        {searchQuery ? 'Try a different search term.' : 'Capture ideas, reminders and more.'}
-                                    </p>
-                                    {!searchQuery && (
-                                        <Button size="sm" onClick={() => setCreateNoteOpen(true)}
-                                            className="mt-4 bg-amber-500 hover:bg-amber-600 text-white">
-                                            <Plus className="h-3.5 w-3.5 mr-1.5" /> New Note
-                                        </Button>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {filteredNotes.map(note => (
-                                        <NoteCard key={note.id} note={note} onDelete={handleDeleteNote} />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
@@ -939,12 +888,6 @@ export function TasksPage() {
                 onCreated={() => fetchTasks()}
                 taskLists={taskLists.length > 0 ? taskLists : [{ id: '@default', title: 'My Tasks' }]}
                 currentListId={currentListId}
-                pushToast={pushToast}
-            />
-            <CreateNoteModal
-                isOpen={createNoteOpen}
-                onClose={() => setCreateNoteOpen(false)}
-                onCreated={fetchNotes}
                 pushToast={pushToast}
             />
             <ToastContainer toasts={toasts} onDismiss={dismissToast} />

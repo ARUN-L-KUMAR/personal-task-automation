@@ -25,11 +25,23 @@ export interface DashboardStats {
 }
 
 export interface TimelineEntry {
-    time: string;
-    end_time: string;
+    time?: string;
+    end_time?: string;
     title: string;
     type: 'meeting' | 'task' | 'travel' | 'conflict';
     location: string;
+}
+
+export interface DashboardBoardItem {
+    id: string;
+    title: string;
+    time?: string;
+    duration_minutes?: number;
+    kind: 'task' | 'meeting' | 'travel';
+    badge?: string;
+    badge_tone?: 'neutral' | 'info' | 'warning' | 'success' | 'danger';
+    secondary_badge?: string;
+    secondary_badge_tone?: 'neutral' | 'info' | 'warning' | 'success' | 'danger';
 }
 
 export interface Conflict {
@@ -97,6 +109,7 @@ export interface DashboardSummary {
     db_stats: DbStats;
     stats: DashboardStats;
     timeline: TimelineEntry[];
+    done_today: DashboardBoardItem[];
     conflicts: Conflict[];
     travel: TravelSummary;
     workload: Workload;

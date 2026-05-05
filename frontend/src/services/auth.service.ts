@@ -18,14 +18,46 @@ export interface UserProfile {
     name: string;
     email: string;
     role: 'USER' | 'ADMIN';
+    avatar_url?: string | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface AboutProfile {
+    name: string;
+    email: string;
+    phone: string | null;
+    google_account_email: string | null;
+    google_connected: boolean;
+}
+
+export interface VerificationSendResponse {
+    status: 'sent';
+    expires_in_seconds: number;
+    delivery: 'email' | 'debug';
+    verification_code?: string;
 }
 
 export interface AuthResponse {
     user: UserProfile;
     access_token: string;
     token_type: string;
+}
+
+export interface GoogleAuthStatus {
+    authenticated: boolean;
+    message: string;
+    service_unavailable?: boolean;
+    credentials_unavailable?: boolean;
+}
+
+export interface GoogleServicesStatus extends GoogleAuthStatus {
+    service_status: Record<string, boolean>;
+    connected_services: string[];
+}
+
+export interface GoogleConnectUrlResponse {
+    auth_url: string;
 }
 
 // --- Token helpers ---
@@ -68,7 +100,79 @@ export const googleLoginUser = async (code: string): Promise<AuthResponse> => {
     return data;
 };
 
-export const checkGoogleServicesStatus = async (): Promise<{ authenticated: boolean; message: string }> => {
+export const checkGoogleServicesStatus = async (): Promise<GoogleAuthStatus> => {
     const response = await api.get('/api/auth/status');
     return response.data;
+};
+
+export const checkGoogleDetailedServicesStatus = async (): Promise<GoogleServicesStatus> => {
+    const response = await api.get('/api/auth/services-status');
+    return response.data;
+};
+
+export const getGoogleConnectUrl = async (): Promise<string> => {
+    const response = await api.get<GoogleConnectUrlResponse>('/api/auth/google-connect-url');
+    const authUrl = response.data?.auth_url;
+    if (!authUrl) {
+        throw new Error('Failed to start Google connection');
+    }
+    return authUrl;
+};
+
+export const updateManualAvatar = async (avatarDataUrl: string): Promise<UserProfile> => {
+    const response = await api.put('/api/db-auth/avatar/manual', { avatar_data_url: avatarDataUrl });
+    return response.data as UserProfile;
+};
+
+export const updateAvatarFromGoogle = async (): Promise<UserProfile> => {
+    const response = await api.put('/api/db-auth/avatar/google');
+    return response.data as UserProfile;
+};
+
+export const clearAvatar = async (): Promise<UserProfile> => {
+    const response = await api.delete('/api/db-auth/avatar');
+    return response.data as UserProfile;
+};
+
+export const getAboutProfile = async (): Promise<AboutProfile> => {
+    const response = await api.get('/api/db-auth/about');
+    return response.data as AboutProfile;
+};
+
+export const updateAboutProfile = async (payload: { name?: string; phone?: string }): Promise<UserProfile> => {
+    const response = await api.put('/api/db-auth/about/profile', payload);
+    return response.data as UserProfile;
+};
+
+export const sendEmailVerificationCode = async (newEmail: string): Promise<VerificationSendResponse> => {
+    const response = await api.post('/api/db-auth/about/email/send-code', { new_email: newEmail });
+    return response.data as VerificationSendResponse;
+};
+
+export const verifyAndUpdateEmail = async (newEmail: string, verificationCode: string): Promise<UserProfile> => {
+    const response = await api.put('/api/db-auth/about/email/verify-and-save', {
+        new_email: newEmail,
+        verification_code: verificationCode,
+    });
+    return response.data as UserProfile;
+};
+
+export const sendPasswordVerificationCode = async (currentPassword: string): Promise<VerificationSendResponse> => {
+    const response = await api.post('/api/db-auth/about/password/send-code', {
+        current_password: currentPassword,
+    });
+    return response.data as VerificationSendResponse;
+};
+
+export const verifyAndUpdatePassword = async (
+    currentPassword: string,
+    newPassword: string,
+    verificationCode: string,
+): Promise<{ status: string; message: string }> => {
+    const response = await api.put('/api/db-auth/about/password/verify-and-save', {
+        current_password: currentPassword,
+        new_password: newPassword,
+        verification_code: verificationCode,
+    });
+    return response.data as { status: string; message: string };
 };

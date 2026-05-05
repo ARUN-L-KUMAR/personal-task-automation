@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { ChatMessage } from '../../hooks/useChat';
+import { formatTimeByPreferences } from '../../utils/dateTimePreferences';
 
 interface Props {
     message: ChatMessage;
@@ -98,7 +99,7 @@ export function ChatMessageBubble({ message, compact = false, showReasoning = fa
     const avatarIcon = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
     const textSize = compact ? 'text-xs' : 'text-sm';
     const padding = compact ? 'px-3 py-2' : 'px-4 py-3';
-    const timestamp = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timestamp = formatTimeByPreferences(message.timestamp, '--');
 
     // Get dynamic suggestions based on agents used
     const suggestions = React.useMemo(() => {

@@ -46,15 +46,15 @@ export function SummaryStrip({ result }: Props) {
     ];
 
     return (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
             {cards.map((c) => (
-                <div key={c.label} className={cn('rounded-xl border p-3 flex items-center gap-3', c.color)}>
+                <div key={c.label} className={cn('min-w-0 rounded-xl border p-3 flex items-center gap-3', c.color)}>
                     <c.icon className="h-5 w-5 flex-shrink-0" />
-                    <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">{c.label}</p>
-                        <p className="text-lg font-black leading-tight">{c.value}</p>
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70 truncate">{c.label}</p>
+                        <p className="text-lg font-black leading-tight break-words">{c.value}</p>
                         {'sub' in c && c.sub && (
-                            <p className="text-[9px] font-medium opacity-60 mt-0.5 leading-tight">{c.sub}</p>
+                            <p className="text-[9px] font-medium opacity-60 mt-0.5 leading-tight break-words">{c.sub}</p>
                         )}
                     </div>
                 </div>

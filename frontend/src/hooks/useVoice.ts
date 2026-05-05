@@ -83,6 +83,8 @@ const VOICE_PERSIST_TRANSCRIPTS_KEY = 'g1_voice_persist_transcripts';
 const VOICE_QUALITY_PRESET_KEY = 'g1_voice_quality_preset';
 const VOICE_ANALYTICS_KEY = 'g1_voice_analytics';
 const VOICE_SYNC_POLICY_KEY = 'g1_voice_sync_policy';
+const GENERAL_SETTINGS_EVENT = 'g1-general-settings-updated';
+const TELEMETRY_SETTING_KEY = 'g1_usage_telemetry_enabled';
 const NO_SPEECH_TIMEOUT = 8000; // ms
 const CONFIDENCE_MIN    = 0.6;
 const MAX_SESSIONS      = 50;
@@ -114,6 +116,15 @@ function loadAnalytics(): VoiceAnalytics {
     } catch {
         return defaultAnalytics();
     }
+}
+
+function normalizeTelemetry(value: unknown): boolean | null {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+        if (value === 'true') return true;
+        if (value === 'false') return false;
+    }
+    return null;
 }
 
 function getRecognitionErrorCategory(errorCode: string): VoiceErrorCategory {
@@ -279,7 +290,14 @@ export function useVoice() {
     const [persistTranscripts, setPersistTranscripts] = useState(() => localStorage.getItem(VOICE_PERSIST_TRANSCRIPTS_KEY) !== 'false');
     const [voiceQualityPreset, setVoiceQualityPreset] = useState<VoiceQualityPreset>(() => (localStorage.getItem(VOICE_QUALITY_PRESET_KEY) as VoiceQualityPreset) || 'quiet_room');
     const [syncPolicy] = useState(() => localStorage.getItem(VOICE_SYNC_POLICY_KEY) || 'shared_voice_profile');
-    const [analytics, setAnalytics] = useState<VoiceAnalytics>(() => loadAnalytics());
+    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(() => {
+        const stored = normalizeTelemetry(localStorage.getItem(TELEMETRY_SETTING_KEY));
+        return stored ?? false;
+    });
+    const [analytics, setAnalytics] = useState<VoiceAnalytics>(() => {
+        const stored = normalizeTelemetry(localStorage.getItem(TELEMETRY_SETTING_KEY));
+        return stored ? loadAnalytics() : defaultAnalytics();
+    });
 
     // ── Premium TTS ──
     const [premiumTTSEnabled, setPremiumTTSEnabled] = useState(false);
@@ -330,16 +348,56 @@ export function useVoice() {
     }, [voiceQualityPreset]);
 
     useEffect(() => {
+        if (!telemetryEnabled) {
+            localStorage.removeItem(VOICE_ANALYTICS_KEY);
+            return;
+        }
         localStorage.setItem(VOICE_ANALYTICS_KEY, JSON.stringify(analytics));
-    }, [analytics]);
+    }, [analytics, telemetryEnabled]);
+
+    useEffect(() => {
+        localStorage.setItem(TELEMETRY_SETTING_KEY, String(telemetryEnabled));
+        if (!telemetryEnabled) {
+            setAnalytics(defaultAnalytics());
+            return;
+        }
+        setAnalytics(loadAnalytics());
+    }, [telemetryEnabled]);
 
     useEffect(() => {
         localStorage.setItem(VOICE_SYNC_POLICY_KEY, syncPolicy);
     }, [syncPolicy]);
 
-    const trackAnalytics = useCallback((updater: (prev: VoiceAnalytics) => VoiceAnalytics) => {
-        setAnalytics(prev => updater(prev));
+    useEffect(() => {
+        let cancelled = false;
+
+        api.get('/api/settings')
+            .then(({ data }) => {
+                const nextValue = normalizeTelemetry(data?.preferences?.general?.telemetry);
+                if (cancelled || nextValue === null) return;
+                setTelemetryEnabled(nextValue);
+            })
+            .catch(() => {});
+
+        const onGeneralSettingsUpdated = (event: Event) => {
+            const detail = (event as CustomEvent<{ telemetry?: boolean | string }>).detail;
+            const nextValue = normalizeTelemetry(detail?.telemetry);
+            if (nextValue !== null) {
+                setTelemetryEnabled(nextValue);
+            }
+        };
+
+        window.addEventListener(GENERAL_SETTINGS_EVENT, onGeneralSettingsUpdated as EventListener);
+        return () => {
+            cancelled = true;
+            window.removeEventListener(GENERAL_SETTINGS_EVENT, onGeneralSettingsUpdated as EventListener);
+        };
     }, []);
+
+    const trackAnalytics = useCallback((updater: (prev: VoiceAnalytics) => VoiceAnalytics) => {
+        if (!telemetryEnabled) return;
+        setAnalytics(prev => updater(prev));
+    }, [telemetryEnabled]);
 
     // ── Browser support flags ──
     const isSTTSupported = !!(
