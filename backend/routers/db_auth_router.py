@@ -196,8 +196,9 @@ def _verification_send_response(code: str, delivered_via_email: bool) -> dict[st
         "delivery": "email" if delivered_via_email else "debug",
     }
 
-    # Local/dev fallback so feature remains testable without SMTP.
-    if not delivered_via_email and APP_ENV not in {"production", "prod"}:
+    # Local/dev fallback so feature remains testable without SMTP,
+    # or on platforms like Render Free Tier that block SMTP ports.
+    if not delivered_via_email:
         response["verification_code"] = code
 
     return response

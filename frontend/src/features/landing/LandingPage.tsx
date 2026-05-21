@@ -5,11 +5,16 @@ import {
     Bot,
     Calendar,
     CheckSquare,
-    FileSpreadsheet,
     Mail,
     MapPin,
     MessageSquare,
     PlayCircle,
+    AlertTriangle,
+    RefreshCw,
+    XCircle,
+    CheckCircle2,
+    Lock,
+    Shield,
     type LucideIcon,
 } from 'lucide-react';
 import './LandingPage.css';
@@ -29,48 +34,48 @@ type FaqItem = {
 const tools = [
     { name: 'Gmail', color: '#EA4335', bg: '#fff3e0' },
     { name: 'Calendar', color: '#1a73e8', bg: '#e3f2fd' },
-    { name: 'Sheets', color: '#0F9D58', bg: '#e8f5e9' },
     { name: 'Tasks', color: '#A142F4', bg: '#f3e5f5' },
-    { name: 'Drive', color: '#00BCD4', bg: '#e0f7fa' },
     { name: 'Maps', color: '#FBBC04', bg: '#fff8e1' },
+    { name: 'Sheets', color: '#0F9D58', bg: '#e8f5e9' },
+    { name: 'Contacts', color: '#1a73e8', bg: '#e3f2fd' },
 ];
 
 const features: Feature[] = [
     {
-        icon: Calendar,
-        title: 'Smart Calendar',
-        description: 'AI detects scheduling conflicts, suggests optimal meeting slots, and highlights low-priority events based on your day.',
-        outcome: 'Save 45 min/day on scheduling',
+        icon: AlertTriangle,
+        title: 'Detect meeting conflicts',
+        description: 'Automatically scans your schedule and warns you about overlapping events and impossible back-to-backs before they happen.',
+        outcome: 'Conflict-free scheduling',
     },
     {
         icon: Mail,
-        title: 'Smart Inbox',
-        description: 'Triages Gmail automatically. Drafts replies, surfaces action items, and flags only what needs your attention.',
-        outcome: 'Reach inbox zero faster',
-    },
-    {
-        icon: CheckSquare,
-        title: 'Task Management',
-        description: 'Tasks are prioritized from deadlines, meetings, and email context so your next action is always clear.',
-        outcome: 'Never miss a deadline again',
-    },
-    {
-        icon: FileSpreadsheet,
-        title: 'Google Sheets AI',
-        description: 'Ask plain-English questions about spreadsheet data and turn raw rows into summaries and useful insights.',
-        outcome: 'Reports in seconds, not hours',
-    },
-    {
-        icon: MessageSquare,
-        title: 'AI Chatbot',
-        description: 'Chat naturally to manage your workspace: plan your day, draft follow-ups, and explain agent decisions.',
-        outcome: 'One command for multiple tasks',
+        title: 'Extract action items from Gmail',
+        description: 'Triages your inbox to find requests and questions, converting them directly into prioritized tasks on your board.',
+        outcome: 'Never drop the ball',
     },
     {
         icon: MapPin,
-        title: 'Maps & Travel',
-        description: 'Adds travel buffers between meetings, checks routes, and helps protect your schedule from commute surprises.',
-        outcome: 'Never be late to a meeting',
+        title: 'Plan travel between locations',
+        description: 'Reads physical meeting locations and adds intelligent transit or driving buffers directly to your calendar.',
+        outcome: 'Always arrive on time',
+    },
+    {
+        icon: Calendar,
+        title: 'Generate optimized daily schedule',
+        description: 'Takes your scattered tasks, meetings, and habits to build a realistic, conflict-free itinerary for the entire day.',
+        outcome: 'Focus on execution',
+    },
+    {
+        icon: MessageSquare,
+        title: 'Explain why each task is prioritized',
+        description: 'Ask the chatbot why it scheduled something. Agents explain their reasoning based on deadlines, context, and importance.',
+        outcome: 'Transparent AI reasoning',
+    },
+    {
+        icon: RefreshCw,
+        title: 'Sync live Google data',
+        description: 'Live two-way sync keeps G-ONE updated the second your Google Calendar or Gmail changes in the background.',
+        outcome: 'Always up to date',
     },
 ];
 
@@ -81,7 +86,7 @@ const testimonials = [
         role: 'VP of Operations, Zeta Corp',
         bg: '#e3f2fd',
         color: '#1a73e8',
-        quote: 'G-ONE handles my inbox while I am in back-to-back meetings. I come out and everything critical has already been triaged.',
+        quote: 'The multi-agent system caught a conflict between my flight and a board meeting that I had completely missed.',
     },
     {
         initials: 'RK',
@@ -89,7 +94,7 @@ const testimonials = [
         role: 'Founder, Lumio Studio',
         bg: '#e8f5e9',
         color: '#0F9D58',
-        quote: 'The calendar AI is genuinely impressive. It caught three double-bookings in my first week and suggested better times.',
+        quote: 'My favorite part is asking the chatbot to reorganize my afternoon. It talks to all the agents and outputs a perfect new plan.',
         featured: true,
     },
     {
@@ -98,7 +103,7 @@ const testimonials = [
         role: 'Head of Strategy, BuildFast',
         bg: '#f3e5f5',
         color: '#A142F4',
-        quote: 'Our whole team uses G-ONE now. The Sheets AI alone replaced hours of weekly reporting work.',
+        quote: 'I used to spend an hour every morning planning my day. Now I just approve the plan generated by the AI pipeline.',
     },
 ];
 
@@ -109,7 +114,7 @@ const pricingPlans = [
         period: 'forever free',
         button: 'Get started free',
         featured: false,
-        features: ['3 Google integrations', '50 AI actions/month', 'Basic task management', 'Email support'],
+        features: ['Manual mode planner', '3 Google integrations', 'Basic task management', 'Standard AI models'],
     },
     {
         name: 'Pro',
@@ -117,7 +122,7 @@ const pricingPlans = [
         period: 'per month, billed monthly',
         button: 'Start free 14-day trial',
         featured: true,
-        features: ['All Google integrations', 'Unlimited AI actions', 'Smart inbox triage', 'Calendar AI + travel time', 'Priority support'],
+        features: ['Live mode auto-sync', 'Full multi-agent pipeline', 'Advanced conflict detection', 'Smart travel routing', 'Premium AI models'],
     },
     {
         name: 'Team',
@@ -125,30 +130,26 @@ const pricingPlans = [
         period: 'per seat/month, billed annually',
         button: 'Contact sales',
         featured: false,
-        features: ['Everything in Pro', 'Shared team dashboard', 'Admin controls & audit logs', 'SSO & 2FA', 'Dedicated account manager'],
+        features: ['Everything in Pro', 'Cross-team conflict resolution', 'Shared team dashboard', 'SSO & 2FA', 'Dedicated support'],
     },
 ];
 
 const faqs: FaqItem[] = [
     {
         question: 'Is my Google data private and secure?',
-        answer: 'Yes. G-ONE uses Google OAuth, so your Google password is never handled by the app. Tokens are stored per user and protected by authentication.',
+        answer: 'Yes. G-ONE uses standard OAuth-based Google connections. Your password is never seen. Tokens are user-specific, stored securely, and protected by JWT authentication. You can disconnect your account at any time.',
+    },
+    {
+        question: 'How does the multi-agent system work?',
+        answer: 'When you request a plan, the Coordinator Agent breaks it down. The Calendar Agent reads events, the Task Agent checks deadlines, the Email Agent extracts actions, and the Travel Agent adds buffers. Finally, the Conflict Agent ensures everything fits before presenting the result.',
+    },
+    {
+        question: 'What is the difference between Live Mode and Manual Mode?',
+        answer: 'Live Mode continuously syncs with your Google account in the background. Manual Mode allows you to import data only when you explicitly click a button, giving you more control over API usage.',
     },
     {
         question: 'Does it work with non-Google tools?',
-        answer: 'This project currently focuses on Google Workspace integrations. Microsoft 365, Notion, and Slack can be added later through the same agent-oriented architecture.',
-    },
-    {
-        question: 'Can I cancel or downgrade anytime?',
-        answer: 'Yes. The pricing section is a product-facing plan model; account changes can be handled from settings when billing is connected.',
-    },
-    {
-        question: 'What makes this different from Zapier or Make?',
-        answer: 'Workflow tools need predefined automations. G-ONE reasons across calendar, tasks, email, travel, sheets, and notes to produce an explainable daily plan.',
-    },
-    {
-        question: 'Is there a free trial for the Pro plan?',
-        answer: 'The page presents a 14-day trial offer. You can wire this to your billing provider when paid plans are enabled.',
+        answer: 'Currently, the agent architecture is heavily optimized for Google Workspace. Microsoft 365 and Notion support are planned for future versions.',
     },
 ];
 
@@ -197,10 +198,10 @@ export function LandingPage() {
             <section className="hero-section">
                 <div className="hero">
                     <div>
-                        <div className="hero-badge"><span /> AI-Powered Workspace Automation</div>
+                        <div className="hero-badge"><span /> Multi-Agent Workspace Automation</div>
                         <h1>Save 2+ hours daily with your <em>AI-powered</em> Google Workspace</h1>
                         <p className="hero-sub">
-                            G-ONE connects your Calendar, Gmail, Tasks, Sheets, and more, then helps prioritize,
+                            G-ONE connects your Calendar, Gmail, Tasks, and Maps, then helps prioritize,
                             plan, and automate your day so you can focus on work that matters.
                         </p>
                         <div className="hero-actions">
@@ -221,47 +222,66 @@ export function LandingPage() {
                     </div>
 
                     <div className="hero-visual">
-                        <div className="mockup-frame">
+                        <div className="mockup-frame dashboard-mockup">
                             <div className="mockup-bar">
                                 <div className="mockup-dot" style={{ background: '#ff5f57' }} />
                                 <div className="mockup-dot" style={{ background: '#febc2e' }} />
                                 <div className="mockup-dot" style={{ background: '#28c840' }} />
                                 <div className="mockup-url">g-one.app/dashboard</div>
                             </div>
-                            <div className="mockup-screen">
-                                <div className="mockup-header">
-                                    <div className="mockup-title">Today&apos;s tasks - Wednesday</div>
-                                    <div className="mockup-chip">AI sorted</div>
+                            <div className="mockup-app-body">
+                                <div className="mockup-sidebar">
+                                    <div className="mockup-nav-item active"><Calendar size={14} /> Planner</div>
+                                    <div className="mockup-nav-item"><Mail size={14} /> Inbox</div>
+                                    <div className="mockup-nav-item"><CheckSquare size={14} /> Tasks</div>
                                 </div>
+                                <div className="mockup-main">
+                                    <div className="mockup-header">
+                                        <div className="mockup-title">Today&apos;s Optimized Plan</div>
+                                        <div className="mockup-chip"><RefreshCw size={10} /> Live Mode</div>
+                                    </div>
 
-                                {[
-                                    ['Review Q3 budget report', 'Done', true],
-                                    ["Reply to Sarah's proposal email", 'Done', true],
-                                    ['Prepare board meeting slides', 'In progress', false],
-                                    ['Schedule team retrospective', '2:00 PM', false],
-                                ].map(([task, tag, done], index) => (
-                                    <div key={task as string} className="task-row" style={index === 2 ? { border: '1px solid #1a4bff44' } : undefined}>
-                                        <div className={`task-check ${done ? 'done' : ''}`} style={!done && index === 2 ? { borderColor: '#1a4bff' } : undefined}>
-                                            {done && <span className="task-checkmark">&#10003;</span>}
+                                    <div className="mockup-stats-row">
+                                        <div className="mockup-stat-box">
+                                            <span>Focus Time</span>
+                                            <strong>4h 30m</strong>
                                         </div>
-                                        <span className={`task-text ${done ? 'done' : ''}`}>{task}</span>
-                                        <span
-                                            className="task-tag"
-                                            style={done ? { background: '#0fa96822', color: '#0fa968' } : index === 2 ? { background: '#1a4bff22', color: '#6e90ff' } : { background: '#ffffff11', color: '#666688' }}
-                                        >
-                                            {tag}
-                                        </span>
+                                        <div className="mockup-stat-box alert">
+                                            <span>Conflicts</span>
+                                            <strong>1 Resolved</strong>
+                                        </div>
                                     </div>
-                                ))}
 
-                                <div className="ai-bubble">
-                                    <div className="ai-label">
-                                        <LogoMark small />
-                                        G-ONE suggests
-                                    </div>
-                                    <div className="ai-text">
-                                        You have a <strong>3:00 PM call</strong> with the design team. I drafted an agenda
-                                        from your last meeting notes. <strong>Review it?</strong>
+                                    <div className="mockup-timeline">
+                                        <div className="timeline-item meeting">
+                                            <div className="time">10:00 AM</div>
+                                            <div className="content">
+                                                <strong>Design Sync</strong>
+                                                <span>Zoom Room A</span>
+                                            </div>
+                                        </div>
+                                        <div className="timeline-item travel">
+                                            <div className="time">11:00 AM</div>
+                                            <div className="content">
+                                                <strong><MapPin size={10} style={{ display: 'inline', marginRight: 4 }} />Travel Buffer</strong>
+                                                <span>Added by Travel Agent (25 mins)</span>
+                                            </div>
+                                        </div>
+                                        <div className="timeline-item task active-task">
+                                            <div className="time">11:30 AM</div>
+                                            <div className="content">
+                                                <strong>Review Q3 budget report</strong>
+                                                <span>Extracted from Gmail</span>
+                                            </div>
+                                            <div className="ai-badge"><Bot size={10} /> High Priority</div>
+                                        </div>
+                                        <div className="timeline-item task">
+                                            <div className="time">1:00 PM</div>
+                                            <div className="content">
+                                                <strong>Prepare board slides</strong>
+                                                <span>Google Tasks</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -270,28 +290,112 @@ export function LandingPage() {
                 </div>
             </section>
 
-            <div className="logos-strip">
-                <p className="logos-label">Connects seamlessly with your existing tools</p>
-                <div className="logos-row">
+            <section className="pipeline-section">
+                <div className="section-center">
+                    <h2 className="pipeline-heading">One request. <em>Multiple agents</em> working together.</h2>
+                    <p className="pipeline-sub">Behind the scenes, specialized AI agents collaborate to organize your life.</p>
+                </div>
+                <div className="pipeline-visual">
+                    <div className="pipeline-track">
+                        <div className="pipeline-node"><Calendar size={20} /><span>Calendar</span></div>
+                        <ArrowRight className="pipeline-arrow" />
+                        <div className="pipeline-node"><CheckSquare size={20} /><span>Tasks</span></div>
+                        <ArrowRight className="pipeline-arrow" />
+                        <div className="pipeline-node"><Mail size={20} /><span>Email</span></div>
+                        <ArrowRight className="pipeline-arrow" />
+                        <div className="pipeline-node"><AlertTriangle size={20} /><span>Conflicts</span></div>
+                        <ArrowRight className="pipeline-arrow" />
+                        <div className="pipeline-node"><MapPin size={20} /><span>Travel</span></div>
+                    </div>
+                    <div className="pipeline-result">
+                        <div className="result-box">
+                            <Bot size={24} />
+                            <strong>Optimized Plan</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="problem-statement">
+                <div className="section-center">
+                    <div className="problem-grid">
+                        <div className="problem-card old-way">
+                            <div className="card-badge">The Old Way</div>
+                            <ul className="problem-list">
+                                <li><XCircle size={18} className="icon-red" /> Tasks are scattered across 4 different apps</li>
+                                <li><XCircle size={18} className="icon-red" /> Meetings conflict constantly</li>
+                                <li><XCircle size={18} className="icon-red" /> Emails hide critical action items</li>
+                                <li><XCircle size={18} className="icon-red" /> Travel time is completely ignored</li>
+                                <li><XCircle size={18} className="icon-red" /> You manually plan everything every morning</li>
+                            </ul>
+                        </div>
+                        <div className="problem-card new-way">
+                            <div className="card-badge">The G-ONE Way</div>
+                            <ul className="problem-list">
+                                <li><CheckCircle2 size={18} className="icon-green" /> Everything unified in one smart dashboard</li>
+                                <li><CheckCircle2 size={18} className="icon-green" /> AI detects and resolves conflicts before they happen</li>
+                                <li><CheckCircle2 size={18} className="icon-green" /> Action items extracted instantly from Gmail</li>
+                                <li><CheckCircle2 size={18} className="icon-green" /> Commute times automatically added to your calendar</li>
+                                <li><CheckCircle2 size={18} className="icon-green" /> Agents generate your perfect day in 2 seconds</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="integrations-section">
+                <div className="section-center">
+                    <h2 className="section-heading">Deep Google Workspace Integration</h2>
+                    <p className="section-sub">Choose between <strong className="mode-badge live-mode">Live Mode</strong> for instant background syncing or <strong className="mode-badge manual-mode">Manual Mode</strong> for total control.</p>
+                </div>
+                <div className="integrations-grid">
                     {tools.map((tool) => (
-                        <div className="logo-item" key={tool.name}>
-                            <div className="logo-icon" style={{ background: tool.bg }}>
-                                <span style={{ width: 14, height: 14, borderRadius: 2, background: tool.color, display: 'block' }} />
+                        <div className="integration-card" key={tool.name}>
+                            <div className="integration-icon" style={{ background: tool.bg, color: tool.color }}>
+                                <span style={{ width: 18, height: 18, borderRadius: 3, background: tool.color, display: 'block' }} />
                             </div>
-                            {tool.name}
+                            <div className="integration-name">Google {tool.name}</div>
+                            <div className="integration-status">Connected</div>
                         </div>
                     ))}
                 </div>
-            </div>
+                <div className="security-note">
+                    <Shield size={16} />
+                    <span><strong>Enterprise-grade security:</strong> OAuth-based connection, user-specific tokens, protected JWT authentication. You can disconnect anytime.</span>
+                    <Lock size={16} />
+                </div>
+            </section>
+
+            <section className="how" id="how">
+                <div className="how-inner">
+                    <div className="section-center">
+                        <div className="section-tag">How it works</div>
+                        <h2 className="section-heading">Up and running in 3 simple steps</h2>
+                    </div>
+                    <div className="steps">
+                        <div className="step">
+                            <div className="step-num">1</div>
+                            <h4>Connect your Google account</h4>
+                            <p>G-ONE securely fetches your Calendar, Gmail, Tasks, Maps, and Sheets using official OAuth.</p>
+                        </div>
+                        <div className="step">
+                            <div className="step-num">2</div>
+                            <h4>Set your preferences</h4>
+                            <p>Tell G-ONE your working hours, default travel modes, and personal planning style.</p>
+                        </div>
+                        <div className="step">
+                            <div className="step-num">3</div>
+                            <h4>Let agents generate the plan</h4>
+                            <p>A conflict-aware, fully optimized schedule is created instantly, balancing your meetings and tasks.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <section className="features" id="features">
                 <div className="section-center">
-                    <div className="section-tag">What G-ONE does</div>
-                    <h2 className="section-heading">Every tool you use, now working <em>together</em></h2>
-                    <p className="section-sub">
-                        Not just integrations. G-ONE actively coordinates your tools through specialized agents so planning
-                        happens with less manual work.
-                    </p>
+                    <div className="section-tag">Backend Capabilities</div>
+                    <h2 className="section-heading">Advanced AI architecture, simple UI</h2>
                 </div>
                 <div className="features-grid">
                     {features.map(({ icon: Icon, title, description, outcome }) => (
@@ -302,36 +406,6 @@ export function LandingPage() {
                             <div className="feat-outcome">&#10003; {outcome}</div>
                         </div>
                     ))}
-                </div>
-            </section>
-
-            <section className="how" id="how">
-                <div className="how-inner">
-                    <div className="section-center">
-                        <div className="section-tag">How it works</div>
-                        <h2 className="section-heading">Up and running in under 3 minutes</h2>
-                        <p className="section-sub">
-                            No complex setup. Connect Google or use manual mode, set preferences, and generate your first
-                            optimized plan immediately.
-                        </p>
-                    </div>
-                    <div className="steps">
-                        <div className="step">
-                            <div className="step-num">1</div>
-                            <h4>Connect your Google account</h4>
-                            <p>OAuth connection gives G-ONE access only to the services you approve. No Google passwords are stored.</p>
-                        </div>
-                        <div className="step">
-                            <div className="step-num">2</div>
-                            <h4>Set your preferences</h4>
-                            <p>Tell G-ONE your working hours, priorities, and planning style so the planner fits your routine.</p>
-                        </div>
-                        <div className="step">
-                            <div className="step-num">3</div>
-                            <h4>Let G-ONE handle the rest</h4>
-                            <p>Review conflicts, travel buffers, task priorities, and an explainable plan from the agent pipeline.</p>
-                        </div>
-                    </div>
                 </div>
             </section>
 
@@ -399,74 +473,53 @@ export function LandingPage() {
                         <div className={`faq-item ${openFaq === index ? 'open' : ''}`} key={item.question}>
                             <button className="faq-q" type="button" onClick={() => setOpenFaq(openFaq === index ? -1 : index)}>
                                 {item.question}
-                                <div className="faq-icon"><PlusIcon /></div>
+                                <span className="faq-icon"><PlusIcon /></span>
                             </button>
-                            <div className="faq-a">{item.answer}</div>
+                            <div className="faq-a">
+                                <p>{item.answer}</p>
+                            </div>
                         </div>
                     ))}
                 </div>
             </section>
 
-            <section className="cta-banner">
-                <h2>Ready to reclaim your <em>day?</em></h2>
-                <p>Join professionals who are cutting admin work with G-ONE.</p>
-                <div className="cta-banner-actions">
-                    <Link to="/register" className="btn-white">
-                        Start free - no card needed <ArrowRight size={14} />
-                    </Link>
-                </div>
-                <p className="cta-no-card">14-day Pro trial - No credit card - Cancel anytime</p>
-            </section>
-
             <footer>
                 <div className="footer-inner">
-                    <div className="footer-top">
-                        <div className="footer-brand">
-                            <div className="footer-logo">
-                                <div className="footer-logo-icon"><LogoMark small /></div>
-                                G-ONE
-                            </div>
-                            <p>AI-powered personal task automation for calendar, email, tasks, travel, and planning in one unified workspace.</p>
-                            <div className="footer-socials">
-                                <a href="https://twitter.com" aria-label="Twitter">tw</a>
-                                <a href="https://linkedin.com" aria-label="LinkedIn">in</a>
-                                <a href="https://github.com" aria-label="GitHub">gh</a>
-                            </div>
+                    <div className="footer-brand">
+                        <Link to="/" className="footer-logo">
+                            <div className="footer-logo-icon"><LogoMark small /></div>
+                            G-ONE
+                        </Link>
+                        <p>The AI-powered planner that coordinates your entire Google Workspace.</p>
+                        <div className="footer-social">
+                            {/* Icons omitted for brevity */}
+                            <a href="https://twitter.com" aria-label="Twitter"><div className="social-placeholder" /></a>
+                            <a href="https://github.com" aria-label="GitHub"><div className="social-placeholder" /></a>
+                            <a href="https://linkedin.com" aria-label="LinkedIn"><div className="social-placeholder" /></a>
                         </div>
+                    </div>
+                    <div className="footer-links">
                         <div className="footer-col">
                             <h4>Product</h4>
                             <a href="#features">Features</a>
-                            <a href="#features">Integrations</a>
                             <a href="#pricing">Pricing</a>
-                            <a href="#how">Changelog</a>
-                            <a href="#how">Roadmap</a>
-                        </div>
-                        <div className="footer-col">
-                            <h4>Company</h4>
-                            <a href="#features">About</a>
-                            <a href="#how">Blog</a>
-                            <a href="#pricing">Careers</a>
-                            <a href="#faq">Press</a>
+                            <Link to="/changelog">Changelog</Link>
                         </div>
                         <div className="footer-col">
                             <h4>Resources</h4>
-                            <a href="#how">Documentation</a>
-                            <a href="#features">API</a>
-                            <a href="#faq">Status</a>
-                            <a href="#faq">Community</a>
+                            <a href="#faq">Help Center</a>
+                            <Link to="/blog">Blog</Link>
+                            <Link to="/docs">API Docs</Link>
                         </div>
                         <div className="footer-col">
                             <h4>Legal</h4>
-                            <Link to="/privacy">Privacy Policy</Link>
-                            <Link to="/terms">Terms of Service</Link>
-                            <a href="#faq">Security</a>
-                            <a href="#faq">Cookie Policy</a>
+                            <Link to="/privacy">Privacy</Link>
+                            <Link to="/terms">Terms</Link>
                         </div>
                     </div>
-                    <div className="footer-bottom">
-                        <p>&copy; {new Date().getFullYear()} G-ONE. AI Personal Task Automation. Built in India.</p>
-                        <p>+91 98765 43210 - support@g-one.app</p>
-                    </div>
+                </div>
+                <div className="footer-bottom">
+                    &copy; {new Date().getFullYear()} G-ONE. All rights reserved.
                 </div>
             </footer>
         </div>

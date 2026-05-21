@@ -30,7 +30,11 @@ export function RegisterPage() {
         try {
             const response = await register({ name, email, password });
             if (response?.status === 'verification_required') {
-                navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+                let url = `/verify-email?email=${encodeURIComponent(email)}`;
+                if (response.verification_code) {
+                    url += `&code=${response.verification_code}`;
+                }
+                navigate(url);
             } else {
                 navigate('/dashboard');
             }

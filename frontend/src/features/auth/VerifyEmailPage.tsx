@@ -14,11 +14,12 @@ export function VerifyEmailPage() {
     // Check URL or store for email
     const emailToVerify = searchParams.get('email') || unverifiedEmail;
     
-    const [code, setCode] = useState('');
+    const urlCode = searchParams.get('code');
+    const [code, setCode] = useState(urlCode || '');
     const [isLoading, setIsLoading] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(urlCode ? 'Demo Mode: Verification code auto-filled.' : null);
 
     useEffect(() => {
         if (!emailToVerify) {
@@ -60,8 +61,13 @@ export function VerifyEmailPage() {
         setSuccessMessage(null);
         
         try {
-            await resendVerification(emailToVerify);
-            setSuccessMessage('A new verification code has been sent to your email.');
+            const data = await resendVerification(emailToVerify);
+            if (data.verification_code) {
+                setCode(data.verification_code);
+                setSuccessMessage('Demo Mode: Email failed to send. Code auto-filled.');
+            } else {
+                setSuccessMessage('A new verification code has been sent to your email.');
+            }
         } catch (err: any) {
             const detail = err.response?.data?.detail;
             let errorMessage = err.message || 'Failed to resend code';

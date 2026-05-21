@@ -24,9 +24,14 @@ export function ForgotPasswordPage() {
         setError(null);
         
         try {
-            await forgotPassword(email);
+            const data = await forgotPassword(email);
             setStep('reset');
-            setSuccessMessage('A reset code has been sent to your email.');
+            if (data.verification_code) {
+                setCode(data.verification_code);
+                setSuccessMessage('Demo Mode: Email failed to send. Code auto-filled.');
+            } else {
+                setSuccessMessage('A reset code has been sent to your email.');
+            }
         } catch (err: any) {
             const detail = err.response?.data?.detail;
             let errorMessage = err.message || 'Failed to send reset code';
