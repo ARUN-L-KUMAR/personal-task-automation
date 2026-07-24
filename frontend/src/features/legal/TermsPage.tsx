@@ -1,91 +1,193 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FileCheck, ShieldAlert, UserCheck, Scale, Mail } from 'lucide-react';
+import { PublicNavbar } from '../../components/layout/PublicNavbar';
+import { PublicFooter } from '../../components/layout/PublicFooter';
+import { SpotlightCard } from '../../components/reactbits/SpotlightCard';
+import { ShinyText } from '../../components/reactbits/ShinyText';
+import { ParticlesBackground } from '../../components/reactbits/ParticlesBackground';
+import { useLenis } from '../../hooks/useLenis';
+import '../landing/LandingPage.css';
 
 export function TermsPage() {
+    useLenis();
+
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col items-center justify-start py-16 px-6">
-            <div className="max-w-2xl w-full">
-                <div className="mb-8 flex items-center gap-3">
-                    <span className="text-3xl">🤖</span>
-                    <span className="text-xl font-bold tracking-tight text-white">G-ONE</span>
+        <div className="landing-pro">
+            <PublicNavbar />
+
+            {/* Header Hero Banner */}
+            <section className="page-hero">
+                <ParticlesBackground particleCount={25} particleColor="rgba(26, 75, 255, 0.3)" lineColor="rgba(26, 75, 255, 0.08)" />
+                <div className="page-hero-inner">
+                    <div className="hero-badge mb-4">
+                        <FileCheck size={14} className="text-blue-600" />{' '}
+                        <ShinyText text="Terms of Agreement" speed={4} />
+                    </div>
+                    <h1>
+                        Terms of <em>Service</em>
+                    </h1>
+                    <p className="page-hero-sub">
+                        Clear, fair, and transparent guidelines governing your use of G-ONE workspace automation platform.
+                    </p>
+                    <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#64748b' }}>
+                        Last updated: March 2026 • Version 2.4
+                    </div>
                 </div>
+            </section>
 
-                <h1 className="text-3xl font-black mb-2 text-white">Terms of Service</h1>
-                <p className="text-sm text-slate-400 mb-8">Last updated: March 2026</p>
+            {/* Main Content Container */}
+            <main className="page-container">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="page-grid-3"
+                >
+                    <SpotlightCard
+                        spotlightColor="rgba(26, 75, 255, 0.12)"
+                        style={{
+                            padding: '24px',
+                            borderRadius: '20px',
+                            border: '1px solid #e2e8f0',
+                            background: '#ffffff',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                        }}
+                    >
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <UserCheck size={20} />
+                        </div>
+                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>User Conduct</h3>
+                        <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>
+                            You maintain responsibility for account security and agree to use the service for lawful personal or business tasks.
+                        </p>
+                    </SpotlightCard>
 
-                <div className="space-y-6 text-slate-300 leading-relaxed">
-                    <section>
-                        <h2 className="text-lg font-semibold text-white mb-2">1. Acceptance of Terms</h2>
-                        <p>
-                            By accessing or using G-ONE ("the App"), you agree to be bound by these Terms of Service.
-                            If you do not agree, please do not use the App.
+                    <SpotlightCard
+                        spotlightColor="rgba(26, 75, 255, 0.12)"
+                        style={{
+                            padding: '24px',
+                            borderRadius: '20px',
+                            border: '1px solid #e2e8f0',
+                            background: '#ffffff',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                        }}
+                    >
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Scale size={20} />
+                        </div>
+                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Fair Usage</h3>
+                        <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>
+                            Designed for high efficiency with fair API rate limits to ensure reliable uptime across all active users.
+                        </p>
+                    </SpotlightCard>
+
+                    <SpotlightCard
+                        spotlightColor="rgba(26, 75, 255, 0.12)"
+                        style={{
+                            padding: '24px',
+                            borderRadius: '20px',
+                            border: '1px solid #e2e8f0',
+                            background: '#ffffff',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                        }}
+                    >
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ShieldAlert size={20} />
+                        </div>
+                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Service Terms</h3>
+                        <p style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>
+                            Continuous background sync or manual sync options with no mandatory lock-in or hidden subscription traps.
+                        </p>
+                    </SpotlightCard>
+                </motion.div>
+
+                {/* Detailed Document Container */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '24px',
+                        padding: '40px',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '28px',
+                    }}
+                >
+                    <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>1. Acceptance of Terms</h2>
+                        <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.65' }}>
+                            By accessing or using G-ONE (&quot;the App&quot;), creating an account, or authorizing Google OAuth connections, you agree to be bound by these Terms of Service. If you do not agree to all terms, please refrain from using the platform.
                         </p>
                     </section>
 
-                    <section>
-                        <h2 className="text-lg font-semibold text-white mb-2">2. Description of Service</h2>
-                        <p>
-                            G-ONE is a personal productivity assistant that integrates with Google services to help
-                            manage tasks, calendar events, emails, and more. The App is provided as-is for personal use.
+                    <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9' }} />
+
+                    <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>2. Description of Service & Multi-Agent Engine</h2>
+                        <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.65' }}>
+                            G-ONE provides specialized AI agent assistance for schedule optimization, task prioritization, email action extraction, transit buffer calculation, and conflict resolution across Google Workspace. The platform is offered to enhance individual and team productivity.
                         </p>
                     </section>
 
-                    <section>
-                        <h2 className="text-lg font-semibold text-white mb-2">3. Google Account Access</h2>
-                        <p>
-                            By signing in with Google, you grant G-ONE permission to access your Google account data
-                            (name, email, and optionally Calendar, Gmail, Tasks, Contacts, and Sheets) solely to
-                            provide the App's features. You may revoke this access at any time via your{' '}
+                    <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9' }} />
+
+                    <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>3. Google Account Permissions & Revocation</h2>
+                        <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.65' }}>
+                            By enabling Google Workspace integrations, you grant G-ONE permission to read and manage selected Google services (Calendar, Gmail, Tasks, Maps, Sheets, Contacts) solely for executing requested workflow tasks. You can modify or revoke permissions at any time via your{' '}
                             <a
                                 href="https://myaccount.google.com/permissions"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-indigo-400 hover:text-indigo-300 underline"
+                                style={{ color: '#1a4bff', fontWeight: 600, textDecoration: 'underline' }}
                             >
-                                Google Account permissions
+                                Google Security Permissions
+                            </a>{' '}
+                            dashboard.
+                        </p>
+                    </section>
+
+                    <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9' }} />
+
+                    <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a' }}>4. Limitation of Liability</h2>
+                        <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.65' }}>
+                            G-ONE is provided on an &quot;as is&quot; and &quot;as available&quot; basis. While we maintain high availability and accurate AI agent planning algorithms, G-ONE shall not be held liable for indirect, incidental, or consequential damages resulting from third-party Google API downtime or missed user schedule commitments.
+                        </p>
+                    </section>
+
+                    <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9' }} />
+
+                    <section style={{ background: '#f4f7ff', padding: '24px', borderRadius: '16px', border: '1px solid #c2caff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Mail size={18} style={{ color: '#1a4bff' }} />
+                            Questions About Our Terms?
+                        </h2>
+                        <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.65' }}>
+                            If you have questions or feedback regarding these terms, please contact our legal support team at{' '}
+                            <a href="mailto:larunkumar.co@gmail.com" style={{ color: '#1a4bff', fontWeight: 700 }}>
+                                larunkumar.co@gmail.com
                             </a>.
                         </p>
                     </section>
+                </motion.div>
+            </main>
 
-                    <section>
-                        <h2 className="text-lg font-semibold text-white mb-2">4. User Responsibilities</h2>
-                        <ul className="list-disc list-inside space-y-1 text-slate-300">
-                            <li>You are responsible for maintaining the security of your account</li>
-                            <li>You agree not to use the App for any unlawful purpose</li>
-                            <li>You agree not to attempt to reverse-engineer or disrupt the service</li>
-                        </ul>
-                    </section>
-
-                    <section>
-                        <h2 className="text-lg font-semibold text-white mb-2">5. Limitation of Liability</h2>
-                        <p>
-                            The App is provided "as is" without warranties of any kind. We shall not be liable for
-                            any indirect, incidental, or consequential damages arising from use of the App.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-lg font-semibold text-white mb-2">6. Changes to Terms</h2>
-                        <p>
-                            We may update these terms from time to time. Continued use of the App after changes
-                            constitutes acceptance of the revised terms.
-                        </p>
-                    </section>
-
-                    <section>
-                        <h2 className="text-lg font-semibold text-white mb-2">7. Contact</h2>
-                        <p>
-                            For any questions about these terms, contact:{' '}
-                            <span className="text-indigo-400">arunkumar582004@gmail.com</span>
-                        </p>
-                    </section>
-                </div>
-
-                <div className="mt-12 pt-6 border-t border-slate-800 flex gap-6 text-sm text-slate-500">
-                    <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
-                    <Link to="/login" className="hover:text-slate-300 transition-colors">← Back to App</Link>
-                </div>
-            </div>
+            <PublicFooter />
         </div>
     );
 }

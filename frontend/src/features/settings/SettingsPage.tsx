@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Listbox } from '@headlessui/react';
 import {
     User, Palette, Bell, Globe, LogOut, Check, ExternalLink, RefreshCw,
-    Sun, Moon, Monitor, Wifi, WifiOff, Shield, Trash2, AlertCircle,
+    Sun, Moon, Monitor, Wifi, WifiOff, Shield, Lock, Trash2, AlertCircle,
     Mail, Calendar, CheckSquare, Clock, Volume2, VolumeX, Smartphone, FileSpreadsheet,
     Languages, Info, ChevronRight, ChevronDown, Zap, BotMessageSquare, Upload, ImagePlus, RotateCcw, KeyRound
 } from 'lucide-react';
@@ -934,10 +934,66 @@ function AccountTab() {
                     </div>
                 </Card>
             </div>
+            </div>
+        </>
+    );
+}
 
-            {/* Connected services */}
+// ════════════════════════════════════════════════════════════════════════════
+// TAB: Connectivity
+// ════════════════════════════════════════════════════════════════════════════
+function ConnectivityTab() {
+    const { user } = useAuthStore();
+    const { isGoogleConnected, isChecking, googleServiceStatus, connectedServices, refresh } = useGoogleStatus();
+    const [isRevoking, setIsRevoking] = useState(false);
+    const [googleLogoFailed, setGoogleLogoFailed] = useState(false);
+    const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
+    const [connectError, setConnectError] = useState<string | null>(null);
+    const [googleConnectedAccountEmail, setGoogleConnectedAccountEmail] = useState<string | null>(null);
+
+    useEffect(() => {
+        getAboutProfile().then((about) => {
+            setGoogleConnectedAccountEmail(about.google_account_email || null);
+        }).catch(() => {});
+    }, []);
+
+    const connectGoogle = async () => {
+        setConnectError(null);
+        setIsConnectingGoogle(true);
+        try {
+            const authUrl = await getGoogleConnectUrl();
+            window.location.assign(authUrl);
+        } catch (err: any) {
+            setConnectError(err?.message || 'Unable to start Google connection. Please sign in again and retry.');
+            setIsConnectingGoogle(false);
+        }
+    };
+
+    const handleRevoke = async () => {
+        setIsRevoking(true);
+        try {
+            await api.post('/api/auth/logout');
+            await refresh(true);
+        } finally {
+            setIsRevoking(false);
+        }
+    };
+
+    const serviceTiles = [
+        { icon: Calendar, label: 'Calendar', statusKey: 'Calendar', color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' },
+        { icon: Mail, label: 'Gmail', statusKey: 'Gmail', color: 'text-red-500 bg-red-50 dark:bg-red-900/20' },
+        { icon: CheckSquare, label: 'Tasks', statusKey: 'Tasks', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' },
+        { icon: FileSpreadsheet, label: 'Sheets', statusKey: 'Drive', color: 'text-green-600 bg-green-50 dark:bg-green-900/20' },
+        { icon: User, label: 'Contacts', statusKey: 'Contacts', color: 'text-violet-500 bg-violet-50 dark:bg-violet-900/20' },
+    ];
+
+    const googleAccountLabel = googleConnectedAccountEmail
+        || (isGoogleConnected ? (user?.email || 'Connected (email unavailable)') : 'Not connected');
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-300">
             <div>
-                <SectionHeader title="Connected Services" desc="Manage your Google integration." />
+                <SectionHeader title="Connected Services" desc="Manage your Google Workspace integrations & real-time sync status." />
                 <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="p-6">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -1030,28 +1086,80 @@ function AccountTab() {
                 </Card>
             </div>
 
-            {/* Security */}
+            {/* Connected Account Email Info */}
             <div>
-                <SectionHeader title="Security" desc="Data protection and access management." />
+                <SectionHeader title="Google Account Details" desc="Connected Google identity for Workspace OAuth." />
+                <Card className="p-5 border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">Active Google Account</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Primary OAuth email authorized for Calendar, Gmail, Tasks & Maps.</p>
+                    </div>
+                    <span className="text-sm font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 px-3 py-1.5 rounded-xl border border-brand-100 dark:border-brand-800">
+                        {googleAccountLabel}
+                    </span>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAB: Security
+// ════════════════════════════════════════════════════════════════════════════
+function SecurityTab() {
+    const { refresh } = useGoogleStatus();
+    const [isRevoking, setIsRevoking] = useState(false);
+
+    const handleRevoke = async () => {
+        setIsRevoking(true);
+        try {
+            await api.post('/api/auth/logout');
+            await refresh(true);
+        } finally {
+            setIsRevoking(false);
+        }
+    };
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-300">
+            <div>
+                <SectionHeader title="Data Protection & Encryption" desc="Security standards and protocol compliance for your Workspace data." />
                 <Card className="border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                     <div className="p-5 flex items-start gap-4">
                         <div className="h-9 w-9 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center flex-shrink-0">
                             <Shield className="h-4.5 w-4.5 text-brand-600" />
                         </div>
                         <div>
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white">OAuth2 Encrypted</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">All data is handled through Google's secure OAuth2 protocol. No passwords are stored.</p>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">OAuth2 Token Encryption</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">All data is handled through Google&apos;s secure OAuth2 protocol. User passwords are never stored or transmitted.</p>
                         </div>
-                        <span className="ml-auto flex-shrink-0 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">Active</span>
+                        <span className="ml-auto flex-shrink-0 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800">Active</span>
                     </div>
+
+                    <div className="p-5 flex items-start gap-4">
+                        <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                            <Lock className="h-4.5 w-4.5 text-blue-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">Google API Limited Use Policy</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Strict adherence to Google Developer Limited Use Policy. Your data is never sold or shared with external LLM trainers.</p>
+                        </div>
+                        <span className="ml-auto flex-shrink-0 text-xs font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-800">Verified</span>
+                    </div>
+                </Card>
+            </div>
+
+            <div>
+                <SectionHeader title="Access Control" desc="Manage session tokens and connection revocations." />
+                <Card className="border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                     <div className="p-5 flex items-center justify-between">
                         <div className="flex items-start gap-4">
                             <div className="h-9 w-9 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
                                 <Trash2 className="h-4.5 w-4.5 text-red-500" />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold text-slate-900 dark:text-white">Revoke All Access</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Disconnects all Google services. You will need to reconnect.</p>
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">Revoke All Access & OAuth Tokens</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Immediately revokes all stored Google tokens and disconnects active agent background workers.</p>
                             </div>
                         </div>
                         <Button
@@ -1061,13 +1169,12 @@ function AccountTab() {
                             disabled={isRevoking}
                             className="text-red-600 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 ml-4"
                         >
-                            {isRevoking ? 'Revoking…' : 'Revoke'}
+                            {isRevoking ? 'Revoking…' : 'Revoke All Access'}
                         </Button>
                     </div>
                 </Card>
             </div>
-            </div>
-        </>
+        </div>
     );
 }
 
@@ -1658,6 +1765,8 @@ export function SettingsPage() {
 
     const tabs = [
         { id: 'account', label: 'Account', icon: User },
+        { id: 'connectivity', label: 'Connectivity', icon: Wifi },
+        { id: 'security', label: 'Security', icon: Shield },
         { id: 'appearance', label: 'Appearance', icon: Palette },
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'general', label: 'General', icon: Globe },
@@ -1709,6 +1818,8 @@ export function SettingsPage() {
                 {/* ── Right content ── */}
                 <div className="flex-1 p-6 md:p-10 overflow-y-auto custom-scrollbar">
                     {activeTab === 'account' && <AccountTab />}
+                    {activeTab === 'connectivity' && <ConnectivityTab />}
+                    {activeTab === 'security' && <SecurityTab />}
                     {activeTab === 'appearance' && <AppearanceTab />}
                     {activeTab === 'notifications' && <NotificationsTab />}
                     {activeTab === 'general' && <GeneralTab />}

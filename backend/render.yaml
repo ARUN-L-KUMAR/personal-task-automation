@@ -26,6 +26,10 @@ services:
         sync: false
       - key: GOOGLE_REDIRECT_URI
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
       - key: AI_MODEL_NAME
         value: deepseek/deepseek-r1
       - key: AI_TEMPERATURE
@@ -36,4 +40,4 @@ services:
         value: "1440"
       # ── Set this to your Vercel frontend URL after deploy ──
       - key: ALLOWED_ORIGINS
-        value: http://localhost:3000
+        value: https://personal-task-automation.vercel.app
