@@ -17,6 +17,7 @@ from graph.agent_graph import ScheduleAgentGraph
 from database.connection import get_db
 from database.models import User, AIPlan
 from middleware import get_current_user
+from config.settings import AI_MODEL_NAME
 
 router = APIRouter(tags=["Planner"])
 
@@ -81,7 +82,7 @@ def plan_day_live(
             optimized_schedule=result.get("optimized_plan"),
             conflicts=result.get("conflicts"),
             travel_plan=result.get("travel_plan"),
-            model_used="llama-3.3-70b-versatile",
+            model_used=AI_MODEL_NAME,
             execution_time_ms=elapsed_ms,
             optimization_mode="balanced",
         )
@@ -150,7 +151,7 @@ def plan_day_manual(
             optimized_schedule=result.get("optimized_plan"),
             conflicts=result.get("conflicts"),
             travel_plan=result.get("travel_plan"),
-            model_used="llama-3.3-70b-versatile",
+            model_used=AI_MODEL_NAME,
             execution_time_ms=elapsed_ms,
             optimization_mode="balanced",
         )
