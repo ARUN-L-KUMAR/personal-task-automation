@@ -11,7 +11,7 @@ load_dotenv()
 
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-from graph.agent_graph import ScheduleAgentGraph
+
 from routers.auth_router import router as auth_router
 from routers.calendar_router import router as calendar_router
 from routers.email_router import router as email_router
@@ -47,6 +47,14 @@ from middleware.error_handlers import (
 )
 
 app = FastAPI(title="AI Personal Task Automation System - Multi-Agent")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize shared resources once at process startup."""
+    from graph.agent_graph import ScheduleAgentGraph
+    app.state.agent_graph = ScheduleAgentGraph()
+    print("INFO: ScheduleAgentGraph initialized and stored on app.state")
 
 # --- Global Error Handlers ---
 app.add_exception_handler(IntegrityError, integrity_error_handler)
@@ -103,8 +111,8 @@ app.include_router(meetings_router, prefix="/api")
 app.include_router(notes_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 
-# Initialize the unified agent graph (supports manual + live modes)
-agent_graph = ScheduleAgentGraph()
+# NOTE: ScheduleAgentGraph is initialized in the startup_event above (app.state.agent_graph)
+# Do NOT create a new instance here — that causes a second initialization per process.
 
 
 class Meeting(BaseModel):

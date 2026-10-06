@@ -76,6 +76,32 @@ export interface ConflictItem {
     suggestion: string;
 }
 
+// Resolution produced by ConflictResolutionAgent (only present when high-severity conflicts exist)
+export interface ResolutionItem {
+    conflict_description: string;
+    severity: 'high';
+    action: 'reschedule' | 'delegate' | 'drop' | 'compress' | 'shift';
+    instruction: string;   // Concrete one-sentence action for the user
+    affected_item: string;
+    new_time: string | null;
+}
+
+export interface ResolutionPlan {
+    resolutions: ResolutionItem[];
+    rescheduled: string[];
+    dropped: string[];
+    summary: string;
+}
+
+export interface PipelineMetadata {
+    architecture: string;
+    agents_used: number;
+    mode: 'live' | 'manual';
+    execution_time_ms: number;
+    google_services?: string[];
+    workflow?: string;
+}
+
 export interface TravelPlan {
     totalMinutes: number;
     travelEventCount: number;
@@ -107,10 +133,12 @@ export interface PlannerResult {
     generated_at: string;
     schedule: ScheduleEntry[];
     conflicts: ConflictItem[];
+    resolution_plan?: ResolutionPlan;   // Only present in live mode when high-severity conflicts found
     travel: TravelPlan;
     explanation: AIExplanation;
     insights: IntelligenceInsights;
     agentRawData: Record<string, any>;
+    metadata?: PipelineMetadata;        // Execution stats (live mode only)
     // Legacy compat
     conflict_analysis?: string;
     travel_reminders?: string;

@@ -43,6 +43,7 @@ openai
 python-dotenv
 langchain-google-genai
 langchain-groq
+langgraph-checkpoint-postgres>=2.0.0
 
 # ── Neon PostgreSQL + Auth ──
 sqlalchemy>=2.0.0

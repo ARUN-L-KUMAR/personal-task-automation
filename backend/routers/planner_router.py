@@ -6,8 +6,9 @@ Endpoints:
 """
 
 import time
+import asyncio
 from datetime import datetime, timezone, date as date_type
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -48,19 +49,21 @@ class PlannerRequest(BaseModel):
 
 
 @router.post("/plan-day-live")
-def plan_day_live(
+async def plan_day_live(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Plan the user's day using REAL Google data.
-    
+
     This endpoint triggers the full 10-agent pipeline:
-    1. Fetches Calendar, Tasks, Emails, Contacts from Google
+    1. Fetches Calendar, Tasks, Emails, Contacts, Sheets from Google (in parallel)
     2. Gets real directions from Google Maps
-    3. Detects conflicts and creates optimized plan
-    4. Generates notes and final AI summary
-    
+    3. Detects conflicts — routes to ResolutionAgent if high-severity conflicts found
+    4. Creates optimized plan and generates notes
+    5. Produces final AI summary
+
     No input needed — all data is fetched from connected Google services.
     """
     if not is_authenticated(current_user, db):
@@ -68,11 +71,16 @@ def plan_day_live(
             status_code=401,
             detail="Google not connected. Please connect Google account in Settings."
         )
-    
+
     try:
-        graph = ScheduleAgentGraph()
+        graph: ScheduleAgentGraph = request.app.state.agent_graph
         t0 = time.time()
-        result = graph.execute_live(current_user, db)
+
+        # Run the blocking graph in a thread so the event loop stays free
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, graph.execute_live, current_user, db
+        )
         elapsed_ms = int((time.time() - t0) * 1000)
 
         # ── Persist to ai_plans ──
@@ -89,7 +97,7 @@ def plan_day_live(
         db.add(plan)
         db.commit()
         db.refresh(plan)
-        
+
         return {
             "status": "success",
             "plan_id": str(plan.id),
@@ -100,17 +108,19 @@ def plan_day_live(
             "google_sheets": result.get("google_sheets", {}),
             "google_notes": result.get("google_notes", {}),
             "conflicts": result.get("conflicts", {}),
+            "resolution_plan": result.get("resolution_plan", {}),
             "travel_plan": result.get("travel_plan", {}),
             "optimized_plan": result.get("optimized_plan", {}),
             "final_response": result.get("final_response", ""),
             "metadata": {
-                "architecture": "Unified Multi-Agent Graph",
-                "agents_used": 10,
+                "architecture": "True Multi-Agent Graph (Parallel + Conditional)",
+                "agents_used": 11,
                 "mode": "live",
+                "execution_time_ms": elapsed_ms,
                 "google_services": [
                     "Calendar", "Gmail", "Maps", "Contacts", "Sheets", "Tasks", "Notes"
                 ],
-                "workflow": "Google Data Fetch → AI Analysis Pipeline"
+                "workflow": "Parallel Fetch → Travel → Conflicts → [Conditional] → Plan → Notes → Coordinate"
             }
         }
     except Exception as e:
@@ -118,15 +128,16 @@ def plan_day_live(
 
 
 @router.post("/plan-day")
-def plan_day_manual(
+async def plan_day_manual(
+    request: Request,
     data: PlannerRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Manual planning using provided meetings and tasks."""
     try:
-        graph = ScheduleAgentGraph()
-        
+        graph: ScheduleAgentGraph = request.app.state.agent_graph
+
         # Normalize manual input so downstream agents get consistent keys.
         meetings_list = []
         for m in data.meetings:
@@ -139,9 +150,13 @@ def plan_day_manual(
             td = t.dict()
             td["estimatedDuration"] = td.get("duration", 0)
             tasks_list.append(td)
-        
+
         t0 = time.time()
-        result = graph.execute(meetings_list, tasks_list)
+        # Run the blocking graph in a thread so the event loop stays free
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, graph.execute, meetings_list, tasks_list
+        )
         elapsed_ms = int((time.time() - t0) * 1000)
 
         # ── Persist to ai_plans ──

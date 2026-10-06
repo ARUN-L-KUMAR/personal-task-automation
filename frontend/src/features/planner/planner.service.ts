@@ -9,6 +9,8 @@ import {
     TravelPlan,
     AIExplanation,
     IntelligenceInsights,
+    ResolutionPlan,
+    PipelineMetadata,
 } from '../../types/planner.types';
 
 function parseMinutes(value: unknown): number {
@@ -340,29 +342,66 @@ function normalise(raw: any): PlannerResult {
         freeTimeMinutes,
     };
 
+    // Resolution plan (only present in live mode when high-severity conflicts were found)
+    let resolution_plan: ResolutionPlan | undefined;
+    const resRaw = raw.resolution_plan;
+    if (resRaw && typeof resRaw === 'object' && Array.isArray(resRaw.resolutions)) {
+        resolution_plan = {
+            resolutions: resRaw.resolutions || [],
+            rescheduled: resRaw.rescheduled || [],
+            dropped:     resRaw.dropped || [],
+            summary:     resRaw.summary || '',
+        };
+    }
+
+    // Pipeline metadata (live mode only)
+    let metadata: PipelineMetadata | undefined;
+    const metaRaw = raw.metadata;
+    if (metaRaw && typeof metaRaw === 'object') {
+        metadata = {
+            architecture:      metaRaw.architecture || '',
+            agents_used:       metaRaw.agents_used || 0,
+            mode:              metaRaw.mode || 'live',
+            execution_time_ms: metaRaw.execution_time_ms || 0,
+            google_services:   metaRaw.google_services,
+            workflow:          metaRaw.workflow,
+        };
+    }
+
     return {
         status: raw.status || 'success',
         generated_at: raw.generated_at || new Date().toISOString(),
         schedule,
         conflicts,
+        resolution_plan,
         travel,
         explanation,
         insights,
+        metadata,
         agentRawData: {
+            // Core analysis
             calendar_analysis: raw.calendar_analysis,
-            task_analysis: raw.task_analysis,
-            conflicts: raw.conflict_analysis || raw.conflicts,
-            travel_plan: raw.travel_reminders || raw.travel_plan,
-            optimized_plan: raw.rule_based_plan || raw.optimized_plan,
-            final_response: raw.ai_explanation || raw.final_response,
+            task_analysis:     raw.task_analysis,
+            conflicts:         raw.conflict_analysis || raw.conflicts,
+            resolution_plan:   raw.resolution_plan,
+            travel_plan:       raw.travel_reminders || raw.travel_plan,
+            optimized_plan:    raw.rule_based_plan   || raw.optimized_plan,
+            final_response:    raw.ai_explanation    || raw.final_response,
+            // Live mode — Google service data
+            google_emails:     raw.google_emails,
+            google_contacts:   raw.google_contacts,
+            google_sheets:     raw.google_sheets,
+            google_notes:      raw.google_notes,
+            // Pipeline stats
+            metadata:          raw.metadata,
         },
         // Legacy compat
         conflict_analysis: typeof conflictRaw === 'string' ? conflictRaw : JSON.stringify(conflictRaw),
-        travel_reminders: typeof travelRaw === 'string' ? travelRaw : JSON.stringify(travelRaw),
-        rule_based_plan: typeof plan === 'string' ? plan : JSON.stringify(plan),
-        ai_explanation: typeof explainRaw === 'string' ? explainRaw : JSON.stringify(explainRaw),
+        travel_reminders:  typeof travelRaw   === 'string' ? travelRaw   : JSON.stringify(travelRaw),
+        rule_based_plan:   typeof plan        === 'string' ? plan        : JSON.stringify(plan),
+        ai_explanation:    typeof explainRaw  === 'string' ? explainRaw  : JSON.stringify(explainRaw),
         calendar_analysis: raw.calendar_analysis,
-        task_analysis: raw.task_analysis,
+        task_analysis:     raw.task_analysis,
     };
 }
 
